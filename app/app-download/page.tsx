@@ -257,11 +257,15 @@ export default function AppDownloadPage() {
                 </div>
 
                 {builds.latestBuild.artifacts?.buildUrl ? (
-                  <a
-                    href={builds.latestBuild.artifacts.buildUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all shadow-lg shadow-purple-500/20"
+                  <button
+                    onClick={() => {
+                      const url = builds.latestBuild?.artifacts?.buildUrl;
+                      if (url) {
+                        // Use window.location for direct download - avoids popup blockers
+                        window.location.href = url;
+                      }
+                    }}
+                    className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all shadow-lg shadow-purple-500/20 cursor-pointer"
                   >
                     <svg
                       className="w-5 h-5"
@@ -277,7 +281,7 @@ export default function AppDownloadPage() {
                       />
                     </svg>
                     Download APK
-                  </a>
+                  </button>
                 ) : (
                   <p className="text-slate-500">
                     No download available for this build
@@ -324,11 +328,13 @@ export default function AppDownloadPage() {
                           </div>
                         </div>
                         {build.artifacts?.buildUrl && (
-                          <a
-                            href={build.artifacts.buildUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                          <button
+                            onClick={() => {
+                              if (build.artifacts?.buildUrl) {
+                                window.location.href = build.artifacts.buildUrl;
+                              }
+                            }}
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer"
                           >
                             <svg
                               className="w-4 h-4"
@@ -344,7 +350,7 @@ export default function AppDownloadPage() {
                               />
                             </svg>
                             Download
-                          </a>
+                          </button>
                         )}
                       </div>
                     ))}
