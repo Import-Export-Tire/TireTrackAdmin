@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
         "Tracking Number",
         "Carrier",
         "Truck Number",
+        "Trailer Number",
         "Recipient Name",
         "Address",
         "City",
@@ -111,6 +112,7 @@ export async function GET(request: NextRequest) {
           `"${scan.trackingNumber || ""}"`,
           `"${scan.carrier || ""}"`,
           `"${scan.truckNumber || ""}"`,
+          `"${scan.trailerNumber || ""}"`,
           `"${scan.recipientName || ""}"`,
           `"${scan.address || ""}"`,
           `"${scan.city || ""}"`,
@@ -264,7 +266,7 @@ export async function POST(request: NextRequest) {
     // Format CSV
     const dateStr = estTime.toISOString().split("T")[0];
     const csvRows = [
-      ["Tracking Number", "Carrier", "Truck Number", "Recipient Name", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account"].join(","),
+      ["Tracking Number", "Carrier", "Truck Number", "Trailer Number", "Recipient Name", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account"].join(","),
     ];
 
     for (const scan of simpleTireScans) {
@@ -274,6 +276,7 @@ export async function POST(request: NextRequest) {
           `"${scan.trackingNumber || ""}"`,
           `"${scan.carrier || ""}"`,
           `"${scan.truckNumber || ""}"`,
+          `"${scan.trailerNumber || ""}"`,
           `"${scan.recipientName || ""}"`,
           `"${scan.address || ""}"`,
           `"${scan.city || ""}"`,
