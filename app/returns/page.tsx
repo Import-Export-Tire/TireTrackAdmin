@@ -405,11 +405,19 @@ function ReturnsDashboard() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="text-sm">
-                              {item.tireBrand && <div className="font-medium">{item.tireBrand}</div>}
-                              {item.tireModel && <div className="text-slate-400">{item.tireModel}</div>}
-                              {item.tireSize && <span className="px-2 py-0.5 bg-slate-700/50 border border-slate-600/30 rounded text-xs">{item.tireSize}</span>}
-                              {!item.tireBrand && !item.tireModel && !item.tireSize && <span className="text-slate-600">No tire info</span>}
+                            <div className="text-sm space-y-1">
+                              {item.tireBrand && (
+                                <div className="font-medium">{item.tireBrand}</div>
+                              )}
+                              {item.tireModel && item.tireModel !== item.tireBrand && (
+                                <div className="text-cyan-300">{item.tireModel}</div>
+                              )}
+                              {item.tireSize && (
+                                <span className="inline-block px-2 py-0.5 bg-slate-700/50 border border-slate-600/30 rounded text-xs">{item.tireSize}</span>
+                              )}
+                              {!item.tireBrand && !item.tireModel && !item.tireSize && (
+                                <span className="text-slate-600">No tire info</span>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>

@@ -20,6 +20,30 @@ function parseDescription(desc: string): { size: string; brand: string; model: s
   return { size, brand, model };
 }
 
+// Detect column indices from header row
+function detectColumnMapping(headers: string[]): { upc: number; brand: number; model: number; size: number; inventoryNumber: number } | null {
+  const normalized = headers.map(h => String(h || "").toLowerCase().trim());
+
+  // Look for Amazon UPC format with named columns
+  const upcIdx = normalized.findIndex(h => h === "upc");
+  const lineIdx = normalized.findIndex(h => h === "line"); // "Line" = model in Amazon format
+  const brandIdx = normalized.findIndex(h => h === "brand" || h === "manufacturer");
+  const sizeIdx = normalized.findIndex(h => h === "size" || h === "tiresize");
+  const invIdx = normalized.findIndex(h => h === "inventorynumber" || h === "inventory" || h === "sku");
+
+  if (upcIdx >= 0) {
+    return {
+      upc: upcIdx,
+      brand: brandIdx >= 0 ? brandIdx : -1,
+      model: lineIdx >= 0 ? lineIdx : -1, // "Line" column is the model
+      size: sizeIdx >= 0 ? sizeIdx : -1,
+      inventoryNumber: invIdx >= 0 ? invIdx : -1,
+    };
+  }
+
+  return null; // Fall back to legacy positional parsing
+}
+
 function UPCDashboard() {
   const { canEdit } = useAuth();
   const [search, setSearch] = useState("");
@@ -62,26 +86,49 @@ function UPCDashboard() {
       rows = lines.map(line => line.split(delimiter).map(cell => cell.trim()));
     }
 
+    const headerRow = rows[0] || [];
     const dataRows = rows.slice(1);
     setUploadProgress(p => ({ ...p, total: dataRows.length }));
 
     const parsed: Array<{ upc: string; brand: string; model: string; size: string; inventoryNumber?: string }> = [];
 
+    // Detect if this is an Amazon UPC format with named columns
+    const columnMapping = detectColumnMapping(headerRow);
+
     for (const row of dataRows) {
-      const upc = String(row[1] || "").trim();
-      const description = String(row[2] || "");
-      const inventoryNumber = String(row[3] || "").trim();
+      let upc: string;
+      let brand: string;
+      let model: string;
+      let size: string;
+      let inventoryNumber: string;
+
+      if (columnMapping) {
+        // Amazon UPC format - use detected column indices
+        upc = String(row[columnMapping.upc] || "").trim();
+        brand = columnMapping.brand >= 0 ? String(row[columnMapping.brand] || "").trim() : "";
+        model = columnMapping.model >= 0 ? String(row[columnMapping.model] || "").trim() : ""; // "Line" column = model
+        size = columnMapping.size >= 0 ? String(row[columnMapping.size] || "").trim() : "";
+        inventoryNumber = columnMapping.inventoryNumber >= 0 ? String(row[columnMapping.inventoryNumber] || "").trim() : "";
+      } else {
+        // Legacy format - positional columns with description parsing
+        upc = String(row[1] || "").trim();
+        const description = String(row[2] || "");
+        inventoryNumber = String(row[3] || "").trim();
+        const descParsed = parseDescription(description);
+        brand = descParsed.brand;
+        model = descParsed.model;
+        size = descParsed.size;
+      }
 
       if (!upc || upc.length < 6) continue;
 
-      const { size, brand, model } = parseDescription(description);
-
-      if (size && brand) {
+      // Only require UPC and at least one other field
+      if (brand || model || size) {
         parsed.push({
           upc,
-          brand,
-          model: model || brand,
-          size,
+          brand: brand || model || "Unknown", // Fallback if brand missing
+          model: model || brand || "Unknown", // Use model from "Line" column, fallback to brand
+          size: size || "Unknown",
           inventoryNumber: inventoryNumber || undefined,
         });
       }
