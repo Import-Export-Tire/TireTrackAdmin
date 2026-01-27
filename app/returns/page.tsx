@@ -54,6 +54,7 @@ function ReturnsDashboard() {
       tireBrand: editingItem.tireBrand,
       tireModel: editingItem.tireModel,
       tireSize: editingItem.tireSize,
+      tirePartNumber: editingItem.tirePartNumber,
       quantity: editingItem.quantity,
       status: editingItem.status,
       notes: editingItem.notes,
@@ -415,6 +416,9 @@ function ReturnsDashboard() {
                               {item.tireSize && (
                                 <span className="inline-block px-2 py-0.5 bg-slate-700/50 border border-slate-600/30 rounded text-xs">{item.tireSize}</span>
                               )}
+                              {item.tirePartNumber && (
+                                <div className="text-slate-500 text-xs font-mono">Part: {item.tirePartNumber}</div>
+                              )}
                               {!item.tireBrand && !item.tireModel && !item.tireSize && (
                                 <span className="text-slate-600">No tire info</span>
                               )}
@@ -627,15 +631,24 @@ function ReturnsDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">Quantity</label>
+                  <label className="block text-slate-400 text-sm mb-1">Part Number</label>
                   <input
-                    type="number"
-                    value={editingItem.quantity || 1}
-                    onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 1 })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                    min="1"
+                    type="text"
+                    value={editingItem.tirePartNumber || ""}
+                    onChange={(e) => setEditingItem({ ...editingItem, tirePartNumber: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1">Quantity</label>
+                <input
+                  type="number"
+                  value={editingItem.quantity || 1}
+                  onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 1 })}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  min="1"
+                />
               </div>
               <div>
                 <label className="block text-slate-400 text-sm mb-1">Status</label>

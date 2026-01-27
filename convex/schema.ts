@@ -110,6 +110,7 @@ export default defineSchema({
     tireBrand: v.optional(v.string()),
     tireModel: v.optional(v.string()),
     tireSize: v.optional(v.string()),
+    tirePartNumber: v.optional(v.string()), // Inventory/part number from tireUPCs
     quantity: v.optional(v.number()),
     scannedBy: v.id("users"),
     scannedAt: v.number(),

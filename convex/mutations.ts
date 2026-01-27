@@ -644,6 +644,7 @@ export const updateReturnItem = mutation({
     tireBrand: v.optional(v.string()),
     tireModel: v.optional(v.string()),
     tireSize: v.optional(v.string()),
+    tirePartNumber: v.optional(v.string()),
     quantity: v.optional(v.number()),
     status: v.optional(v.union(v.literal("pending"), v.literal("processed"), v.literal("not_processed"))),
     notes: v.optional(v.string()),
@@ -914,6 +915,51 @@ export const backfillFedExMiscans = mutation({
       total: scans.length,
       detected,
       updated,
+    };
+  },
+});
+
+// Backfill return items with correct tire data from tireUPCs table
+export const backfillReturnItemsTireData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const returnItems = await ctx.db.query("returnItems").collect();
+    let updated = 0;
+    let notFound = 0;
+    let noUpc = 0;
+
+    for (const item of returnItems) {
+      if (!item.upcCode) {
+        noUpc++;
+        continue;
+      }
+
+      // Look up the tire in tireUPCs
+      const tire = await ctx.db
+        .query("tireUPCs")
+        .withIndex("by_upc", (q) => q.eq("upc", item.upcCode!))
+        .first();
+
+      if (tire) {
+        // Update with correct data from tireUPCs
+        await ctx.db.patch(item._id, {
+          tireBrand: tire.brand,
+          tireModel: tire.model,
+          tireSize: tire.size,
+          tirePartNumber: tire.inventoryNumber || undefined,
+        });
+        updated++;
+      } else {
+        notFound++;
+      }
+    }
+
+    return {
+      success: true,
+      total: returnItems.length,
+      updated,
+      notFound,
+      noUpc,
     };
   },
 });
