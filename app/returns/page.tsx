@@ -407,8 +407,9 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3">
                             <div className="text-sm">
                               {item.tireBrand && <div className="font-medium">{item.tireBrand}</div>}
+                              {item.tireModel && <div className="text-slate-400">{item.tireModel}</div>}
                               {item.tireSize && <span className="px-2 py-0.5 bg-slate-700/50 border border-slate-600/30 rounded text-xs">{item.tireSize}</span>}
-                              {!item.tireBrand && !item.tireSize && <span className="text-slate-600">No tire info</span>}
+                              {!item.tireBrand && !item.tireModel && !item.tireSize && <span className="text-slate-600">No tire info</span>}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>
@@ -587,14 +588,25 @@ function ReturnsDashboard() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-slate-400 text-sm mb-1">Tire Brand</label>
-                <input
-                  type="text"
-                  value={editingItem.tireBrand || ""}
-                  onChange={(e) => setEditingItem({ ...editingItem, tireBrand: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">Tire Brand</label>
+                  <input
+                    type="text"
+                    value={editingItem.tireBrand || ""}
+                    onChange={(e) => setEditingItem({ ...editingItem, tireBrand: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">Tire Model</label>
+                  <input
+                    type="text"
+                    value={editingItem.tireModel || ""}
+                    onChange={(e) => setEditingItem({ ...editingItem, tireModel: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
