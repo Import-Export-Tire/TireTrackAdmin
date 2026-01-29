@@ -11,8 +11,8 @@ function getFtpConfig() {
   };
 }
 
-// Vercel Cron secret for authentication
-const CRON_SECRET = process.env.CRON_SECRET;
+// Vercel Cron secret for authentication (trim whitespace to avoid header issues)
+const CRON_SECRET = process.env.CRON_SECRET?.trim();
 
 export async function GET(request: NextRequest) {
   // Verify cron authentication (Vercel sends this header)
