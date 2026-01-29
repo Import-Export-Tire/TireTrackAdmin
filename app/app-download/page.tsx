@@ -31,6 +31,55 @@ const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000;
 // Max retry attempts
 const MAX_RETRIES = 3;
 
+// Version changelog - add new versions at the top
+const VERSION_NOTES: Record<string, { date: string; features: string[] }> = {
+  "1.1.4": {
+    date: "2026-01-29",
+    features: [
+      "Removed AI label reading - now captures photo for reference only (faster)",
+      "Added Part Number field to manual tire entry",
+      "Part number auto-fills when selecting matched tire from UPC database",
+      "Part number displays in review summary before saving",
+    ],
+  },
+  "1.1.3": {
+    date: "2026-01-15",
+    features: [
+      "Added flashlight toggle for camera",
+      "Added zoom controls for camera",
+      "Added autofocus for better barcode scanning",
+    ],
+  },
+  "1.1.2": {
+    date: "2026-01-10",
+    features: [
+      "Fixed white screen crash on manual return entry",
+    ],
+  },
+  "1.1.1": {
+    date: "2026-01-08",
+    features: [
+      "Code cleanup and performance improvements",
+    ],
+  },
+  "1.1.0": {
+    date: "2026-01-06",
+    features: [
+      "AI-powered barcode fallback for damaged/unclear barcodes",
+      "Improved UPC scanning reliability",
+    ],
+  },
+  "1.0.0": {
+    date: "2025-12-01",
+    features: [
+      "Initial release",
+      "Truck manifest scanning",
+      "Return label scanning with AI extraction",
+      "UPC barcode scanning for tire identification",
+    ],
+  },
+};
+
 export default function AppDownloadPage() {
   const [builds, setBuilds] = useState<BuildsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -287,6 +336,58 @@ export default function AppDownloadPage() {
                     No download available for this build
                   </p>
                 )}
+
+                {/* Version Notes for Current Build */}
+                {builds.latestBuild.appVersion && VERSION_NOTES[builds.latestBuild.appVersion] && (
+                  <div className="mt-6 pt-6 border-t border-purple-500/20">
+                    <h3 className="text-sm font-semibold text-purple-300 mb-3">What&apos;s New in v{builds.latestBuild.appVersion}</h3>
+                    <ul className="space-y-2">
+                      {VERSION_NOTES[builds.latestBuild.appVersion].features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-slate-300 text-sm">
+                          <span className="text-emerald-400 mt-0.5">+</span>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Full Version History */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold mb-4 text-slate-300">Version History</h3>
+                <div className="space-y-4">
+                  {Object.entries(VERSION_NOTES).map(([version, info]) => (
+                    <div
+                      key={version}
+                      className={`bg-slate-900/50 border rounded-xl p-4 ${
+                        version === builds.latestBuild?.appVersion
+                          ? "border-purple-500/30 bg-purple-900/10"
+                          : "border-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-semibold">v{version}</span>
+                          {version === builds.latestBuild?.appVersion && (
+                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs rounded-full">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-slate-500 text-sm">{info.date}</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {info.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-slate-400 text-sm">
+                            <span className="text-slate-600">-</span>
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* All Builds */}
