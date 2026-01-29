@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   images: {
     unoptimized: true,
   },
+  // Suppress hydration warnings from Convex during SSR
+  reactStrictMode: true,
 };
 
 export default nextConfig;
