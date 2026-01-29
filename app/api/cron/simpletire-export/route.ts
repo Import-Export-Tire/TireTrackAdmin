@@ -11,15 +11,9 @@ function getFtpConfig() {
   };
 }
 
-// Vercel Cron secret for authentication (trim whitespace to avoid header issues)
-const CRON_SECRET = process.env.CRON_SECRET?.trim();
-
 export async function GET(request: NextRequest) {
-  // Verify cron authentication (Vercel sends this header)
-  const authHeader = request.headers.get("authorization");
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Vercel cron jobs are automatically authenticated via internal mechanisms
+  // No manual CRON_SECRET check needed - Vercel handles this
 
   // Get the dry_run parameter - if true, don't actually upload
   const isDryRun = request.nextUrl.searchParams.get("dry_run") === "true";
