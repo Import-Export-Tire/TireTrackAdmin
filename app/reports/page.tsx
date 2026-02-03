@@ -1151,28 +1151,41 @@ function ReportsPage() {
               </div>
             </div>
 
-            {/* Report Type Toggle */}
-            <div className="flex items-center gap-2 bg-slate-800/60 p-1 rounded-xl border border-slate-700/50">
+            <div className="flex items-center gap-3">
+              {/* Export Returns Button */}
               <button
-                onClick={() => setReportType("daily")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  reportType === "daily"
-                    ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg"
-                    : "text-slate-400 hover:text-white hover:bg-slate-700/50"
-                }`}
+                onClick={() => setShowReturnsExportModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 flex items-center gap-2"
               >
-                Daily
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Returns
               </button>
-              <button
-                onClick={() => setReportType("vendor-range")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  reportType === "vendor-range"
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                    : "text-slate-400 hover:text-white hover:bg-slate-700/50"
-                }`}
-              >
-                Vendor Range
-              </button>
+
+              {/* Report Type Toggle */}
+              <div className="flex items-center gap-2 bg-slate-800/60 p-1 rounded-xl border border-slate-700/50">
+                <button
+                  onClick={() => setReportType("daily")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    reportType === "daily"
+                      ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg"
+                      : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setReportType("vendor-range")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    reportType === "vendor-range"
+                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                      : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                  }`}
+                >
+                  Vendor Range
+                </button>
+              </div>
             </div>
           </div>
         </div>
