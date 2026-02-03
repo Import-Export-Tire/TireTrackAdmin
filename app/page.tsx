@@ -121,7 +121,7 @@ function Dashboard() {
       const query = searchQuery.toLowerCase();
       // Search by truck number or vendor locally
       const matchesTruckNumber = truck.truckNumber.toLowerCase().includes(query);
-      const matchesVendor = truck.vendors?.some((v: string) => v && v.toLowerCase().includes(query));
+      const matchesVendor = truck.vendors?.some((v) => v && v.toLowerCase().includes(query));
       // Use server-side tracking search results
       const matchesTracking = truckIdsWithMatchingTracking.has(truck._id);
       const matchesSearch = !query || matchesTruckNumber || matchesVendor || matchesTracking;
