@@ -246,25 +246,29 @@ export const getTireByUPC = query({
 export const countUnknownVendors = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    const unknown = scans.filter(s => !s.vendor || s.vendor === "Unknown");
-    const known = scans.filter(s => s.vendor && s.vendor !== "Unknown");
-    
-    // Group unknowns by rawBarcode pattern
-    const patterns: Record<string, number> = {};
-    for (const scan of unknown) {
-      const raw = scan.rawBarcode || "";
-      const isUPS = raw.includes("UPSN") || raw.startsWith("1Z");
-      const isFedEx = raw.includes("FDEG") || raw.includes("[)>");
-      const key = isUPS ? "UPS" : isFedEx ? "FedEx (unmapped)" : "Other";
-      patterns[key] = (patterns[key] || 0) + 1;
+    // Use truck-level data for efficiency instead of loading all scans
+    const trucks = await ctx.db.query("trucks").order("desc").take(500);
+    const nonArchivedTrucks = trucks.filter(t => !t.archived);
+
+    let total = 0;
+    let known = 0;
+
+    for (const truck of nonArchivedTrucks) {
+      total += truck.scanCount ?? 0;
+      // If truck has vendors other than Unknown, count those scans as known
+      if (truck.vendors && truck.vendors.length > 0) {
+        const hasKnownVendor = truck.vendors.some(v => v !== "Unknown");
+        if (hasKnownVendor) {
+          known += truck.scanCount ?? 0;
+        }
+      }
     }
-    
+
     return {
-      total: scans.length,
-      known: known.length,
-      unknown: unknown.length,
-      patterns
+      total,
+      known,
+      unknown: total - known,
+      patterns: {} // Patterns require loading scans, skip for efficiency
     };
   },
 });
@@ -272,23 +276,32 @@ export const countUnknownVendors = query({
 export const getScanByTracking = query({
   args: { trackingNumber: v.string() },
   handler: async (ctx, args) => {
-    const scans = await ctx.db.query("scans").collect();
-    return scans.find(s => s.trackingNumber === args.trackingNumber) || null;
+    // Use index for efficient lookup
+    return await ctx.db
+      .query("scans")
+      .withIndex("by_tracking", (q) => q.eq("trackingNumber", args.trackingNumber))
+      .first();
   },
 });
 
 export const getUnmappedFedExScans = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    const unmapped = scans.filter(s => {
+    // Get recent scans only (last 30 days) to avoid loading entire database
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentScans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
+      .collect();
+
+    const unmapped = recentScans.filter(s => {
       const raw = s.rawBarcode || "";
       const isFedEx = raw.includes("FDEG") || raw.includes("[)>");
       const noVendor = !s.vendor || s.vendor === "Unknown";
       return isFedEx && noVendor;
     });
-    
-    return unmapped.map(s => ({
+
+    return unmapped.slice(0, 200).map(s => ({
       _id: s._id,
       trackingNumber: s.trackingNumber,
       truckId: s.truckId,
@@ -299,8 +312,14 @@ export const getUnmappedFedExScans = query({
 export const findUnknownAccounts = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    const unknown = scans.filter(s => !s.vendor || s.vendor === "Unknown");
+    // Get recent scans only (last 30 days) to avoid loading entire database
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentScans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
+      .collect();
+
+    const unknown = recentScans.filter(s => !s.vendor || s.vendor === "Unknown");
     const accounts: Record<string, { count: number, sample: string }> = {};
     for (const scan of unknown) {
       const raw = scan.rawBarcode || "";
@@ -315,6 +334,7 @@ export const findUnknownAccounts = query({
     }
     return Object.entries(accounts)
       .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 100)
       .map(([account, data]) => ({ account, count: data.count, sampleTracking: data.sample }));
   },
 });
