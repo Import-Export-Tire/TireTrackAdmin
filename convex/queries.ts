@@ -1366,6 +1366,80 @@ export const getReturnItemsForExport = query({
   },
 });
 
+// Search return items across all batches
+export const searchReturnItems = query({
+  args: {
+    search: v.string(),
+    status: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (args.search.length < 2) return { items: [], totalMatches: 0 };
+
+    const limit = args.limit || 50;
+    const searchLower = args.search.toLowerCase();
+
+    // Get all return items
+    let items = await ctx.db.query("returnItems").collect();
+
+    // Apply status filter if provided
+    if (args.status && args.status !== "all") {
+      items = items.filter((item) => item.status === args.status);
+    }
+
+    // Search across multiple fields
+    const matchingItems = items.filter((item) => {
+      const brand = (item.tireBrand || "").toLowerCase();
+      const model = (item.tireModel || "").toLowerCase();
+      const size = (item.tireSize || "").toLowerCase();
+      const partNumber = (item.tirePartNumber || "").toLowerCase();
+      const upc = (item.upcCode || "").toLowerCase();
+      const poNumber = (item.poNumber || "").toLowerCase();
+      const invNumber = (item.invNumber || "").toLowerCase();
+      const fromAddress = (item.fromAddress || "").toLowerCase();
+
+      return (
+        brand.includes(searchLower) ||
+        model.includes(searchLower) ||
+        size.includes(searchLower) ||
+        partNumber.includes(searchLower) ||
+        upc.includes(searchLower) ||
+        poNumber.includes(searchLower) ||
+        invNumber.includes(searchLower) ||
+        fromAddress.includes(searchLower)
+      );
+    });
+
+    // Get batches and users for enrichment
+    const batches = await ctx.db.query("returnBatches").collect();
+    const users = await ctx.db.query("users").collect();
+    const locations = await ctx.db.query("locations").collect();
+
+    // Enrich and limit results
+    const enriched = matchingItems.slice(0, limit).map((item) => {
+      const batch = batches.find((b) => b._id === item.returnBatchId);
+      const scanner = users.find((u) => u._id === item.scannedBy);
+      const location = batch ? locations.find((l) => l.base44Id === batch.locationId) : null;
+
+      return {
+        ...item,
+        batchNumber: batch?.batchNumber || String(batch?._id).slice(-6) || "N/A",
+        batchStatus: batch?.status || "unknown",
+        locationName: location?.name || batch?.locationId || "Unknown",
+        scannedByName: scanner?.name || "Unknown",
+      };
+    });
+
+    // Sort by scannedAt descending
+    enriched.sort((a, b) => b.scannedAt - a.scannedAt);
+
+    return {
+      items: enriched,
+      totalMatches: matchingItems.length,
+    };
+  },
+});
+
 // Get return batches list for export filter dropdown
 export const getReturnBatchesForExport = query({
   args: {},

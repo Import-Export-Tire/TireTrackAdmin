@@ -14,12 +14,23 @@ function ReturnsDashboard() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchStatusFilter, setSearchStatusFilter] = useState<string>("all");
+  const [isSearching, setIsSearching] = useState(false);
 
   const stats = useQuery(api.queries.getReturnStats);
   const batches = useQuery(api.queries.getAllReturnBatches);
   const items = useQuery(
     api.queries.getReturnBatchItems,
-    selectedBatch ? { batchId: selectedBatch as any } : "skip"
+    selectedBatch && !isSearching ? { batchId: selectedBatch as any } : "skip"
+  );
+
+  // Search query - only runs when searching
+  const searchResults = useQuery(
+    api.queries.searchReturnItems,
+    isSearching && searchQuery.length >= 2
+      ? { search: searchQuery, status: searchStatusFilter === "all" ? undefined : searchStatusFilter }
+      : "skip"
   );
 
   const updateItemStatus = useMutation(api.mutations.updateReturnItemStatus);
@@ -132,6 +143,64 @@ function ReturnsDashboard() {
                 <p className="text-slate-500 text-xs">Process and track tire returns</p>
               </div>
             </div>
+
+            {/* Search Bar */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (e.target.value.length >= 2) {
+                      setIsSearching(true);
+                    }
+                  }}
+                  onFocus={() => searchQuery.length >= 2 && setIsSearching(true)}
+                  placeholder="Search brand, size, part #..."
+                  className="pl-10 pr-4 py-2 w-64 bg-slate-800/80 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearching(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {isSearching && (
+                <select
+                  value={searchStatusFilter}
+                  onChange={(e) => setSearchStatusFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-800/80 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500/50"
+                >
+                  <option value="all">All Status</option>
+                  <option value="processed">Processed</option>
+                  <option value="pending">Pending</option>
+                  <option value="not_processed">Not Processed</option>
+                </select>
+              )}
+              {isSearching && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setIsSearching(false);
+                  }}
+                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-medium transition-all"
+                >
+                  Back to Batches
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -196,6 +265,97 @@ function ReturnsDashboard() {
           </div>
         </div>
 
+        {/* Search Results View */}
+        {isSearching ? (
+          <div className="bg-slate-800/30 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-slate-700/30 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Search Results
+                  {searchResults && (
+                    <span className="text-cyan-400 ml-2">
+                      ({searchResults.totalMatches} matches)
+                    </span>
+                  )}
+                </h2>
+                <p className="text-slate-500 text-sm mt-1">
+                  Searching for "{searchQuery}" {searchStatusFilter !== "all" && `in ${searchStatusFilter}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4">
+              {searchQuery.length < 2 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <p>Type at least 2 characters to search</p>
+                </div>
+              ) : searchResults === undefined ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : searchResults.items.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-lg font-medium mb-1">No results found</p>
+                  <p className="text-sm">Try different search terms</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="sticky top-0 bg-slate-900/80 backdrop-blur-sm">
+                      <tr className="text-left text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
+                        <th className="px-4 py-3 font-semibold">Batch</th>
+                        <th className="px-4 py-3 font-semibold">Brand</th>
+                        <th className="px-4 py-3 font-semibold">Model</th>
+                        <th className="px-4 py-3 font-semibold">Size</th>
+                        <th className="px-4 py-3 font-semibold">Part #</th>
+                        <th className="px-4 py-3 font-semibold text-center">Qty</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="px-4 py-3 font-semibold">Location</th>
+                        <th className="px-4 py-3 font-semibold">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700/30">
+                      {searchResults.items.map((item: any) => (
+                        <tr
+                          key={item._id}
+                          className="hover:bg-slate-800/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedBatch(item.returnBatchId);
+                            setIsSearching(false);
+                            setSearchQuery("");
+                          }}
+                        >
+                          <td className="px-4 py-3">
+                            <span className="text-cyan-400 font-medium">{item.batchNumber}</span>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-white">{item.tireBrand || "-"}</td>
+                          <td className="px-4 py-3 text-slate-300">{item.tireModel || "-"}</td>
+                          <td className="px-4 py-3 text-slate-300">{item.tireSize || "-"}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-slate-400">{item.tirePartNumber || "-"}</td>
+                          <td className="px-4 py-3 text-center text-slate-300">{item.quantity || 1}</td>
+                          <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">{item.locationName}</td>
+                          <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(item.scannedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {searchResults.totalMatches > searchResults.items.length && (
+                    <p className="text-center text-slate-500 text-xs py-3">
+                      Showing {searchResults.items.length} of {searchResults.totalMatches} results
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Batches List */}
           <div className="bg-slate-800/30 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden">
@@ -518,6 +678,7 @@ function ReturnsDashboard() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Image Viewer Modal */}
