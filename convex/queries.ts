@@ -323,7 +323,6 @@ export const getAllTrucks = query({
   args: {},
   handler: async (ctx) => {
     // Limit to most recent 200 trucks to avoid hitting document/byte limits
-    // For older trucks, use getTrucksForReport with date filters
     const trucks = await ctx.db
       .query("trucks")
       .order("desc")
@@ -331,25 +330,17 @@ export const getAllTrucks = query({
 
     const enrichedTrucks = await Promise.all(
       trucks.map(async (truck) => {
-        // Get scans for this truck
-        const scans = await ctx.db
-          .query("scans")
-          .withIndex("by_truck", (q) => q.eq("truckId", truck._id))
-          .collect();
         const openedByUser = await ctx.db.get(truck.openedBy);
         const closedByUser = truck.closedBy ? await ctx.db.get(truck.closedBy) : null;
 
-        // Collect unique vendors only - NOT tracking numbers (too much data)
-        const vendors = [...new Set(scans.map(s => s.vendor).filter(Boolean))];
-
         return {
           ...truck,
-          scanCount: scans.length,
+          // Use stored scanCount instead of loading all scans
+          scanCount: truck.scanCount ?? 0,
           openedByName: openedByUser?.name ?? "Unknown",
           closedByName: closedByUser?.name ?? null,
-          vendors,
-          // Removed trackingNumbers - use searchTrackingNumber query for searches
-          trackingNumbers: [], // Empty array for backward compatibility
+          vendors: [], // Vendors now fetched separately if needed
+          trackingNumbers: [], // Empty for backward compatibility
         };
       })
     );
@@ -511,11 +502,14 @@ export const getAllScans = query({
 export const getScansToday = query({
   args: { midnightTimestamp: v.number() },
   handler: async (ctx, args) => {
-    const scans = await ctx.db
-      .query("scans")
-      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", args.midnightTimestamp))
+    // Get today's trucks and sum their scanCounts for efficiency
+    // This avoids loading all scan documents
+    const trucks = await ctx.db
+      .query("trucks")
+      .filter((q) => q.gte(q.field("openedAt"), args.midnightTimestamp))
       .collect();
-    return scans.length;
+
+    return trucks.reduce((sum, truck) => sum + (truck.scanCount ?? 0), 0);
   },
 });
 
