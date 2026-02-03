@@ -735,16 +735,26 @@ export const getVendorDateRangeReport = query({
 export const getAllVendors = query({
   args: {},
   handler: async (ctx) => {
-    // Get vendors from trucks instead of loading all scans
-    const trucks = await ctx.db.query("trucks").collect();
+    // Get vendors from vendorAccounts table (much smaller than trucks)
+    const vendorAccounts = await ctx.db.query("vendorAccounts").collect();
     const vendorSet = new Set<string>();
-    for (const truck of trucks) {
+
+    for (const account of vendorAccounts) {
+      if (account.vendorName) {
+        vendorSet.add(account.vendorName);
+      }
+    }
+
+    // Also check recent trucks (last 100) for any vendors not in accounts
+    const recentTrucks = await ctx.db.query("trucks").order("desc").take(100);
+    for (const truck of recentTrucks) {
       if (truck.vendors) {
         for (const v of truck.vendors) {
           vendorSet.add(v);
         }
       }
     }
+
     vendorSet.add("Unknown"); // Always include Unknown
     return Array.from(vendorSet).sort();
   },
@@ -757,8 +767,10 @@ export const getMatchedScanStats = query({
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Get total scan count from trucks (more efficient than loading all scans)
-    const trucks = await ctx.db.query("trucks").collect();
+    // Only get non-archived trucks to reduce data volume
+    // Use take() with a reasonable limit to avoid byte limits
+    const recentTrucks = await ctx.db.query("trucks").order("desc").take(500);
+    const trucks = recentTrucks.filter(t => !t.archived);
 
     const overallTotal = trucks.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
 
@@ -1262,6 +1274,70 @@ export const getDuplicateScansReport = query({
         totalDuplicates: monthlyDuplicates.length,
         totalScans: monthlyScans.length,
         duplicateRate: monthlyDuplicateRate,
+      },
+    };
+  },
+});
+
+// Get return items for export (with optional status filter)
+export const getReturnItemsForExport = query({
+  args: {
+    status: v.optional(v.string()), // "processed", "pending", "not_processed", or undefined for all
+  },
+  handler: async (ctx, args) => {
+    // Get return items
+    let items;
+    if (args.status) {
+      items = await ctx.db
+        .query("returnItems")
+        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .collect();
+    } else {
+      items = await ctx.db.query("returnItems").collect();
+    }
+
+    // Get all batches and users for enrichment
+    const batches = await ctx.db.query("returnBatches").collect();
+    const users = await ctx.db.query("users").collect();
+    const locations = await ctx.db.query("locations").collect();
+
+    // Enrich items with batch and user info
+    const enriched = items.map((item) => {
+      const batch = batches.find((b) => b._id === item.returnBatchId);
+      const scanner = users.find((u) => u._id === item.scannedBy);
+      const location = batch ? locations.find((l) => l.base44Id === batch.locationId) : null;
+
+      return {
+        _id: item._id,
+        batchNumber: batch?.batchNumber || batch?._id || "N/A",
+        locationName: location?.name || batch?.locationId || "Unknown",
+        poNumber: item.poNumber || "",
+        invNumber: item.invNumber || "",
+        fromAddress: item.fromAddress || "",
+        upcCode: item.upcCode || "",
+        tireBrand: item.tireBrand || "",
+        tireModel: item.tireModel || "",
+        tireSize: item.tireSize || "",
+        tirePartNumber: item.tirePartNumber || "",
+        quantity: item.quantity || 1,
+        status: item.status,
+        notes: item.notes || "",
+        scannedByName: scanner?.name || "Unknown",
+        scannedAt: item.scannedAt,
+        aiConfidence: item.aiConfidence || "",
+      };
+    });
+
+    // Sort by scannedAt descending (most recent first)
+    enriched.sort((a, b) => b.scannedAt - a.scannedAt);
+
+    return {
+      items: enriched,
+      totalCount: enriched.length,
+      statusCounts: {
+        processed: items.filter((i) => i.status === "processed").length,
+        pending: items.filter((i) => i.status === "pending").length,
+        not_processed: items.filter((i) => i.status === "not_processed").length,
       },
     };
   },

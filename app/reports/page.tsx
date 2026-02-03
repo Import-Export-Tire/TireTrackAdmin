@@ -733,6 +733,221 @@ function UserAccuracyModal({
   );
 }
 
+// Returns Export Modal Component
+function ReturnsExportModal({
+  onClose,
+  data,
+  statusFilter,
+  onStatusChange,
+}: {
+  onClose: () => void;
+  data: any;
+  statusFilter: string;
+  onStatusChange: (status: string) => void;
+}) {
+  const generateCSV = () => {
+    if (!data?.items) return;
+    const headers = [
+      "Batch #",
+      "Location",
+      "PO Number",
+      "INV Number",
+      "From Address",
+      "UPC Code",
+      "Brand",
+      "Model",
+      "Size",
+      "Part #",
+      "Quantity",
+      "Status",
+      "Notes",
+      "Scanned By",
+      "Scanned At",
+      "AI Confidence",
+    ];
+    const rows = data.items.map((item: any) => [
+      item.batchNumber,
+      item.locationName,
+      item.poNumber,
+      item.invNumber,
+      item.fromAddress,
+      item.upcCode,
+      item.tireBrand,
+      item.tireModel,
+      item.tireSize,
+      item.tirePartNumber,
+      item.quantity,
+      item.status,
+      item.notes,
+      item.scannedByName,
+      new Date(item.scannedAt).toLocaleString(),
+      item.aiConfidence,
+    ]);
+    const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const statusLabel = statusFilter === "all" ? "all" : statusFilter;
+    a.download = `returns_${statusLabel}_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "processed":
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+      case "pending":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      case "not_processed":
+        return "bg-red-500/20 text-red-400 border-red-500/30";
+      default:
+        return "bg-slate-700/50 text-slate-400 border-slate-600/30";
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+          <div>
+            <h2 className="text-xl font-bold text-white">Export Returns</h2>
+            <p className="text-slate-500 text-sm">Download return items filtered by status</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={generateCSV}
+              disabled={!data?.items?.length}
+              className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download CSV ({data?.items?.length || 0})
+            </button>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition-colors"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {/* Status Filter */}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <span className="text-slate-400 text-sm mr-2">Filter by status:</span>
+            {["all", "processed", "pending", "not_processed"].map((status) => {
+              const count = status === "all"
+                ? (data?.statusCounts?.processed || 0) + (data?.statusCounts?.pending || 0) + (data?.statusCounts?.not_processed || 0)
+                : data?.statusCounts?.[status] || 0;
+              const label = status === "not_processed" ? "Not Processed" : status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1);
+              return (
+                <button
+                  key={status}
+                  onClick={() => onStatusChange(status)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    statusFilter === status
+                      ? status === "processed" ? "bg-emerald-600 text-white" :
+                        status === "pending" ? "bg-yellow-600 text-white" :
+                        status === "not_processed" ? "bg-red-600 text-white" :
+                        "bg-cyan-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"
+                  }`}
+                >
+                  {label} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Summary Stats */}
+          {data?.statusCounts && (
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/30">
+                <p className="text-2xl font-bold text-emerald-400">{data.statusCounts.processed}</p>
+                <p className="text-slate-500 text-xs">Processed</p>
+              </div>
+              <div className="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/30">
+                <p className="text-2xl font-bold text-yellow-400">{data.statusCounts.pending}</p>
+                <p className="text-slate-500 text-xs">Pending</p>
+              </div>
+              <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/30">
+                <p className="text-2xl font-bold text-red-400">{data.statusCounts.not_processed}</p>
+                <p className="text-slate-500 text-xs">Not Processed</p>
+              </div>
+            </div>
+          )}
+
+          {/* Items Preview Table */}
+          {!data ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : data.items?.length === 0 ? (
+            <div className="text-center py-10 text-slate-500">
+              <svg className="w-16 h-16 mx-auto mb-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <p className="text-lg font-medium">No returns found</p>
+              <p className="text-sm mt-1">No return items match the selected filter</p>
+            </div>
+          ) : (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 overflow-hidden">
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-900">
+                    <tr className="text-slate-500 text-xs">
+                      <th className="text-left py-3 px-4">Batch</th>
+                      <th className="text-left py-3 px-4">Brand/Model</th>
+                      <th className="text-left py-3 px-4">Size</th>
+                      <th className="text-left py-3 px-4">Part #</th>
+                      <th className="text-center py-3 px-4">Qty</th>
+                      <th className="text-center py-3 px-4">Status</th>
+                      <th className="text-left py-3 px-4">Scanned</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {data.items.slice(0, 100).map((item: any) => (
+                      <tr key={item._id} className="hover:bg-slate-800/50">
+                        <td className="py-3 px-4 text-slate-300 text-xs">{item.batchNumber}</td>
+                        <td className="py-3 px-4">
+                          <p className="text-slate-300">{item.tireBrand || "-"}</p>
+                          <p className="text-slate-500 text-xs">{item.tireModel || ""}</p>
+                        </td>
+                        <td className="py-3 px-4 text-slate-400 text-xs">{item.tireSize || "-"}</td>
+                        <td className="py-3 px-4 font-mono text-xs text-slate-400">{item.tirePartNumber || "-"}</td>
+                        <td className="py-3 px-4 text-center text-slate-300">{item.quantity}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusBadge(item.status)}`}>
+                            {item.status === "not_processed" ? "Not Proc" : item.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500 text-xs">{new Date(item.scannedAt).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {data.items.length > 100 && (
+                  <p className="text-center text-slate-500 text-xs py-3">
+                    Showing 100 of {data.items.length} items. Download CSV for full list.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>("daily");
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -755,6 +970,8 @@ function ReportsPage() {
   const [showNoVendorKnownModal, setShowNoVendorKnownModal] = useState(false);
   const [showUserAccuracyModal, setShowUserAccuracyModal] = useState(false);
   const [showDuplicateOffendersModal, setShowDuplicateOffendersModal] = useState(false);
+  const [showReturnsExportModal, setShowReturnsExportModal] = useState(false);
+  const [returnsStatusFilter, setReturnsStatusFilter] = useState<string>("all");
 
   // Daily report dates
   const { startDate, endDate } = useMemo(() => {
@@ -795,6 +1012,10 @@ function ReportsPage() {
   const duplicateOffendersReport = useQuery(
     api.queries.getDuplicateScansReport,
     showDuplicateOffendersModal ? {} : "skip"
+  );
+  const returnsExportData = useQuery(
+    api.queries.getReturnItemsForExport,
+    showReturnsExportModal ? { status: returnsStatusFilter === "all" ? undefined : returnsStatusFilter } : "skip"
   );
 
   const autoCloseAll = useMutation(api.mutations.autoCloseAllTrucks);
@@ -1108,6 +1329,12 @@ function ReportsPage() {
                   className="text-amber-500/70 hover:text-amber-400 transition-colors underline decoration-dotted underline-offset-2"
                 >
                   | Duplicate Offenders
+                </button>
+                <button
+                  onClick={() => setShowReturnsExportModal(true)}
+                  className="text-teal-500/70 hover:text-teal-400 transition-colors underline decoration-dotted underline-offset-2"
+                >
+                  | Export Returns
                 </button>
               </div>
             )}
@@ -1493,6 +1720,16 @@ function ReportsPage() {
         <DuplicateOffendersModal
           onClose={() => setShowDuplicateOffendersModal(false)}
           data={duplicateOffendersReport}
+        />
+      )}
+
+      {/* Returns Export Modal */}
+      {showReturnsExportModal && (
+        <ReturnsExportModal
+          onClose={() => setShowReturnsExportModal(false)}
+          data={returnsExportData}
+          statusFilter={returnsStatusFilter}
+          onStatusChange={setReturnsStatusFilter}
         />
       )}
     </main>
