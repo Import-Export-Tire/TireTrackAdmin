@@ -111,6 +111,30 @@ export const getAdmin = query({
   },
 });
 
+// Emergency password reset - removes after first use
+export const emergencyPasswordReset = mutation({
+  args: {
+    email: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await ctx.db
+      .query("adminUsers")
+      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .first();
+
+    if (!admin) {
+      return { success: false, error: "Email not found" };
+    }
+
+    await ctx.db.patch(admin._id, {
+      passwordHash: simpleHash(args.newPassword),
+    });
+
+    return { success: true, message: "Password reset successfully" };
+  },
+});
+
 // Create new admin (superadmin only) - with temp password
 export const createAdmin = mutation({
   args: {
