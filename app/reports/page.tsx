@@ -737,13 +737,31 @@ function UserAccuracyModal({
 function ReturnsExportModal({
   onClose,
   data,
+  batches,
   statusFilter,
+  batchFilter,
+  dateFilter,
+  startDate,
+  endDate,
   onStatusChange,
+  onBatchChange,
+  onDateFilterChange,
+  onStartDateChange,
+  onEndDateChange,
 }: {
   onClose: () => void;
   data: any;
+  batches: any;
   statusFilter: string;
+  batchFilter: string;
+  dateFilter: string;
+  startDate: string;
+  endDate: string;
   onStatusChange: (status: string) => void;
+  onBatchChange: (batchId: string) => void;
+  onDateFilterChange: (filter: string) => void;
+  onStartDateChange: (date: string) => void;
+  onEndDateChange: (date: string) => void;
 }) {
   const generateCSV = () => {
     if (!data?.items) return;
@@ -788,8 +806,13 @@ function ReturnsExportModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const statusLabel = statusFilter === "all" ? "all" : statusFilter;
-    a.download = `returns_${statusLabel}_${new Date().toISOString().split("T")[0]}.csv`;
+    // Build filename based on filters
+    let filename = "returns";
+    if (batchFilter !== "all") filename += `_batch${batchFilter.slice(-6)}`;
+    if (dateFilter !== "all") filename += `_${startDate}_to_${endDate}`;
+    if (statusFilter !== "all") filename += `_${statusFilter}`;
+    filename += `_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -814,7 +837,7 @@ function ReturnsExportModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <div>
             <h2 className="text-xl font-bold text-white">Export Returns</h2>
-            <p className="text-slate-500 text-sm">Download return items filtered by status</p>
+            <p className="text-slate-500 text-sm">Download return items with filters</p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -840,32 +863,82 @@ function ReturnsExportModal({
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
-          {/* Status Filter */}
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            <span className="text-slate-400 text-sm mr-2">Filter by status:</span>
-            {["all", "processed", "pending", "not_processed"].map((status) => {
-              const count = status === "all"
-                ? (data?.statusCounts?.processed || 0) + (data?.statusCounts?.pending || 0) + (data?.statusCounts?.not_processed || 0)
-                : data?.statusCounts?.[status] || 0;
-              const label = status === "not_processed" ? "Not Processed" : status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1);
-              return (
-                <button
-                  key={status}
-                  onClick={() => onStatusChange(status)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    statusFilter === status
-                      ? status === "processed" ? "bg-emerald-600 text-white" :
-                        status === "pending" ? "bg-yellow-600 text-white" :
-                        status === "not_processed" ? "bg-red-600 text-white" :
-                        "bg-cyan-600 text-white"
-                      : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"
-                  }`}
+          {/* Filter Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Batch Filter */}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Filter by Batch</label>
+              <select
+                value={batchFilter}
+                onChange={(e) => onBatchChange(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+              >
+                <option value="all">All Batches</option>
+                {batches?.map((batch: any) => (
+                  <option key={batch._id} value={batch._id}>
+                    {batch.batchNumber} - {batch.locationName} ({batch.itemCount} items)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Filter */}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Filter by Date</label>
+              <div className="flex gap-2">
+                <select
+                  value={dateFilter}
+                  onChange={(e) => onDateFilterChange(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
                 >
-                  {label} ({count})
-                </button>
-              );
-            })}
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Status Filter Dropdown */}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Filter by Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => onStatusChange(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+              >
+                <option value="all">All Statuses</option>
+                <option value="processed">Processed</option>
+                <option value="pending">Pending</option>
+                <option value="not_processed">Not Processed</option>
+              </select>
+            </div>
           </div>
+
+          {/* Custom Date Range */}
+          {dateFilter === "custom" && (
+            <div className="flex gap-4 mb-6">
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Start Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => onStartDateChange(e.target.value)}
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">End Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => onEndDateChange(e.target.value)}
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Summary Stats */}
           {data?.statusCounts && (
@@ -972,6 +1045,16 @@ function ReportsPage() {
   const [showDuplicateOffendersModal, setShowDuplicateOffendersModal] = useState(false);
   const [showReturnsExportModal, setShowReturnsExportModal] = useState(false);
   const [returnsStatusFilter, setReturnsStatusFilter] = useState<string>("all");
+  const [returnsBatchFilter, setReturnsBatchFilter] = useState<string>("all");
+  const [returnsDateFilter, setReturnsDateFilter] = useState<string>("all");
+  const [returnsStartDate, setReturnsStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    return date.toISOString().split("T")[0];
+  });
+  const [returnsEndDate, setReturnsEndDate] = useState(() => {
+    return new Date().toISOString().split("T")[0];
+  });
 
   // Daily report dates
   const { startDate, endDate } = useMemo(() => {
@@ -1013,9 +1096,45 @@ function ReportsPage() {
     api.queries.getDuplicateScansReport,
     showDuplicateOffendersModal ? {} : "skip"
   );
+  // Calculate date range for returns export
+  const returnsDateRange = useMemo(() => {
+    if (returnsDateFilter === "all") return { startDate: undefined, endDate: undefined };
+
+    const now = new Date();
+    let start: Date;
+    let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    if (returnsDateFilter === "today") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    } else if (returnsDateFilter === "week") {
+      start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+    } else if (returnsDateFilter === "month") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+    } else if (returnsDateFilter === "custom") {
+      start = new Date(returnsStartDate + "T00:00:00");
+      end = new Date(returnsEndDate + "T23:59:59");
+    } else {
+      return { startDate: undefined, endDate: undefined };
+    }
+
+    return { startDate: start.getTime(), endDate: end.getTime() };
+  }, [returnsDateFilter, returnsStartDate, returnsEndDate]);
+
   const returnsExportData = useQuery(
     api.queries.getReturnItemsForExport,
-    showReturnsExportModal ? { status: returnsStatusFilter === "all" ? undefined : returnsStatusFilter } : "skip"
+    showReturnsExportModal ? {
+      status: returnsStatusFilter === "all" ? undefined : returnsStatusFilter,
+      batchId: returnsBatchFilter === "all" ? undefined : returnsBatchFilter as any,
+      startDate: returnsDateRange.startDate,
+      endDate: returnsDateRange.endDate,
+    } : "skip"
+  );
+
+  const returnsBatchesList = useQuery(
+    api.queries.getReturnBatchesForExport,
+    showReturnsExportModal ? {} : "skip"
   );
 
   const autoCloseAll = useMutation(api.mutations.autoCloseAllTrucks);
@@ -1741,8 +1860,17 @@ function ReportsPage() {
         <ReturnsExportModal
           onClose={() => setShowReturnsExportModal(false)}
           data={returnsExportData}
+          batches={returnsBatchesList}
           statusFilter={returnsStatusFilter}
+          batchFilter={returnsBatchFilter}
+          dateFilter={returnsDateFilter}
+          startDate={returnsStartDate}
+          endDate={returnsEndDate}
           onStatusChange={setReturnsStatusFilter}
+          onBatchChange={setReturnsBatchFilter}
+          onDateFilterChange={setReturnsDateFilter}
+          onStartDateChange={setReturnsStartDate}
+          onEndDateChange={setReturnsEndDate}
         />
       )}
     </main>

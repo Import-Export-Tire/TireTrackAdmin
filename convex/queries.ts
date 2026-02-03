@@ -1279,21 +1279,43 @@ export const getDuplicateScansReport = query({
   },
 });
 
-// Get return items for export (with optional status filter)
+// Get return items for export (with optional filters)
 export const getReturnItemsForExport = query({
   args: {
     status: v.optional(v.string()), // "processed", "pending", "not_processed", or undefined for all
+    batchId: v.optional(v.id("returnBatches")), // Filter by specific batch
+    startDate: v.optional(v.number()), // Filter by date range
+    endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Get return items
+    // Get return items based on filters
     let items;
-    if (args.status) {
+    if (args.batchId) {
+      // Filter by batch
+      items = await ctx.db
+        .query("returnItems")
+        .withIndex("by_batch", (q) => q.eq("returnBatchId", args.batchId!))
+        .collect();
+    } else if (args.status) {
+      // Filter by status
       items = await ctx.db
         .query("returnItems")
         .withIndex("by_status", (q) => q.eq("status", args.status!))
         .collect();
     } else {
       items = await ctx.db.query("returnItems").collect();
+    }
+
+    // Apply date filter if provided
+    if (args.startDate !== undefined && args.endDate !== undefined) {
+      items = items.filter(
+        (item) => item.scannedAt >= args.startDate! && item.scannedAt <= args.endDate!
+      );
+    }
+
+    // Apply status filter even when filtering by batch or date
+    if (args.status && (args.batchId || args.startDate !== undefined)) {
+      items = items.filter((item) => item.status === args.status);
     }
 
     // Get all batches and users for enrichment
@@ -1309,7 +1331,8 @@ export const getReturnItemsForExport = query({
 
       return {
         _id: item._id,
-        batchNumber: batch?.batchNumber || batch?._id || "N/A",
+        batchId: item.returnBatchId,
+        batchNumber: batch?.batchNumber || String(batch?._id).slice(-6) || "N/A",
         locationName: location?.name || batch?.locationId || "Unknown",
         poNumber: item.poNumber || "",
         invNumber: item.invNumber || "",
@@ -1340,5 +1363,26 @@ export const getReturnItemsForExport = query({
         not_processed: items.filter((i) => i.status === "not_processed").length,
       },
     };
+  },
+});
+
+// Get return batches list for export filter dropdown
+export const getReturnBatchesForExport = query({
+  args: {},
+  handler: async (ctx) => {
+    const batches = await ctx.db.query("returnBatches").order("desc").take(100);
+    const locations = await ctx.db.query("locations").collect();
+
+    return batches.map((batch) => {
+      const location = locations.find((l) => l.base44Id === batch.locationId);
+      return {
+        _id: batch._id,
+        batchNumber: batch.batchNumber || String(batch._id).slice(-6),
+        locationName: location?.name || batch.locationId || "Unknown",
+        status: batch.status,
+        openedAt: batch.openedAt,
+        itemCount: batch.itemCount,
+      };
+    });
   },
 });
