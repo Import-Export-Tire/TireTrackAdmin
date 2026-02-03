@@ -87,7 +87,7 @@ export const getAdmin = query({
   handler: async (ctx, args) => {
     try {
       // Validate that it's an adminUsers ID before querying
-      const admin = await ctx.db.get(args.adminId as any);
+      const admin = await ctx.db.get(args.adminId as any) as any;
       if (!admin || !admin.isActive) return null;
 
       // Check if this is actually from the adminUsers table
