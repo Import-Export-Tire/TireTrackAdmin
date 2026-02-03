@@ -119,12 +119,10 @@ function Dashboard() {
   const filteredTrucks = useMemo(() => {
     const filtered = trucks?.filter((truck) => {
       const query = searchQuery.toLowerCase();
-      // Search by truck number or vendor locally
+      // Search by truck number locally, tracking search uses server-side results
       const matchesTruckNumber = truck.truckNumber.toLowerCase().includes(query);
-      const matchesVendor = truck.vendors?.some((v) => v && v.toLowerCase().includes(query));
-      // Use server-side tracking search results
       const matchesTracking = truckIdsWithMatchingTracking.has(truck._id);
-      const matchesSearch = !query || matchesTruckNumber || matchesVendor || matchesTracking;
+      const matchesSearch = !query || matchesTruckNumber || matchesTracking;
       const matchesStatus = statusFilter === "all" || truck.status === statusFilter;
       const matchesLocation = matchesLocationFilter(truck.locationId, effectiveLocationFilter);
       return matchesSearch && matchesStatus && matchesLocation;
@@ -501,7 +499,7 @@ function Dashboard() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Truck, vendor, tracking..."
+                  placeholder="Truck # or tracking..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full sm:w-56 pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
