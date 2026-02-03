@@ -83,19 +83,31 @@ export const login = mutation({
 
 // Get current admin by ID
 export const getAdmin = query({
-  args: { adminId: v.id("adminUsers") },
+  args: { adminId: v.string() },
   handler: async (ctx, args) => {
-    const admin = await ctx.db.get(args.adminId);
-    if (!admin || !admin.isActive) return null;
-    
-    return {
-      id: admin._id,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role,
-      allowedLocations: admin.allowedLocations,
-      forcePasswordChange: admin.forcePasswordChange || false,
-    };
+    try {
+      // Validate that it's an adminUsers ID before querying
+      const admin = await ctx.db.get(args.adminId as any);
+      if (!admin || !admin.isActive) return null;
+
+      // Check if this is actually from the adminUsers table
+      // by verifying it has the expected fields
+      if (!admin.email || !admin.role || !admin.allowedLocations) {
+        return null; // Not an admin user, clear session
+      }
+
+      return {
+        id: admin._id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role,
+        allowedLocations: admin.allowedLocations,
+        forcePasswordChange: admin.forcePasswordChange || false,
+      };
+    } catch {
+      // Invalid ID format or wrong table - return null to clear session
+      return null;
+    }
   },
 });
 
