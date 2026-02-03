@@ -335,11 +335,11 @@ export const getAllTrucks = query({
 
         return {
           ...truck,
-          // Use stored scanCount instead of loading all scans
+          // Use stored scanCount and vendors instead of loading all scans
           scanCount: truck.scanCount ?? 0,
           openedByName: openedByUser?.name ?? "Unknown",
           closedByName: closedByUser?.name ?? null,
-          vendors: [], // Vendors now fetched separately if needed
+          vendors: truck.vendors ?? [],
           trackingNumbers: [], // Empty for backward compatibility
         };
       })

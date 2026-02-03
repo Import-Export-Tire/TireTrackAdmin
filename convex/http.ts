@@ -289,4 +289,50 @@ http.route({
   }),
 });
 
+// Migration: Backfill vendors on trucks from their scans
+http.route({
+  path: "/api/migrate/backfill-truck-vendors",
+  method: "POST",
+  handler: httpAction(async (ctx) => {
+    try {
+      const trucks = await ctx.runQuery(api.queries.getAllTrucks);
+      let updated = 0;
+
+      for (const truck of trucks) {
+        // Get all scans for this truck to extract vendors
+        const scans = await ctx.runQuery(api.queries.getTruckScans, {
+          truckId: truck._id,
+          includeDuplicates: true,
+        });
+
+        const vendors = [...new Set(
+          scans
+            .map((s: any) => s.vendor)
+            .filter((v: string | undefined) => v && v !== "Unknown")
+        )];
+
+        if (vendors.length > 0 || (truck.vendors?.length ?? 0) === 0) {
+          await ctx.runMutation(api.mutations.updateTruckVendors, {
+            truckId: truck._id,
+            vendors,
+          });
+          updated++;
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Updated vendors on ${updated} trucks`,
+      }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error: any) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
 export default http;

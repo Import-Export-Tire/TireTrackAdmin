@@ -49,6 +49,7 @@ export default defineSchema({
     securityTag: v.optional(v.string()),
     syncedToBase44: v.optional(v.boolean()),
     scanCount: v.optional(v.number()),
+    vendors: v.optional(v.array(v.string())), // Cached list of unique vendors
   }).index("by_location_status", ["locationId", "status"])
     .index("by_base44Id", ["base44Id"]),
 

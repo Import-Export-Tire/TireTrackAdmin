@@ -172,13 +172,19 @@ export const addScan = mutation({
       noVendorKnown,
       potentialAccountNumber,
     });
+    // Update truck's scanCount and vendors list efficiently
     const truck = await ctx.db.get(args.truckId);
     if (truck) {
-      const scans = await ctx.db
-        .query("scans")
-        .withIndex("by_truck", (q) => q.eq("truckId", args.truckId))
-        .collect();
-      await ctx.db.patch(args.truckId, { scanCount: scans.length });
+      const newScanCount = (truck.scanCount ?? 0) + 1;
+      const currentVendors = truck.vendors ?? [];
+      // Add vendor to list if not already present
+      const newVendors = vendor && !currentVendors.includes(vendor)
+        ? [...currentVendors, vendor]
+        : currentVendors;
+      await ctx.db.patch(args.truckId, {
+        scanCount: newScanCount,
+        vendors: newVendors,
+      });
     }
     return scanId;
   },
@@ -961,5 +967,16 @@ export const backfillReturnItemsTireData = mutation({
       notFound,
       noUpc,
     };
+  },
+});
+
+// Update truck vendors (for migration/backfill)
+export const updateTruckVendors = mutation({
+  args: {
+    truckId: v.id("trucks"),
+    vendors: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.truckId, { vendors: args.vendors });
   },
 });
