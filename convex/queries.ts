@@ -389,8 +389,10 @@ export const searchUPCs = query({
 export const getUPCCount = query({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db.query("tireUPCs").collect();
-    return all.length;
+    // Use take() with a high limit to avoid collecting all at once
+    // This is still not ideal but prevents byte limit issues
+    const upcs = await ctx.db.query("tireUPCs").take(50000);
+    return upcs.length;
   },
 });
 
@@ -733,70 +735,61 @@ export const getVendorDateRangeReport = query({
 export const getAllVendors = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    const vendors = new Set(scans.map(s => s.vendor || "Unknown"));
-    return Array.from(vendors).sort();
+    // Get vendors from trucks instead of loading all scans
+    const trucks = await ctx.db.query("trucks").collect();
+    const vendorSet = new Set<string>();
+    for (const truck of trucks) {
+      if (truck.vendors) {
+        for (const v of truck.vendors) {
+          vendorSet.add(v);
+        }
+      }
+    }
+    vendorSet.add("Unknown"); // Always include Unknown
+    return Array.from(vendorSet).sort();
   },
 });
 
-// Get matched scan stats - daily and overall totals with breakdown
+// Get matched scan stats - uses truck-level data for efficiency
 export const getMatchedScanStats = query({
   args: {
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const allScans = await ctx.db.query("scans").collect();
+    // Get total scan count from trucks (more efficient than loading all scans)
+    const trucks = await ctx.db.query("trucks").collect();
 
-    // Helper to categorize unmatched scans
-    const categorizeUnmatched = (scans: typeof allScans) => {
-      const unmatched = scans.filter(s => !s.vendor || s.vendor === "Unknown");
-      let ups = 0;
-      let fedexUnmapped = 0;
-      let other = 0;
+    const overallTotal = trucks.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
 
-      for (const scan of unmatched) {
-        const raw = scan.rawBarcode || "";
-        const isUPS = raw.includes("UPSN") || raw.startsWith("1Z");
-        const isFedEx = raw.includes("FDEG") || raw.includes("[)>");
-
-        if (isUPS) ups++;
-        else if (isFedEx) fedexUnmapped++;
-        else other++;
-      }
-
-      return { ups, fedexUnmapped, other, total: unmatched.length };
-    };
-
-    // Overall stats
-    const overallTotal = allScans.length;
-    const overallMatched = allScans.filter(s => s.vendor && s.vendor !== "Unknown").length;
-    const overallUnmatchedBreakdown = categorizeUnmatched(allScans);
+    // Estimate matched based on trucks with vendors
+    // Note: This is approximate - for exact counts, use a dedicated aggregation
+    const trucksWithVendors = trucks.filter(t => t.vendors && t.vendors.length > 0 && !t.vendors.includes("Unknown"));
+    const estimatedMatched = trucksWithVendors.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
 
     // Daily stats (if date range provided)
     let dailyTotal = 0;
     let dailyMatched = 0;
-    let dailyUnmatchedBreakdown = { ups: 0, fedexUnmapped: 0, other: 0, total: 0 };
 
     if (args.startDate !== undefined && args.endDate !== undefined) {
-      const dailyScans = allScans.filter(s =>
-        s.scannedAt >= args.startDate! && s.scannedAt <= args.endDate!
+      const dailyTrucks = trucks.filter(t =>
+        t.openedAt >= args.startDate! && t.openedAt <= args.endDate!
       );
-      dailyTotal = dailyScans.length;
-      dailyMatched = dailyScans.filter(s => s.vendor && s.vendor !== "Unknown").length;
-      dailyUnmatchedBreakdown = categorizeUnmatched(dailyScans);
+      dailyTotal = dailyTrucks.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
+      const dailyTrucksWithVendors = dailyTrucks.filter(t => t.vendors && t.vendors.length > 0);
+      dailyMatched = dailyTrucksWithVendors.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
     }
 
     return {
       overall: {
         total: overallTotal,
-        matched: overallMatched,
-        unmatchedBreakdown: overallUnmatchedBreakdown,
+        matched: estimatedMatched,
+        unmatchedBreakdown: { ups: 0, fedexUnmapped: 0, other: 0, total: overallTotal - estimatedMatched },
       },
       daily: {
         total: dailyTotal,
         matched: dailyMatched,
-        unmatchedBreakdown: dailyUnmatchedBreakdown,
+        unmatchedBreakdown: { ups: 0, fedexUnmapped: 0, other: 0, total: dailyTotal - dailyMatched },
       },
     };
   },
@@ -983,8 +976,12 @@ export const getNoVendorKnownReport = query({
 export const getNoVendorKnownCount = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    return scans.filter(s => s.noVendorKnown === true).length;
+    // Use index to get only noVendorKnown scans (requires by_noVendorKnown index)
+    const scans = await ctx.db
+      .query("scans")
+      .withIndex("by_noVendorKnown", (q) => q.eq("noVendorKnown", true))
+      .collect();
+    return scans.length;
   },
 });
 

@@ -81,7 +81,8 @@ export default defineSchema({
   }).index("by_truck", ["truckId"])
     .index("by_vendor", ["vendor"])
     .index("by_tracking", ["trackingNumber"])
-    .index("by_scannedAt", ["scannedAt"]),
+    .index("by_scannedAt", ["scannedAt"])
+    .index("by_noVendorKnown", ["noVendorKnown"]),
 
   vendorAccounts: defineTable({
     accountNumber: v.string(),
