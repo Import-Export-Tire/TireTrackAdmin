@@ -136,7 +136,7 @@ function ReturnsDashboard() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4 hover:border-amber-500/30 transition-all">
@@ -358,6 +358,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold w-16">Image</th>
                         <th className="px-4 py-3 font-semibold">PO / INV</th>
                         <th className="px-4 py-3 font-semibold">Tire</th>
+                        <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Scanned By</th>
@@ -416,13 +417,17 @@ function ReturnsDashboard() {
                               {item.tireSize && (
                                 <span className="inline-block px-2 py-0.5 bg-slate-700/50 border border-slate-600/30 rounded text-xs">{item.tireSize}</span>
                               )}
-                              {item.tirePartNumber && (
-                                <div className="text-slate-500 text-xs font-mono">Part: {item.tirePartNumber}</div>
-                              )}
                               {!item.tireBrand && !item.tireModel && !item.tireSize && (
                                 <span className="text-slate-600">No tire info</span>
                               )}
                             </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {item.tirePartNumber ? (
+                              <span className="font-mono text-sm text-cyan-300">{item.tirePartNumber}</span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>
                           <td className="px-4 py-3">
