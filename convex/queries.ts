@@ -322,11 +322,15 @@ export const findUnknownAccounts = query({
 export const getAllTrucks = query({
   args: {},
   handler: async (ctx) => {
-    // Limit to most recent 200 trucks to avoid hitting document/byte limits
-    const trucks = await ctx.db
+    // Get non-archived trucks, limit to 200 most recent
+    const allTrucks = await ctx.db
       .query("trucks")
       .order("desc")
-      .take(200);
+      .take(300); // Take extra to account for archived ones
+
+    const trucks = allTrucks
+      .filter(t => !t.archived)
+      .slice(0, 200);
 
     const enrichedTrucks = await Promise.all(
       trucks.map(async (truck) => {
@@ -403,8 +407,9 @@ export const getUPCByCode = query({
 export const getAllReturnBatches = query({
   args: {},
   handler: async (ctx) => {
-    const batches = await ctx.db.query("returnBatches").order("desc").collect();
-    
+    const allBatches = await ctx.db.query("returnBatches").order("desc").collect();
+    const batches = allBatches.filter(b => !b.archived);
+
     const enrichedBatches = await Promise.all(
       batches.map(async (batch) => {
         const opener = await ctx.db.get(batch.openedBy);
@@ -416,7 +421,7 @@ export const getAllReturnBatches = query({
         };
       })
     );
-    
+
     return enrichedBatches;
   },
 });

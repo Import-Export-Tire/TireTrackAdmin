@@ -50,8 +50,11 @@ export default defineSchema({
     syncedToBase44: v.optional(v.boolean()),
     scanCount: v.optional(v.number()),
     vendors: v.optional(v.array(v.string())), // Cached list of unique vendors
+    archived: v.optional(v.boolean()),
+    archivedAt: v.optional(v.number()),
   }).index("by_location_status", ["locationId", "status"])
-    .index("by_base44Id", ["base44Id"]),
+    .index("by_base44Id", ["base44Id"])
+    .index("by_archived", ["archived"]),
 
   scans: defineTable({
     truckId: v.id("trucks"),
@@ -96,8 +99,11 @@ export default defineSchema({
     closedAt: v.optional(v.number()),
     closedBy: v.optional(v.id("users")),
     itemCount: v.number(),
+    archived: v.optional(v.boolean()),
+    archivedAt: v.optional(v.number()),
   }).index("by_location_status", ["locationId", "status"])
-    .index("by_base44Id", ["base44Id"]),
+    .index("by_base44Id", ["base44Id"])
+    .index("by_archived", ["archived"]),
 
   returnItems: defineTable({
     returnBatchId: v.id("returnBatches"),

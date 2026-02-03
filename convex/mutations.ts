@@ -980,3 +980,60 @@ export const updateTruckVendors = mutation({
     await ctx.db.patch(args.truckId, { vendors: args.vendors });
   },
 });
+
+// Archive old trucks and return batches
+export const archiveOldRecords = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    // Archive trucks older than 30 days
+    const oldTrucks = await ctx.db
+      .query("trucks")
+      .filter((q) =>
+        q.and(
+          q.lt(q.field("openedAt"), thirtyDaysAgo),
+          q.or(
+            q.eq(q.field("archived"), undefined),
+            q.eq(q.field("archived"), false)
+          )
+        )
+      )
+      .collect();
+
+    let trucksArchived = 0;
+    for (const truck of oldTrucks) {
+      await ctx.db.patch(truck._id, { archived: true, archivedAt: now });
+      trucksArchived++;
+    }
+
+    // Archive return batches closed more than 30 days ago
+    const oldBatches = await ctx.db
+      .query("returnBatches")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "closed"),
+          q.neq(q.field("closedAt"), undefined),
+          q.lt(q.field("closedAt"), thirtyDaysAgo),
+          q.or(
+            q.eq(q.field("archived"), undefined),
+            q.eq(q.field("archived"), false)
+          )
+        )
+      )
+      .collect();
+
+    let batchesArchived = 0;
+    for (const batch of oldBatches) {
+      await ctx.db.patch(batch._id, { archived: true, archivedAt: now });
+      batchesArchived++;
+    }
+
+    return {
+      trucksArchived,
+      batchesArchived,
+      timestamp: now,
+    };
+  },
+});
