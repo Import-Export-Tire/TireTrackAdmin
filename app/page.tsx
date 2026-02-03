@@ -72,6 +72,12 @@ function Dashboard() {
   const users = useQuery(api.queries.getAllUsers);
   const admins = useQuery(api.auth.getAllAdmins);
   const scansToday = useQuery(api.queries.getScansToday, { midnightTimestamp: todayMidnight });
+
+  // Server-side tracking number search (only when query is 3+ chars)
+  const trackingSearchResults = useQuery(
+    api.queries.searchTrackingNumber,
+    searchQuery.length >= 3 ? { trackingNumber: searchQuery, limit: 50 } : "skip"
+  );
   const scans = useQuery(
     api.queries.getTruckScans,
     selectedTruck ? { truckId: selectedTruck as any } : "skip"
@@ -104,20 +110,27 @@ function Dashboard() {
     );
   }, [admin]);
 
+  // Get truck IDs that have matching tracking numbers from server-side search
+  const truckIdsWithMatchingTracking = useMemo(() => {
+    if (!trackingSearchResults || trackingSearchResults.length === 0) return new Set<string>();
+    return new Set(trackingSearchResults.map((scan: any) => scan.truckId));
+  }, [trackingSearchResults]);
+
   const filteredTrucks = useMemo(() => {
     const filtered = trucks?.filter((truck) => {
       const query = searchQuery.toLowerCase();
-      // Search by truck number, vendor, or tracking number
+      // Search by truck number or vendor locally
       const matchesTruckNumber = truck.truckNumber.toLowerCase().includes(query);
-      const matchesVendor = truck.vendors?.some((v) => v && v.toLowerCase().includes(query));
-      const matchesTracking = truck.trackingNumbers?.some((t) => t && t.toLowerCase().includes(query));
+      const matchesVendor = truck.vendors?.some((v: string) => v && v.toLowerCase().includes(query));
+      // Use server-side tracking search results
+      const matchesTracking = truckIdsWithMatchingTracking.has(truck._id);
       const matchesSearch = !query || matchesTruckNumber || matchesVendor || matchesTracking;
       const matchesStatus = statusFilter === "all" || truck.status === statusFilter;
       const matchesLocation = matchesLocationFilter(truck.locationId, effectiveLocationFilter);
       return matchesSearch && matchesStatus && matchesLocation;
     });
     return filtered;
-  }, [trucks, searchQuery, statusFilter, effectiveLocationFilter]);
+  }, [trucks, searchQuery, statusFilter, effectiveLocationFilter, truckIdsWithMatchingTracking]);
 
   const filteredUsers = useMemo(() => {
     return users?.filter((user) => {

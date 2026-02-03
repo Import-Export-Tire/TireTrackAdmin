@@ -322,10 +322,16 @@ export const findUnknownAccounts = query({
 export const getAllTrucks = query({
   args: {},
   handler: async (ctx) => {
-    const trucks = await ctx.db.query("trucks").order("desc").collect();
+    // Limit to most recent 200 trucks to avoid hitting document/byte limits
+    // For older trucks, use getTrucksForReport with date filters
+    const trucks = await ctx.db
+      .query("trucks")
+      .order("desc")
+      .take(200);
 
     const enrichedTrucks = await Promise.all(
       trucks.map(async (truck) => {
+        // Get scans for this truck
         const scans = await ctx.db
           .query("scans")
           .withIndex("by_truck", (q) => q.eq("truckId", truck._id))
@@ -333,9 +339,8 @@ export const getAllTrucks = query({
         const openedByUser = await ctx.db.get(truck.openedBy);
         const closedByUser = truck.closedBy ? await ctx.db.get(truck.closedBy) : null;
 
-        // Collect unique vendors and tracking numbers for search
+        // Collect unique vendors only - NOT tracking numbers (too much data)
         const vendors = [...new Set(scans.map(s => s.vendor).filter(Boolean))];
-        const trackingNumbers = scans.map(s => s.trackingNumber);
 
         return {
           ...truck,
@@ -343,7 +348,8 @@ export const getAllTrucks = query({
           openedByName: openedByUser?.name ?? "Unknown",
           closedByName: closedByUser?.name ?? null,
           vendors,
-          trackingNumbers,
+          // Removed trackingNumbers - use searchTrackingNumber query for searches
+          trackingNumbers: [], // Empty array for backward compatibility
         };
       })
     );
@@ -494,17 +500,32 @@ export const getReturnStats = query({
 });
 
 export const getAllScans = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("scans").collect();
+  args: {
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 100;
+    const result = await ctx.db
+      .query("scans")
+      .order("desc")
+      .paginate({ numItems: limit, cursor: args.cursor ?? null });
+    return {
+      scans: result.page,
+      continueCursor: result.continueCursor,
+      isDone: result.isDone,
+    };
   },
 });
 
 export const getScansToday = query({
   args: { midnightTimestamp: v.number() },
   handler: async (ctx, args) => {
-    const scans = await ctx.db.query("scans").collect();
-    return scans.filter(s => s.scannedAt >= args.midnightTimestamp).length;
+    const scans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", args.midnightTimestamp))
+      .collect();
+    return scans.length;
   },
 });
 
@@ -594,6 +615,8 @@ export const getTruckManifestByVendor = query({
 });
 
 // Search for a tracking number across all trucks
+// For exact matches, uses the by_tracking index efficiently
+// For partial matches, falls back to paginated search
 export const searchTrackingNumber = query({
   args: {
     trackingNumber: v.string(),
@@ -603,12 +626,36 @@ export const searchTrackingNumber = query({
     if (args.trackingNumber.length < 3) return [];
 
     const limit = args.limit || 50;
-    const searchTerm = args.trackingNumber.toLowerCase();
+    const searchTerm = args.trackingNumber;
 
-    const allScans = await ctx.db.query("scans").collect();
+    // First, try exact match using index (very fast)
+    const exactMatch = await ctx.db
+      .query("scans")
+      .withIndex("by_tracking", (q) => q.eq("trackingNumber", searchTerm))
+      .first();
 
-    const matchingScans = allScans
-      .filter(scan => scan.trackingNumber.toLowerCase().includes(searchTerm))
+    if (exactMatch) {
+      const truck = await ctx.db.get(exactMatch.truckId);
+      const user = await ctx.db.get(exactMatch.scannedBy);
+      return [{
+        ...exactMatch,
+        truckNumber: truck?.truckNumber || "Unknown",
+        truckStatus: truck?.status || "unknown",
+        truckCarrier: truck?.carrier || "Unknown",
+        scannedByName: user?.name || "Unknown",
+      }];
+    }
+
+    // For partial matches, search recent scans (last 30 days) to avoid full table scan
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentScans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
+      .collect();
+
+    const searchTermLower = searchTerm.toLowerCase();
+    const matchingScans = recentScans
+      .filter(scan => scan.trackingNumber.toLowerCase().includes(searchTermLower))
       .slice(0, limit);
 
     // Enrich with truck info

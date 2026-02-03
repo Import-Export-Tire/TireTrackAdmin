@@ -76,7 +76,8 @@ export default defineSchema({
     duplicateAddedAt: v.optional(v.number()), // When they clicked "add anyway"
   }).index("by_truck", ["truckId"])
     .index("by_vendor", ["vendor"])
-    .index("by_tracking", ["trackingNumber"]),
+    .index("by_tracking", ["trackingNumber"])
+    .index("by_scannedAt", ["scannedAt"]),
 
   vendorAccounts: defineTable({
     accountNumber: v.string(),
