@@ -499,22 +499,12 @@ export const getReturnStats = query({
   },
 });
 
+// Note: This returns all scans - use with caution on large datasets
+// For paginated access, use searchTrackingNumber or getTruckScans
 export const getAllScans = query({
-  args: {
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 100;
-    const result = await ctx.db
-      .query("scans")
-      .order("desc")
-      .paginate({ numItems: limit, cursor: args.cursor ?? null });
-    return {
-      scans: result.page,
-      continueCursor: result.continueCursor,
-      isDone: result.isDone,
-    };
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("scans").collect();
   },
 });
 
