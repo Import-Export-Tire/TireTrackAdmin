@@ -106,8 +106,8 @@ http.route({
           method: "POST",
           body: JSON.stringify(manifestData),
         });
-        manifestId = manifestId;
-        
+        manifestId = manifest.id || manifest._id || "";
+
         // Save manifest ID immediately
         await ctx.runMutation(api.mutations.markTruckSynced, {
           truckId: truckId as any,

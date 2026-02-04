@@ -831,12 +831,23 @@ export const getMatchedScanStats = query({
 export const getUnmatchedScansReport = query({
   args: {},
   handler: async (ctx) => {
-    const allScans = await ctx.db.query("scans").collect();
-    const unmatched = allScans.filter(s => !s.vendor || s.vendor === "Unknown");
+    // Get only last 30 days of scans to avoid database limits
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    const recentScans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
+      .collect();
+
+    const unmatched = recentScans.filter(s => !s.vendor || s.vendor === "Unknown");
+
+    // Limit enriched results to avoid memory issues
+    const unmatchedToEnrich = unmatched.slice(0, 500);
 
     // Get truck and user info for each scan
     const enriched = await Promise.all(
-      unmatched.map(async (scan) => {
+      unmatchedToEnrich.map(async (scan) => {
         const truck = await ctx.db.get(scan.truckId);
         const user = await ctx.db.get(scan.scannedBy);
         const raw = scan.rawBarcode || "";
@@ -862,12 +873,7 @@ export const getUnmatchedScansReport = query({
     );
 
     // Calculate daily breakdown for last 30 days
-    const now = Date.now();
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
     const dailyBreakdown: Record<string, { total: number; unmatched: number; miscan: number }> = {};
-
-    // Get all scans for last 30 days
-    const recentScans = allScans.filter(s => s.scannedAt >= thirtyDaysAgo);
 
     for (const scan of recentScans) {
       const date = new Date(scan.scannedAt).toISOString().split('T')[0];
@@ -895,6 +901,7 @@ export const getUnmatchedScansReport = query({
     return {
       scans: enriched.sort((a, b) => b.scannedAt - a.scannedAt),
       dailyData,
+      totalUnmatched: unmatched.length, // Include total for context
     };
   },
 });
