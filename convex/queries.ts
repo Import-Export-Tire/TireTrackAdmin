@@ -376,27 +376,29 @@ export const getAllTrucks = query({
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("users").collect();
+    // Limit to 500 users max
+    return await ctx.db.query("users").take(500);
   },
 });
 
 export const searchUPCs = query({
-  args: { 
+  args: {
     search: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
-    
+
     if (!args.search || args.search.length < 2) {
       return await ctx.db.query("tireUPCs").take(limit);
     }
-    
+
     const search = args.search.toLowerCase();
-    const all = await ctx.db.query("tireUPCs").collect();
-    
+    // Limit to 10000 UPCs max to avoid memory issues
+    const all = await ctx.db.query("tireUPCs").take(10000);
+
     return all
-      .filter((t) => 
+      .filter((t) =>
         t.upc.toLowerCase().includes(search) ||
         t.brand.toLowerCase().includes(search) ||
         t.size.toLowerCase().includes(search) ||
@@ -429,7 +431,8 @@ export const getUPCByCode = query({
 export const getAllReturnBatches = query({
   args: {},
   handler: async (ctx) => {
-    const allBatches = await ctx.db.query("returnBatches").order("desc").collect();
+    // Limit to 500 most recent batches
+    const allBatches = await ctx.db.query("returnBatches").order("desc").take(500);
     const batches = allBatches.filter(b => !b.archived);
 
     const enrichedBatches = await Promise.all(
@@ -489,8 +492,9 @@ export const getReturnBatchItems = query({
 export const getReturnStats = query({
   args: {},
   handler: async (ctx) => {
-    const batches = await ctx.db.query("returnBatches").collect();
-    const items = await ctx.db.query("returnItems").collect();
+    // Limit to recent data to avoid memory issues
+    const batches = await ctx.db.query("returnBatches").order("desc").take(1000);
+    const items = await ctx.db.query("returnItems").order("desc").take(5000);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -517,12 +521,12 @@ export const getReturnStats = query({
   },
 });
 
-// Note: This returns all scans - use with caution on large datasets
-// For paginated access, use searchTrackingNumber or getTruckScans
+// Note: Returns recent scans only - use searchTrackingNumber or getTruckScans for specific lookups
 export const getAllScans = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("scans").collect();
+    // Limit to 5000 most recent scans to avoid memory issues
+    return await ctx.db.query("scans").order("desc").take(5000);
   },
 });
 
@@ -547,10 +551,11 @@ export const getTrucksForReport = query({
     endDate: v.number(),
   },
   handler: async (ctx, args) => {
-    const trucks = await ctx.db.query("trucks").collect();
+    // Limit to 1000 trucks max
+    const trucks = await ctx.db.query("trucks").order("desc").take(1000);
     const filtered = trucks.filter(t =>
       t.openedAt >= args.startDate && t.openedAt <= args.endDate
-    );
+    ).slice(0, 200); // Limit filtered results to 200
 
     const enriched = await Promise.all(
       filtered.map(async (truck) => {
@@ -696,11 +701,11 @@ export const getVendorDateRangeReport = query({
     vendor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Get all trucks in date range
-    const trucks = await ctx.db.query("trucks").collect();
+    // Limit to 1000 trucks max
+    const trucks = await ctx.db.query("trucks").order("desc").take(1000);
     const filteredTrucks = trucks.filter(t =>
       t.openedAt >= args.startDate && t.openedAt <= args.endDate
-    );
+    ).slice(0, 200); // Limit to 200 trucks
 
     // Get all scans for these trucks
     const allScans: any[] = [];
@@ -955,10 +960,11 @@ export const debugReturnItemImages = query({
 export const getNoVendorKnownReport = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-
-    // Filter to noVendorKnown scans
-    const noVendorScans = scans.filter(s => s.noVendorKnown === true);
+    // Use index for noVendorKnown scans, limit to 2000
+    const noVendorScans = await ctx.db
+      .query("scans")
+      .withIndex("by_noVendorKnown", (q) => q.eq("noVendorKnown", true))
+      .take(2000);
 
     // Group by potential account number
     const byAccountNumber: Record<string, {
@@ -1028,8 +1034,13 @@ export const getNoVendorKnownCount = query({
 export const getUserAccuracyStats = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    const users = await ctx.db.query("users").collect();
+    // Limit scans to last 90 days for performance
+    const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    const scans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", ninetyDaysAgo))
+      .collect();
+    const users = await ctx.db.query("users").take(500);
 
     // Get start of current month (EST timezone)
     const now = new Date();
@@ -1137,7 +1148,12 @@ export const getUserAccuracyStats = query({
 export const analyzeUnknownCarrierPatterns = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
+    // Limit to last 30 days for performance
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const scans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
+      .collect();
     const unknown = scans.filter(s => !s.vendor || s.vendor === "Unknown");
 
     // Categorize and analyze patterns
@@ -1225,9 +1241,14 @@ export const analyzeUnknownCarrierPatterns = query({
 export const getDuplicateScansReport = query({
   args: {},
   handler: async (ctx) => {
-    const scans = await ctx.db.query("scans").collect();
-    const users = await ctx.db.query("users").collect();
-    const trucks = await ctx.db.query("trucks").collect();
+    // Limit to last 90 days for performance
+    const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    const scans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", ninetyDaysAgo))
+      .collect();
+    const users = await ctx.db.query("users").take(500);
+    const trucks = await ctx.db.query("trucks").order("desc").take(500);
 
     // Find all scans marked as duplicates
     const duplicates = scans.filter((scan) => scan.isDuplicate === true);
@@ -1330,7 +1351,8 @@ export const getReturnItemsForExport = query({
         .withIndex("by_status", (q) => q.eq("status", args.status!))
         .collect();
     } else {
-      items = await ctx.db.query("returnItems").collect();
+      // Limit to 2000 items max when no filter
+      items = await ctx.db.query("returnItems").order("desc").take(2000);
     }
 
     // Apply date filter if provided
@@ -1345,10 +1367,13 @@ export const getReturnItemsForExport = query({
       items = items.filter((item) => item.status === args.status);
     }
 
-    // Get all batches and users for enrichment
-    const batches = await ctx.db.query("returnBatches").collect();
-    const users = await ctx.db.query("users").collect();
-    const locations = await ctx.db.query("locations").collect();
+    // Limit final results
+    items = items.slice(0, 1000);
+
+    // Get batches, users, locations for enrichment (with limits)
+    const batches = await ctx.db.query("returnBatches").take(500);
+    const users = await ctx.db.query("users").take(500);
+    const locations = await ctx.db.query("locations").take(100);
 
     // Enrich items with batch and user info
     const enriched = items.map((item) => {
@@ -1406,8 +1431,8 @@ export const searchReturnItems = query({
     const limit = args.limit || 50;
     const searchLower = args.search.toLowerCase();
 
-    // Get all return items
-    let items = await ctx.db.query("returnItems").collect();
+    // Get recent return items (limit to 5000)
+    let items = await ctx.db.query("returnItems").order("desc").take(5000);
 
     // Apply status filter if provided
     if (args.status && args.status !== "all") {
@@ -1437,10 +1462,10 @@ export const searchReturnItems = query({
       );
     });
 
-    // Get batches and users for enrichment
-    const batches = await ctx.db.query("returnBatches").collect();
-    const users = await ctx.db.query("users").collect();
-    const locations = await ctx.db.query("locations").collect();
+    // Get batches, users, locations for enrichment (with limits)
+    const batches = await ctx.db.query("returnBatches").take(500);
+    const users = await ctx.db.query("users").take(500);
+    const locations = await ctx.db.query("locations").take(100);
 
     // Enrich and limit results
     const enriched = matchingItems.slice(0, limit).map((item) => {
@@ -1472,7 +1497,7 @@ export const getReturnBatchesForExport = query({
   args: {},
   handler: async (ctx) => {
     const batches = await ctx.db.query("returnBatches").order("desc").take(100);
-    const locations = await ctx.db.query("locations").collect();
+    const locations = await ctx.db.query("locations").take(100);
 
     return batches.map((batch) => {
       const location = locations.find((l) => l.base44Id === batch.locationId);
