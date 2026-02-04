@@ -126,10 +126,9 @@ export const getTruck = query({
 export const getLocations = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
-      .query("locations")
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
+    // Limit to 100 locations max
+    const locations = await ctx.db.query("locations").take(100);
+    return locations.filter((l) => l.isActive);
   },
 });
 
@@ -761,7 +760,7 @@ export const getAllVendors = query({
   args: {},
   handler: async (ctx) => {
     // Get vendors from vendorAccounts table (much smaller than trucks)
-    const vendorAccounts = await ctx.db.query("vendorAccounts").collect();
+    const vendorAccounts = await ctx.db.query("vendorAccounts").take(200);
     const vendorSet = new Set<string>();
 
     for (const account of vendorAccounts) {
@@ -1351,8 +1350,8 @@ export const getReturnItemsForExport = query({
         .withIndex("by_status", (q) => q.eq("status", args.status!))
         .collect();
     } else {
-      // Limit to 2000 items max when no filter
-      items = await ctx.db.query("returnItems").order("desc").take(2000);
+      // Limit to 10000 items max when no filter (return items are small documents)
+      items = await ctx.db.query("returnItems").order("desc").take(10000);
     }
 
     // Apply date filter if provided
@@ -1367,8 +1366,8 @@ export const getReturnItemsForExport = query({
       items = items.filter((item) => item.status === args.status);
     }
 
-    // Limit final results
-    items = items.slice(0, 1000);
+    // Limit final results for export
+    items = items.slice(0, 5000);
 
     // Get batches, users, locations for enrichment (with limits)
     const batches = await ctx.db.query("returnBatches").take(500);
@@ -1431,8 +1430,8 @@ export const searchReturnItems = query({
     const limit = args.limit || 50;
     const searchLower = args.search.toLowerCase();
 
-    // Get recent return items (limit to 5000)
-    let items = await ctx.db.query("returnItems").order("desc").take(5000);
+    // Get return items (limit to 20000 - return items are small documents)
+    let items = await ctx.db.query("returnItems").order("desc").take(20000);
 
     // Apply status filter if provided
     if (args.status && args.status !== "all") {
