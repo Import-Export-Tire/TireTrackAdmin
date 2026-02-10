@@ -14,7 +14,6 @@ import type * as actions_uploadImage from "../actions/uploadImage.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as base44 from "../base44.js";
-import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
@@ -36,7 +35,6 @@ declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   auth: typeof auth;
   base44: typeof base44;
-  cleanup: typeof cleanup;
   crons: typeof crons;
   files: typeof files;
   http: typeof http;
