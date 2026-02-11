@@ -9,6 +9,7 @@
  */
 
 import type * as actions_parseLabel from "../actions/parseLabel.js";
+import type * as actions_sendManifestEmail from "../actions/sendManifestEmail.js";
 import type * as actions_uploadImage from "../actions/uploadImage.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
@@ -28,6 +29,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "actions/parseLabel": typeof actions_parseLabel;
+  "actions/sendManifestEmail": typeof actions_sendManifestEmail;
   "actions/uploadImage": typeof actions_uploadImage;
   audit: typeof audit;
   auth: typeof auth;

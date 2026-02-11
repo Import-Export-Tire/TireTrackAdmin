@@ -1223,9 +1223,29 @@ function ReportsPage() {
   };
 
   const generateAllCSVsForTruck = (truck: any) => {
-    for (const vendor of Object.keys(truck.byVendor)) {
-      generateCSV(truck, vendor);
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Recipient", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account"];
+    const rows: string[][] = [];
+
+    for (const vendor of Object.keys(truck.byVendor).sort()) {
+      const scans = truck.byVendor[vendor] || [];
+      for (const s of scans) {
+        rows.push([
+          vendor, s.trackingNumber || "", s.carrier || "", s.recipientName || "", s.address || "",
+          s.city || "", s.state || "", s.destination || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+        ]);
+      }
     }
+
+    if (rows.length === 0) return;
+
+    const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${v}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${truck.truckNumber}_all_vendors_${selectedDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const formatTime = (timestamp: number) => {

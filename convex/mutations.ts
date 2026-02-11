@@ -127,10 +127,26 @@ export const addScan = mutation({
     // Extract potential account number for pattern grouping (only if noVendorKnown)
     const potentialAccountNumber = noVendorKnown ? extractPotentialAccountNumber(raw) : undefined;
 
+    // Get the truck for carrier fallback and mismatch detection
+    const truck = await ctx.db.get(args.truckId);
+
+    // Fall back to the truck's carrier if the barcode parser returned Unknown/empty
+    const scanCarrier = (!args.carrier || args.carrier === "Unknown")
+      ? truck?.carrier
+      : args.carrier;
+
+    // Detect carrier mismatch: package carrier differs from truck carrier
+    const carrierMismatch = !!(
+      args.carrier &&
+      args.carrier !== "Unknown" &&
+      truck?.carrier &&
+      args.carrier.toLowerCase() !== truck.carrier.toLowerCase()
+    );
+
     const scanId = await ctx.db.insert("scans", {
       truckId: args.truckId,
       trackingNumber: args.trackingNumber,
-      carrier: args.carrier,
+      carrier: scanCarrier,
       destination: args.destination,
       recipientName: args.recipientName,
       address: args.address,
@@ -145,9 +161,9 @@ export const addScan = mutation({
       isMiscan,
       noVendorKnown,
       potentialAccountNumber,
+      ...(carrierMismatch && { carrierMismatch }),
     });
     // Update truck's scanCount and vendors list efficiently
-    const truck = await ctx.db.get(args.truckId);
     if (truck) {
       const newScanCount = (truck.scanCount ?? 0) + 1;
       const currentVendors = truck.vendors ?? [];
@@ -345,6 +361,76 @@ export const backfillVendors = mutation({
       }
     }
     return { updated, total: scans.length, miscansDetected };
+  },
+});
+
+// Backfill carrier on scans from the past N days:
+// 1. If rawBarcode contains UPSN or 1Z → carrier = "UPS"
+// 2. If rawBarcode contains FDEG or FDEX → carrier = "FedEx"
+// 3. Otherwise fall back to the truck's carrier
+export const backfillCarriers = mutation({
+  args: { daysBack: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const daysBack = args.daysBack ?? 7;
+    const cutoff = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+
+    const scans = await ctx.db
+      .query("scans")
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", cutoff))
+      .collect();
+
+    // Cache truck carriers to avoid repeated lookups
+    const truckCarriers = new Map<string, string>();
+
+    let updated = 0;
+    let upsFixed = 0;
+    let fedexFixed = 0;
+    let truckFallback = 0;
+
+    for (const scan of scans) {
+      if (scan.carrier && scan.carrier !== "Unknown") continue;
+
+      const raw = scan.rawBarcode || "";
+      let newCarrier: string | null = null;
+
+      // Detect UPS from barcode markers
+      if (raw.includes("UPSN") || raw.includes("1Z")) {
+        newCarrier = "UPS";
+        upsFixed++;
+      }
+      // Detect FedEx from barcode markers
+      else if (raw.includes("FDEG") || raw.includes("FDEX")) {
+        newCarrier = "FedEx";
+        fedexFixed++;
+      }
+      // Fall back to truck carrier
+      else {
+        let truckCarrier = truckCarriers.get(scan.truckId);
+        if (truckCarrier === undefined) {
+          const truck = await ctx.db.get(scan.truckId);
+          truckCarrier = truck?.carrier || "";
+          truckCarriers.set(scan.truckId, truckCarrier);
+        }
+        if (truckCarrier) {
+          newCarrier = truckCarrier;
+          truckFallback++;
+        }
+      }
+
+      if (newCarrier) {
+        await ctx.db.patch(scan._id, { carrier: newCarrier });
+        updated++;
+      }
+    }
+
+    return {
+      total: scans.length,
+      alreadyHadCarrier: scans.length - updated - scans.filter(s => !s.carrier || s.carrier === "Unknown").length + updated,
+      updated,
+      upsFixed,
+      fedexFixed,
+      truckFallback,
+    };
   },
 });
 

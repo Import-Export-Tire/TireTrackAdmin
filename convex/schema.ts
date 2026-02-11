@@ -78,6 +78,7 @@ export default defineSchema({
     isDuplicate: v.optional(v.boolean()),
     duplicateOfScanId: v.optional(v.id("scans")), // Original scan this is a duplicate of
     duplicateAddedAt: v.optional(v.number()), // When they clicked "add anyway"
+    carrierMismatch: v.optional(v.boolean()), // Package carrier doesn't match truck carrier
   }).index("by_truck", ["truckId"])
     .index("by_vendor", ["vendor"])
     .index("by_tracking", ["trackingNumber"])

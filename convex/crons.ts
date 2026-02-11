@@ -11,4 +11,11 @@ crons.cron(
   internal.scheduled.autoCloseTrucksNightly
 );
 
+// Send daily truck manifest email at 6 AM EST (11:00 AM UTC)
+crons.cron(
+  "send daily manifest email",
+  "0 11 * * *", // 11:00 AM UTC = 6:00 AM EST (standard time)
+  internal.actions.sendManifestEmail.sendDailyManifestEmail
+);
+
 export default crons;

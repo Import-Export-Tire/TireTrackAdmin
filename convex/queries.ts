@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 // Get user by Employee ID (for login)
@@ -1326,3 +1326,65 @@ export const getDuplicateScansReport = query({
   },
 });
 
+// Internal query for manifest email - returns trucks with scans grouped by vendor
+export const getTrucksForManifestEmail = internalQuery({
+  args: { startDate: v.number(), endDate: v.number() },
+  handler: async (ctx, args) => {
+    const trucks = await ctx.db.query("trucks").order("desc").take(500);
+    const filtered = trucks.filter(
+      (t) => t.openedAt >= args.startDate && t.openedAt < args.endDate
+    );
+
+    // Pre-fetch all users for efficient name lookups
+    const users = await ctx.db.query("users").take(500);
+    const userMap = new Map(users.map((u) => [u._id, u.name]));
+
+    const enriched = await Promise.all(
+      filtered.map(async (truck) => {
+        const scans = await ctx.db
+          .query("scans")
+          .withIndex("by_truck", (q) => q.eq("truckId", truck._id))
+          .collect();
+
+        // Filter out duplicates
+        const validScans = scans.filter((s) => !s.isDuplicate);
+
+        // Group scans by vendor
+        const byVendor: Record<
+          string,
+          Array<{
+            trackingNumber: string;
+            carrier: string;
+            destination: string;
+            scannedByName: string;
+          }>
+        > = {};
+        for (const scan of validScans) {
+          const vendor = scan.vendor || "Unknown";
+          if (!byVendor[vendor]) byVendor[vendor] = [];
+          byVendor[vendor].push({
+            trackingNumber: scan.trackingNumber,
+            carrier: scan.carrier || "",
+            destination: scan.destination,
+            scannedByName: userMap.get(scan.scannedBy) || "Unknown",
+          });
+        }
+
+        const openedByName = userMap.get(truck.openedBy) || "Unknown";
+
+        return {
+          truckNumber: truck.truckNumber,
+          carrier: truck.carrier,
+          status: truck.status,
+          openedAt: truck.openedAt,
+          closedAt: truck.closedAt,
+          openedByName,
+          scanCount: validScans.length,
+          byVendor,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
