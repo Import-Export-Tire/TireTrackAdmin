@@ -1123,7 +1123,7 @@ function ReportsPage() {
   }, [returnsDateFilter, returnsStartDate, returnsEndDate]);
 
   const returnsExportData = useQuery(
-    api.queries.getReturnItemsForExport,
+    api.exportQueries.getReturnItemsForExport,
     showReturnsExportModal ? {
       status: returnsStatusFilter === "all" ? undefined : returnsStatusFilter,
       batchId: returnsBatchFilter === "all" ? undefined : returnsBatchFilter as any,
@@ -1133,7 +1133,7 @@ function ReportsPage() {
   );
 
   const returnsBatchesList = useQuery(
-    api.queries.getReturnBatchesForExport,
+    api.exportQueries.getReturnBatchesForExport,
     showReturnsExportModal ? {} : "skip"
   );
 

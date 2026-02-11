@@ -27,7 +27,7 @@ function ReturnsDashboard() {
 
   // Search query - only runs when searching
   const searchResults = useQuery(
-    api.queries.searchReturnItems,
+    api.exportQueries.searchReturnItems,
     isSearching && searchQuery.length >= 2
       ? { search: searchQuery, status: searchStatusFilter === "all" ? undefined : searchStatusFilter }
       : "skip"
