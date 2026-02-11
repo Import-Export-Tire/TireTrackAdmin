@@ -20,32 +20,6 @@ const VENDOR_ACCOUNTS = [
   { account: "7655055", vendor: "WTD" },
 ];
 
-export const createUser = mutation({
-  args: {
-    base44Id: v.string(),
-    empId: v.string(),
-    name: v.string(),
-    pin: v.string(),
-    locationId: v.string(),
-    locationName: v.string(),
-    role: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_empId", (q) => q.eq("empId", args.empId))
-      .first();
-    if (existing) {
-      return { success: false, error: "Employee ID already exists" };
-    }
-    const userId = await ctx.db.insert("users", {
-      ...args,
-      isActive: true,
-    });
-    return { success: true, userId };
-  },
-});
-
 export const openTruck = mutation({
   args: {
     truckNumber: v.string(),
@@ -283,101 +257,6 @@ export const closeReturnBatch = mutation({
       closedBy: args.userId,
     });
     return { success: true };
-  },
-});
-
-export const markTruckSynced = mutation({
-  args: {
-    truckId: v.id("trucks"),
-    base44Id: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.truckId, {
-      base44Id: args.base44Id,
-      syncedToBase44: true,
-    });
-    return { success: true };
-  },
-});
-
-export const markReturnBatchSynced = mutation({
-  args: {
-    batchId: v.id("returnBatches"),
-    base44Id: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.batchId, {
-      base44Id: args.base44Id,
-    });
-    return { success: true };
-  },
-});
-
-export const upsertUser = mutation({
-  args: {
-    base44Id: v.string(),
-    empId: v.string(),
-    name: v.string(),
-    pin: v.string(),
-    locationId: v.string(),
-    locationName: v.string(),
-    role: v.optional(v.string()),
-    isActive: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_base44Id", (q) => q.eq("base44Id", args.base44Id))
-      .first();
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        empId: args.empId,
-        name: args.name,
-        pin: args.pin,
-        locationId: args.locationId,
-        locationName: args.locationName,
-        role: args.role,
-        isActive: args.isActive ?? true,
-      });
-      return existing._id;
-    }
-    const userId = await ctx.db.insert("users", {
-      base44Id: args.base44Id,
-      empId: args.empId,
-      name: args.name,
-      pin: args.pin,
-      locationId: args.locationId,
-      locationName: args.locationName,
-      role: args.role,
-      isActive: args.isActive ?? true,
-    });
-    return userId;
-  },
-});
-
-export const upsertLocation = mutation({
-  args: {
-    base44Id: v.string(),
-    name: v.string(),
-    code: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("locations")
-      .withIndex("by_code", (q) => q.eq("code", args.code))
-      .first();
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        base44Id: args.base44Id,
-        name: args.name,
-      });
-      return existing._id;
-    }
-    const locationId = await ctx.db.insert("locations", {
-      ...args,
-      isActive: true,
-    });
-    return locationId;
   },
 });
 
