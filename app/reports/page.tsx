@@ -9,6 +9,23 @@ import { Id } from "../../convex/_generated/dataModel";
 
 type ReportType = "daily" | "vendor-range";
 
+const LOCATION_OPTIONS = [
+  { id: "kj7q0v1qxbf6z1b1h2cjhf4m8h74vjbe", name: "Latrobe", shortId: "latrobe" },
+  { id: "kj74zfr66q23wgv5xc3qdc0a6s74vvtr", name: "Everson", shortId: "everson" },
+  { id: "kj70r8fvdeg83dhapvp91kqs2574vqng", name: "Chestnut", shortId: "chestnut" },
+];
+
+const getLocationName = (locationId: string) => {
+  if (!locationId) return "Unknown";
+  const lower = locationId.toLowerCase();
+  const match = LOCATION_OPTIONS.find(loc => loc.id === lower || loc.shortId === lower);
+  if (match) return match.name;
+  if (lower.includes("latrobe")) return "Latrobe";
+  if (lower.includes("everson")) return "Everson";
+  if (lower.includes("chestnut")) return "Chestnut";
+  return locationId;
+};
+
 // No Vendor Known Modal Component
 function NoVendorKnownModal({
   onClose,
@@ -1166,9 +1183,9 @@ function ReportsPage() {
     const scans = truck.byVendor[vendor] || [];
     if (scans.length === 0) return;
 
-    const headers = ["Tracking Number", "Carrier", "Scanned At", "Vendor Account"];
+    const headers = ["Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account"];
     const rows = scans.map((s: any) => [
-      s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+      s.trackingNumber || "", s.carrier || "", getLocationName(truck.locationId), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
     ]);
 
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
@@ -1184,9 +1201,9 @@ function ReportsPage() {
   const generateVendorRangeCSV = (vendorName: string) => {
     if (!vendorReport?.byVendor) return;
     const scans = vendorReport.byVendor[vendorName] || [];
-    const headers = ["Tracking Number", "Carrier", "Scanned At", "Vendor Account", "Truck"];
+    const headers = ["Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account", "Truck"];
     const rows = scans.map((s: any) => [
-      s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
+      s.trackingNumber || "", s.carrier || "", getLocationName(s.locationId || ""), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
     ]);
 
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
@@ -1202,14 +1219,14 @@ function ReportsPage() {
   const generateAllVendorsRangeCSV = () => {
     if (!vendorReport?.vendors || !vendorReport?.byVendor) return;
 
-    const headers = ["Vendor", "Tracking Number", "Carrier", "Scanned At", "Vendor Account", "Truck"];
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account", "Truck"];
     const rows: string[][] = [];
 
     for (const v of vendorReport.vendors) {
       const scans = vendorReport.byVendor[v.vendor] || [];
       for (const s of scans) {
         rows.push([
-          v.vendor, s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
+          v.vendor, s.trackingNumber || "", s.carrier || "", getLocationName(s.locationId || ""), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
         ]);
       }
     }
@@ -1225,14 +1242,14 @@ function ReportsPage() {
   };
 
   const generateAllCSVsForTruck = (truck: any) => {
-    const headers = ["Vendor", "Tracking Number", "Carrier", "Scanned At", "Vendor Account"];
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account"];
     const rows: string[][] = [];
 
     for (const vendor of Object.keys(truck.byVendor).sort()) {
       const scans = truck.byVendor[vendor] || [];
       for (const s of scans) {
         rows.push([
-          vendor, s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+          vendor, s.trackingNumber || "", s.carrier || "", getLocationName(truck.locationId), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
         ]);
       }
     }
@@ -1521,6 +1538,7 @@ function ReportsPage() {
                     <thead>
                       <tr className="bg-slate-900/50 border-b border-slate-700/50">
                         <th className="px-5 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Truck</th>
+                        <th className="px-5 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Location</th>
                         <th className="px-5 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Carrier</th>
                         <th className="px-5 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
                         <th className="px-5 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Scans</th>
@@ -1546,6 +1564,7 @@ function ReportsPage() {
                                 </div>
                               </div>
                             </td>
+                            <td className="px-5 py-4 text-slate-400 hidden sm:table-cell">{getLocationName(truck.locationId)}</td>
                             <td className="px-5 py-4 text-slate-400 hidden sm:table-cell">{truck.carrier}</td>
                             <td className="px-5 py-4">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
@@ -1610,7 +1629,7 @@ function ReportsPage() {
                           {/* Expanded Vendors Row */}
                           {expandedTruck === truck._id && (
                             <tr className="bg-slate-900/30">
-                              <td colSpan={6} className="px-5 py-4">
+                              <td colSpan={7} className="px-5 py-4">
                                 <div className="flex flex-wrap gap-2">
                                   {truck.vendors.map((vendor: string) => {
                                     const count = (truck.byVendor[vendor] || []).length;
@@ -1809,6 +1828,7 @@ function ReportsPage() {
                                 <thead className="sticky top-0 bg-slate-900">
                                   <tr className="text-slate-500 text-xs">
                                     <th className="text-left py-2 px-2">Tracking</th>
+                                    <th className="text-left py-2 px-2">Location</th>
                                     <th className="text-left py-2 px-2">Truck</th>
                                     <th className="text-left py-2 px-2">Scanned</th>
                                   </tr>
@@ -1817,6 +1837,7 @@ function ReportsPage() {
                                   {vendorScans.slice(0, 100).map((scan: any, i: number) => (
                                     <tr key={i} className="text-slate-300 hover:bg-slate-800/30">
                                       <td className="py-2 px-2 font-mono text-xs">{scan.trackingNumber}</td>
+                                      <td className="py-2 px-2 text-xs">{getLocationName(scan.locationId || "")}</td>
                                       <td className="py-2 px-2">{scan.truckNumber}</td>
                                       <td className="py-2 px-2 text-slate-500 text-xs">{new Date(scan.scannedAt).toLocaleDateString()}</td>
                                     </tr>

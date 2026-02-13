@@ -724,6 +724,7 @@ export const getVendorDateRangeReport = query({
           truckCarrier: truck.carrier,
           truckOpenedAt: truck.openedAt,
           truckClosedAt: truck.closedAt,
+          locationId: truck.locationId,
         });
       }
     }

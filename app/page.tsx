@@ -185,10 +185,14 @@ function Dashboard() {
   };
 
   const getLocationName = (locationId: string) => {
-    if (locationId?.toLowerCase().includes("latrobe")) return "LATROBE";
-    if (locationId?.toLowerCase().includes("everson")) return "EVERSON";
-    if (locationId?.toLowerCase().includes("chestnut")) return "CHESTNUT";
-    return locationId?.toUpperCase() || "UNKNOWN";
+    if (!locationId) return "Unknown";
+    const lower = locationId.toLowerCase();
+    const match = LOCATION_OPTIONS.find(loc => loc.id === lower || loc.shortId === lower);
+    if (match) return match.name;
+    if (lower.includes("latrobe")) return "Latrobe";
+    if (lower.includes("everson")) return "Everson";
+    if (lower.includes("chestnut")) return "Chestnut";
+    return locationId;
   };
 
   const handleDeleteTruck = async (truckId: string) => {
