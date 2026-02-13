@@ -1043,6 +1043,7 @@ function ReportsPage() {
   const [showNoVendorKnownModal, setShowNoVendorKnownModal] = useState(false);
   const [showUserAccuracyModal, setShowUserAccuracyModal] = useState(false);
   const [showDuplicateOffendersModal, setShowDuplicateOffendersModal] = useState(false);
+  const [showSimpleTireDupsModal, setShowSimpleTireDupsModal] = useState(false);
   const [showReturnsExportModal, setShowReturnsExportModal] = useState(false);
   const [returnsStatusFilter, setReturnsStatusFilter] = useState<string>("all");
   const [returnsBatchFilter, setReturnsBatchFilter] = useState<string>("all");
@@ -1095,6 +1096,10 @@ function ReportsPage() {
   const duplicateOffendersReport = useQuery(
     api.queries.getDuplicateScansReport,
     showDuplicateOffendersModal ? {} : "skip"
+  );
+  const simpleTireDupsReport = useQuery(
+    api.queries.getSimpleTireUPSDuplicates,
+    showSimpleTireDupsModal ? { startDate: rangeStart, endDate: rangeEnd } : "skip"
   );
   // Calculate date range for returns export
   const returnsDateRange = useMemo(() => {
@@ -1161,10 +1166,9 @@ function ReportsPage() {
     const scans = truck.byVendor[vendor] || [];
     if (scans.length === 0) return;
 
-    const headers = ["Tracking Number", "Carrier", "Recipient", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account"];
+    const headers = ["Tracking Number", "Carrier", "Scanned At", "Vendor Account"];
     const rows = scans.map((s: any) => [
-      s.trackingNumber || "", s.carrier || "", s.recipientName || "", s.address || "",
-      s.city || "", s.state || "", s.destination || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+      s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
     ]);
 
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
@@ -1180,10 +1184,9 @@ function ReportsPage() {
   const generateVendorRangeCSV = (vendorName: string) => {
     if (!vendorReport?.byVendor) return;
     const scans = vendorReport.byVendor[vendorName] || [];
-    const headers = ["Tracking Number", "Carrier", "Recipient", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account", "Truck"];
+    const headers = ["Tracking Number", "Carrier", "Scanned At", "Vendor Account", "Truck"];
     const rows = scans.map((s: any) => [
-      s.trackingNumber || "", s.carrier || "", s.recipientName || "", s.address || "",
-      s.city || "", s.state || "", s.destination || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
+      s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
     ]);
 
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
@@ -1199,15 +1202,14 @@ function ReportsPage() {
   const generateAllVendorsRangeCSV = () => {
     if (!vendorReport?.vendors || !vendorReport?.byVendor) return;
 
-    const headers = ["Vendor", "Tracking Number", "Carrier", "Recipient", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account", "Truck"];
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Scanned At", "Vendor Account", "Truck"];
     const rows: string[][] = [];
 
     for (const v of vendorReport.vendors) {
       const scans = vendorReport.byVendor[v.vendor] || [];
       for (const s of scans) {
         rows.push([
-          v.vendor, s.trackingNumber || "", s.carrier || "", s.recipientName || "", s.address || "",
-          s.city || "", s.state || "", s.destination || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
+          v.vendor, s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
         ]);
       }
     }
@@ -1223,15 +1225,14 @@ function ReportsPage() {
   };
 
   const generateAllCSVsForTruck = (truck: any) => {
-    const headers = ["Vendor", "Tracking Number", "Carrier", "Recipient", "Address", "City", "State", "Destination", "Scanned At", "Vendor Account"];
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Scanned At", "Vendor Account"];
     const rows: string[][] = [];
 
     for (const vendor of Object.keys(truck.byVendor).sort()) {
       const scans = truck.byVendor[vendor] || [];
       for (const s of scans) {
         rows.push([
-          vendor, s.trackingNumber || "", s.carrier || "", s.recipientName || "", s.address || "",
-          s.city || "", s.state || "", s.destination || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+          vendor, s.trackingNumber || "", s.carrier || "", new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
         ]);
       }
     }
@@ -1481,6 +1482,12 @@ function ReportsPage() {
                   className="text-amber-500/70 hover:text-amber-400 transition-colors underline decoration-dotted underline-offset-2"
                 >
                   | Duplicate Offenders
+                </button>
+                <button
+                  onClick={() => setShowSimpleTireDupsModal(true)}
+                  className="text-orange-500/70 hover:text-orange-400 transition-colors underline decoration-dotted underline-offset-2"
+                >
+                  | Simple Tire UPS Reuse
                 </button>
                 <button
                   onClick={() => setShowReturnsExportModal(true)}
@@ -1802,8 +1809,6 @@ function ReportsPage() {
                                 <thead className="sticky top-0 bg-slate-900">
                                   <tr className="text-slate-500 text-xs">
                                     <th className="text-left py-2 px-2">Tracking</th>
-                                    <th className="text-left py-2 px-2 hidden sm:table-cell">Recipient</th>
-                                    <th className="text-left py-2 px-2 hidden md:table-cell">Destination</th>
                                     <th className="text-left py-2 px-2">Truck</th>
                                     <th className="text-left py-2 px-2">Scanned</th>
                                   </tr>
@@ -1812,8 +1817,6 @@ function ReportsPage() {
                                   {vendorScans.slice(0, 100).map((scan: any, i: number) => (
                                     <tr key={i} className="text-slate-300 hover:bg-slate-800/30">
                                       <td className="py-2 px-2 font-mono text-xs">{scan.trackingNumber}</td>
-                                      <td className="py-2 px-2 hidden sm:table-cell">{scan.recipientName || "-"}</td>
-                                      <td className="py-2 px-2 hidden md:table-cell">{scan.destination || "-"}</td>
                                       <td className="py-2 px-2">{scan.truckNumber}</td>
                                       <td className="py-2 px-2 text-slate-500 text-xs">{new Date(scan.scannedAt).toLocaleDateString()}</td>
                                     </tr>
@@ -1873,6 +1876,86 @@ function ReportsPage() {
           onClose={() => setShowDuplicateOffendersModal(false)}
           data={duplicateOffendersReport}
         />
+      )}
+
+      {/* Simple Tire UPS Reuse Modal */}
+      {showSimpleTireDupsModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-700">
+              <div>
+                <h2 className="text-lg font-bold text-white">Simple Tire UPS Reuse Report</h2>
+                <p className="text-slate-400 text-sm mt-1">
+                  UPS tracking numbers reused by Simple Tire (evidence for vendor fix)
+                </p>
+              </div>
+              <button onClick={() => setShowSimpleTireDupsModal(false)} className="text-slate-400 hover:text-white text-xl">x</button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1">
+              {!simpleTireDupsReport ? (
+                <p className="text-slate-400 text-center py-8">Loading...</p>
+              ) : simpleTireDupsReport.totalReusedTrackingNumbers === 0 ? (
+                <p className="text-slate-400 text-center py-8">No reused tracking numbers found in this date range.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-orange-400">{simpleTireDupsReport.totalReusedTrackingNumbers}</div>
+                      <div className="text-xs text-slate-500">Reused Tracking #s</div>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-orange-400">{simpleTireDupsReport.totalAffectedScans}</div>
+                      <div className="text-xs text-slate-500">Total Affected Scans</div>
+                    </div>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-800">
+                      <tr className="text-slate-500 text-xs">
+                        <th className="text-left py-2 px-2">Tracking Number</th>
+                        <th className="text-center py-2 px-2">Times Used</th>
+                        <th className="text-left py-2 px-2">Trucks</th>
+                        <th className="text-left py-2 px-2">First / Last Scan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700/50">
+                      {simpleTireDupsReport.duplicates.map((d: any, i: number) => (
+                        <tr key={i} className="text-slate-300 hover:bg-slate-700/30">
+                          <td className="py-2 px-2 font-mono text-xs">{d.trackingNumber}</td>
+                          <td className="py-2 px-2 text-center font-bold text-orange-400">{d.count}</td>
+                          <td className="py-2 px-2 text-xs">{d.trucks.join(", ")}</td>
+                          <td className="py-2 px-2 text-xs text-slate-500">
+                            {new Date(d.appearances[0]?.scannedAt).toLocaleString()} &mdash; {new Date(d.appearances[d.appearances.length - 1]?.scannedAt).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button
+                    onClick={() => {
+                      const headers = ["Tracking Number", "Times Used", "Trucks", "First Scan", "Last Scan"];
+                      const rows = simpleTireDupsReport.duplicates.map((d: any) => [
+                        d.trackingNumber, String(d.count), d.trucks.join(" / "),
+                        new Date(d.appearances[0]?.scannedAt).toLocaleString(),
+                        new Date(d.appearances[d.appearances.length - 1]?.scannedAt).toLocaleString(),
+                      ]);
+                      const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `simple_tire_ups_reuse_${rangeStartDate}_to_${rangeEndDate}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="mt-4 px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-medium"
+                  >
+                    Download CSV
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Returns Export Modal */}

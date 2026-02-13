@@ -1388,3 +1388,74 @@ export const getTrucksForManifestEmail = internalQuery({
     return enriched;
   },
 });
+
+// Simple Tire UPS duplicate tracking report — finds tracking numbers
+// reused across multiple scans, evidence for vendor label generation fix
+export const getSimpleTireUPSDuplicates = query({
+  args: {
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let trucks;
+    if (args.startDate && args.endDate) {
+      trucks = await ctx.db
+        .query("trucks")
+        .filter((q) =>
+          q.and(
+            q.gte(q.field("openedAt"), args.startDate!),
+            q.lte(q.field("openedAt"), args.endDate!)
+          )
+        )
+        .take(200);
+    } else {
+      trucks = await ctx.db.query("trucks").order("desc").take(100);
+    }
+
+    // Collect Simple Tire UPS scans across all trucks
+    const trackingMap: Record<
+      string,
+      Array<{ truckId: string; truckNumber: string; scannedAt: number }>
+    > = {};
+
+    for (const truck of trucks) {
+      const scans = await ctx.db
+        .query("scans")
+        .withIndex("by_truck", (q) => q.eq("truckId", truck._id))
+        .collect();
+
+      for (const scan of scans) {
+        if (
+          scan.vendor === "Simple Tire" &&
+          scan.carrier?.toLowerCase().includes("ups")
+        ) {
+          if (!trackingMap[scan.trackingNumber]) {
+            trackingMap[scan.trackingNumber] = [];
+          }
+          trackingMap[scan.trackingNumber].push({
+            truckId: truck._id,
+            truckNumber: truck.truckNumber,
+            scannedAt: scan.scannedAt,
+          });
+        }
+      }
+    }
+
+    // Filter to tracking numbers that appear 2+ times
+    const duplicates = Object.entries(trackingMap)
+      .filter(([_, appearances]) => appearances.length > 1)
+      .map(([trackingNumber, appearances]) => ({
+        trackingNumber,
+        count: appearances.length,
+        trucks: [...new Set(appearances.map((a) => a.truckNumber))],
+        appearances: appearances.sort((a, b) => a.scannedAt - b.scannedAt),
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      totalReusedTrackingNumbers: duplicates.length,
+      totalAffectedScans: duplicates.reduce((sum, d) => sum + d.count, 0),
+      duplicates: duplicates.slice(0, 200),
+    };
+  },
+});

@@ -49,12 +49,11 @@ export default defineSchema({
     securityTag: v.optional(v.string()),
     syncedToBase44: v.optional(v.boolean()),
     scanCount: v.optional(v.number()),
-    vendors: v.optional(v.array(v.string())), // Cached list of unique vendors
     archived: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
+    vendors: v.optional(v.array(v.string())),
   }).index("by_location_status", ["locationId", "status"])
-    .index("by_base44Id", ["base44Id"])
-    .index("by_archived", ["archived"]),
+    .index("by_base44Id", ["base44Id"]),
 
   scans: defineTable({
     truckId: v.id("trucks"),
@@ -73,17 +72,18 @@ export default defineSchema({
     vendorAccount: v.optional(v.string()),
     isMiscan: v.optional(v.boolean()),
     noVendorKnown: v.optional(v.boolean()),
-    potentialAccountNumber: v.optional(v.string()), // Extracted account number for pattern matching
-    // Duplicate tracking - when user adds a scan they know is a duplicate
+    potentialAccountNumber: v.optional(v.string()),
+    // Duplicate tracking
     isDuplicate: v.optional(v.boolean()),
-    duplicateOfScanId: v.optional(v.id("scans")), // Original scan this is a duplicate of
-    duplicateAddedAt: v.optional(v.number()), // When they clicked "add anyway"
+    duplicateOfScanId: v.optional(v.id("scans")),
+    duplicateAddedAt: v.optional(v.number()),
     carrierMismatch: v.optional(v.boolean()), // Package carrier doesn't match truck carrier
+    // Cross-truck move tracking
+    movedFromTruckId: v.optional(v.id("trucks")),
+    movedFromScanId: v.optional(v.id("scans")),
   }).index("by_truck", ["truckId"])
     .index("by_vendor", ["vendor"])
-    .index("by_tracking", ["trackingNumber"])
-    .index("by_scannedAt", ["scannedAt"])
-    .index("by_noVendorKnown", ["noVendorKnown"]),
+    .index("by_tracking", ["trackingNumber"]),
 
   vendorAccounts: defineTable({
     accountNumber: v.string(),
@@ -104,14 +104,14 @@ export default defineSchema({
     archived: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
   }).index("by_location_status", ["locationId", "status"])
-    .index("by_base44Id", ["base44Id"])
-    .index("by_archived", ["archived"]),
+    .index("by_base44Id", ["base44Id"]),
 
   returnItems: defineTable({
     returnBatchId: v.id("returnBatches"),
     base44Id: v.optional(v.string()),
     poNumber: v.optional(v.string()),
     invNumber: v.optional(v.string()),
+    partNumber: v.optional(v.string()),
     fromAddress: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     rawText: v.optional(v.string()),
@@ -121,7 +121,6 @@ export default defineSchema({
     tireModel: v.optional(v.string()),
     tireSize: v.optional(v.string()),
     tirePartNumber: v.optional(v.string()), // Inventory/part number from tireUPCs
-    partNumber: v.optional(v.string()), // Legacy field
     quantity: v.optional(v.number()),
     scannedBy: v.id("users"),
     scannedAt: v.number(),
@@ -139,16 +138,30 @@ export default defineSchema({
     auctionTitle: v.optional(v.string()),
   }).index("by_upc", ["upc"]),
 
-  // Audit log for tracking admin actions
+  // Error logs for debugging issues
+  errorLogs: defineTable({
+    source: v.string(), // e.g., "addReturnItem", "searchTireByBrandSize"
+    errorType: v.string(), // e.g., "validation", "database", "unknown"
+    message: v.string(),
+    details: v.optional(v.string()), // JSON stringified additional data
+    userId: v.optional(v.id("users")),
+    locationId: v.optional(v.string()),
+    timestamp: v.number(),
+    resolved: v.optional(v.boolean()),
+  }).index("by_timestamp", ["timestamp"])
+    .index("by_source", ["source"])
+    .index("by_resolved", ["resolved"]),
+
+  // Audit log for tracking admin actions (shared with TireTrackAdmin)
   auditLogs: defineTable({
-    action: v.string(), // e.g., "truck.delete", "user.create", "admin.login"
-    actionType: v.string(), // "create", "update", "delete", "login", "export"
-    resourceType: v.string(), // "truck", "user", "admin", "scan", "batch"
+    action: v.string(),
+    actionType: v.string(),
+    resourceType: v.string(),
     resourceId: v.optional(v.string()),
     adminId: v.optional(v.id("adminUsers")),
     adminEmail: v.optional(v.string()),
     adminName: v.optional(v.string()),
-    details: v.optional(v.string()), // JSON string with additional details
+    details: v.optional(v.string()),
     ipAddress: v.optional(v.string()),
     timestamp: v.number(),
   }).index("by_timestamp", ["timestamp"])

@@ -102,8 +102,33 @@ export const addScan = mutation({
     rawBarcode: v.string(),
     userId: v.id("users"),
     scanType: v.optional(v.string()),
+    forceCrossTruckMove: v.optional(v.boolean()),
+    movedFromScanId: v.optional(v.id("scans")),
   },
   handler: async (ctx, args) => {
+    // Cross-truck duplicate check: was this tracking number scanned on another truck?
+    if (!args.forceCrossTruckMove) {
+      const existingScans = await ctx.db
+        .query("scans")
+        .withIndex("by_tracking", (q) => q.eq("trackingNumber", args.trackingNumber))
+        .collect();
+
+      const otherTruckScan = existingScans.find(
+        (scan) => scan.truckId !== args.truckId && !scan.isDuplicate
+      );
+
+      if (otherTruckScan) {
+        const otherTruck = await ctx.db.get(otherTruckScan.truckId);
+        return {
+          needsCrossTruckConfirmation: true as const,
+          existingScanId: otherTruckScan._id,
+          existingTruckNumber: otherTruck?.truckNumber || "Unknown",
+          existingTruckId: otherTruckScan.truckId,
+          existingScannedAt: otherTruckScan.scannedAt,
+        };
+      }
+    }
+
     let vendor = "Unknown";
     let vendorAccount = "";
     const raw = args.rawBarcode || "";
@@ -113,6 +138,30 @@ export const addScan = mutation({
         vendor = va.vendor;
         vendorAccount = va.account;
         break;
+      }
+    }
+
+    // Vendor context inheritance: if vendor is still Unknown on a valid 2D scan,
+    // inherit from a recent scan on the same truck (within 30s, same state)
+    if (vendor === "Unknown" && hasValid2DFormat(raw)) {
+      const thirtySecondsAgo = Date.now() - 30000;
+      const recentScans = await ctx.db
+        .query("scans")
+        .withIndex("by_truck", (q) => q.eq("truckId", args.truckId))
+        .order("desc")
+        .take(5);
+
+      for (const recent of recentScans) {
+        if (
+          recent.scannedAt >= thirtySecondsAgo &&
+          recent.vendor &&
+          recent.vendor !== "Unknown" &&
+          args.state && recent.state && args.state === recent.state
+        ) {
+          vendor = recent.vendor;
+          vendorAccount = recent.vendorAccount || "";
+          break;
+        }
       }
     }
 
@@ -162,6 +211,11 @@ export const addScan = mutation({
       noVendorKnown,
       potentialAccountNumber,
       ...(carrierMismatch && { carrierMismatch }),
+      // Cross-truck move tracking
+      ...(args.forceCrossTruckMove && args.movedFromScanId && {
+        movedFromTruckId: (await ctx.db.get(args.movedFromScanId))?.truckId,
+        movedFromScanId: args.movedFromScanId,
+      }),
     });
     // Update truck's scanCount and vendors list efficiently
     if (truck) {
@@ -176,7 +230,7 @@ export const addScan = mutation({
         vendors: newVendors,
       });
     }
-    return scanId;
+    return { success: true as const, scanId };
   },
 });
 
