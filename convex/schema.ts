@@ -53,7 +53,8 @@ export default defineSchema({
     archivedAt: v.optional(v.number()),
     vendors: v.optional(v.array(v.string())),
   }).index("by_location_status", ["locationId", "status"])
-    .index("by_base44Id", ["base44Id"]),
+    .index("by_base44Id", ["base44Id"])
+    .index("by_archived", ["archived"]),
 
   scans: defineTable({
     truckId: v.id("trucks"),
@@ -83,7 +84,9 @@ export default defineSchema({
     movedFromScanId: v.optional(v.id("scans")),
   }).index("by_truck", ["truckId"])
     .index("by_vendor", ["vendor"])
-    .index("by_tracking", ["trackingNumber"]),
+    .index("by_tracking", ["trackingNumber"])
+    .index("by_scannedAt", ["scannedAt"])
+    .index("by_noVendorKnown", ["noVendorKnown"]),
 
   vendorAccounts: defineTable({
     accountNumber: v.string(),
