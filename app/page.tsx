@@ -41,6 +41,7 @@ function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showUsers, setShowUsers] = useState(false);
   const [showAdmins, setShowAdmins] = useState(false);
+  const [showErrorLogs, setShowErrorLogs] = useState(false);
   const [showUnknownReport, setShowUnknownReport] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const [locationFilter, setLocationFilter] = useState("all");
@@ -95,6 +96,10 @@ function Dashboard() {
   const updateAdmin = useMutation(api.auth.updateAdmin);
   const deleteAdmin = useMutation(api.auth.deleteAdmin);
   const markScanAsMiscan = useMutation(api.mutations.markScanAsMiscan);
+  const resolveError = useMutation(api.mutations.resolveError);
+  const resolveAllErrors = useMutation(api.mutations.resolveAllErrors);
+  const errorLogs = useQuery(api.queries.getErrorLogs, showErrorLogs ? { limit: 100 } : "skip");
+  const unresolvedErrorCount = useQuery(api.queries.getUnresolvedErrorCount);
 
   const effectiveLocationFilter = useMemo(() => {
     if (admin?.allowedLocations.includes("all")) return locationFilter;
@@ -403,9 +408,9 @@ function Dashboard() {
             {/* Navigation tabs */}
             <div className="flex gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1 overflow-x-auto">
               <button
-                onClick={() => { setShowUsers(false); setShowAdmins(false); }}
+                onClick={() => { setShowUsers(false); setShowAdmins(false); setShowErrorLogs(false); }}
                 className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  !showUsers && !showAdmins
+                  !showUsers && !showAdmins && !showErrorLogs
                     ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 }`}
@@ -452,9 +457,9 @@ function Dashboard() {
                 <span className="hidden sm:inline">App</span>
               </Link>
               <button
-                onClick={() => { setShowUsers(true); setShowAdmins(false); }}
+                onClick={() => { setShowUsers(true); setShowAdmins(false); setShowErrorLogs(false); }}
                 className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  showUsers && !showAdmins
+                  showUsers && !showAdmins && !showErrorLogs
                     ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 }`}
@@ -466,7 +471,7 @@ function Dashboard() {
               </button>
               {canManageAdmins && (
                 <button
-                  onClick={() => { setShowAdmins(true); setShowUsers(false); }}
+                  onClick={() => { setShowAdmins(true); setShowUsers(false); setShowErrorLogs(false); }}
                   className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
                     showAdmins
                       ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
@@ -479,6 +484,24 @@ function Dashboard() {
                   <span className="hidden sm:inline">Admins</span>
                 </button>
               )}
+              <button
+                onClick={() => { setShowErrorLogs(true); setShowUsers(false); setShowAdmins(false); }}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  showErrorLogs
+                    ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/25"
+                    : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <span className="hidden sm:inline">Errors</span>
+                {(unresolvedErrorCount ?? 0) > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unresolvedErrorCount! > 99 ? "99+" : unresolvedErrorCount}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Filters */}
@@ -690,6 +713,94 @@ function Dashboard() {
                               </button>
                             )}
                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : showErrorLogs ? (
+          /* Error Logs */
+          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden shadow-xl">
+            <div className="p-5 sm:p-6 border-b border-slate-700/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center gap-2">
+                      Error Logs
+                      {(unresolvedErrorCount ?? 0) > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                          {unresolvedErrorCount} unresolved
+                        </span>
+                      )}
+                    </h2>
+                    <p className="text-slate-500 text-xs sm:text-sm">{errorLogs?.length || 0} recent errors</p>
+                  </div>
+                </div>
+                {canEdit && (unresolvedErrorCount ?? 0) > 0 && (
+                  <button
+                    onClick={() => resolveAllErrors({})}
+                    className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-xl text-sm font-medium shadow-lg shadow-green-500/20 transition-all hover:scale-105 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Resolve All
+                  </button>
+                )}
+              </div>
+            </div>
+            {!errorLogs ? (
+              <div className="p-8 text-center text-slate-500">Loading error logs...</div>
+            ) : errorLogs.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">No error logs found. System is running clean.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-700/30">
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Time</th>
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Source</th>
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Type</th>
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Message</th>
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider hidden lg:table-cell">Details</th>
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {errorLogs.map((error) => (
+                      <tr key={error._id} className={`border-b border-slate-700/20 hover:bg-slate-700/20 transition-colors ${!error.resolved ? "bg-red-500/5" : ""}`}>
+                        <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-300 whitespace-nowrap">
+                          {new Date(error.timestamp).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td className="p-3 sm:p-4">
+                          <span className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded text-cyan-400">{error.source}</span>
+                        </td>
+                        <td className="p-3 sm:p-4">
+                          <span className="text-xs font-mono bg-red-500/10 px-2 py-1 rounded text-red-400">{error.errorType}</span>
+                        </td>
+                        <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-300 max-w-xs truncate">{error.message}</td>
+                        <td className="p-3 sm:p-4 text-xs text-slate-500 max-w-xs truncate hidden lg:table-cell">{error.details ? error.details.substring(0, 80) + (error.details.length > 80 ? "..." : "") : "-"}</td>
+                        <td className="p-3 sm:p-4">
+                          {error.resolved ? (
+                            <span className="text-xs text-green-400 font-medium">Resolved</span>
+                          ) : canEdit ? (
+                            <button
+                              onClick={() => resolveError({ errorId: error._id as any })}
+                              className="text-xs px-3 py-1.5 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors font-medium"
+                            >
+                              Resolve
+                            </button>
+                          ) : (
+                            <span className="text-xs text-red-400 font-medium">Unresolved</span>
+                          )}
                         </td>
                       </tr>
                     ))}

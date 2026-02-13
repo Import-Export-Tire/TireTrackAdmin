@@ -955,6 +955,45 @@ export const debugReturnItemImages = query({
   },
 });
 
+// Get error logs with optional filtering
+export const getErrorLogs = query({
+  args: {
+    unresolvedOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 100;
+
+    if (args.unresolvedOnly) {
+      const errors = await ctx.db
+        .query("errorLogs")
+        .withIndex("by_resolved", (q) => q.eq("resolved", false))
+        .order("desc")
+        .take(limit);
+      return errors;
+    }
+
+    const errors = await ctx.db
+      .query("errorLogs")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .take(limit);
+    return errors;
+  },
+});
+
+// Get count of unresolved errors
+export const getUnresolvedErrorCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const unresolved = await ctx.db
+      .query("errorLogs")
+      .withIndex("by_resolved", (q) => q.eq("resolved", false))
+      .collect();
+    return unresolved.length;
+  },
+});
+
 // Get "No Vendor Known" scans grouped by potential account number
 // Helps identify patterns that suggest a new vendor to research
 export const getNoVendorKnownReport = query({

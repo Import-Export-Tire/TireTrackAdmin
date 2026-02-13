@@ -1001,6 +1001,55 @@ export const updateTruckVendors = mutation({
 });
 
 // Archive old trucks and return batches
+// Log an error to the errorLogs table
+export const logError = mutation({
+  args: {
+    source: v.string(),
+    errorType: v.string(),
+    message: v.string(),
+    details: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+    locationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const errorId = await ctx.db.insert("errorLogs", {
+      source: args.source,
+      errorType: args.errorType,
+      message: args.message,
+      details: args.details,
+      userId: args.userId,
+      locationId: args.locationId,
+      timestamp: Date.now(),
+      resolved: false,
+    });
+    return { success: true, errorId };
+  },
+});
+
+// Resolve an error log entry
+export const resolveError = mutation({
+  args: { errorId: v.id("errorLogs") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.errorId, { resolved: true });
+    return { success: true };
+  },
+});
+
+// Resolve all unresolved errors
+export const resolveAllErrors = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const unresolved = await ctx.db
+      .query("errorLogs")
+      .withIndex("by_resolved", (q) => q.eq("resolved", false))
+      .collect();
+    for (const error of unresolved) {
+      await ctx.db.patch(error._id, { resolved: true });
+    }
+    return { success: true, resolved: unresolved.length };
+  },
+});
+
 export const archiveOldRecords = mutation({
   args: {},
   handler: async (ctx) => {

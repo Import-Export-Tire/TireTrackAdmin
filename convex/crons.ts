@@ -18,4 +18,11 @@ crons.cron(
   internal.actions.sendManifestEmail.sendDailyManifestEmail
 );
 
+// Health check: look for unresolved errors every 15 minutes and email alert
+crons.cron(
+  "health check and error alerts",
+  "*/15 * * * *",
+  internal.scheduled.checkHealthAndAlert
+);
+
 export default crons;

@@ -1,4 +1,5 @@
 import { internalMutation, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // Auto-close all open trucks at midnight
 export const autoCloseTrucksNightly = internalMutation({
@@ -63,5 +64,42 @@ export const detectFedExMiscans = mutation({
 
     console.log(`[FedEx Miscan Detection] Detected ${detected} miscans out of ${scans.length} total scans`);
     return { success: true, totalScans: scans.length, miscansDetected: detected, updated };
+  },
+});
+
+// Health check: count unresolved errors from last 15 minutes, send alert if any
+export const checkHealthAndAlert = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+
+    // Get unresolved errors from the last 15 minutes
+    const recentErrors = await ctx.db
+      .query("errorLogs")
+      .withIndex("by_resolved", (q) => q.eq("resolved", false))
+      .collect();
+
+    const recentUnresolved = recentErrors.filter(
+      (e) => e.timestamp >= fifteenMinutesAgo
+    );
+
+    if (recentUnresolved.length === 0) {
+      console.log(`[Health Check] No recent errors. All clear.`);
+      return { alertSent: false, errorCount: 0 };
+    }
+
+    // Schedule the email alert action
+    await ctx.scheduler.runAfter(0, internal.actions.sendErrorAlert.sendErrorAlert, {
+      errors: recentUnresolved.map((e) => ({
+        source: e.source,
+        errorType: e.errorType,
+        message: e.message,
+        details: e.details,
+        timestamp: e.timestamp,
+      })),
+    });
+
+    console.log(`[Health Check] Found ${recentUnresolved.length} recent errors. Alert scheduled.`);
+    return { alertSent: true, errorCount: recentUnresolved.length };
   },
 });
