@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Protected } from "./protected";
 import { useAuth } from "./auth-context";
 import Link from "next/link";
@@ -767,42 +767,81 @@ function Dashboard() {
                   <thead>
                     <tr className="border-b border-slate-700/30">
                       <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Time</th>
-                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Source</th>
+                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Who / Where</th>
                       <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Type</th>
                       <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Message</th>
-                      <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider hidden lg:table-cell">Details</th>
                       <th className="text-left p-3 sm:p-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {errorLogs.map((error) => (
-                      <tr key={error._id} className={`border-b border-slate-700/20 hover:bg-slate-700/20 transition-colors ${!error.resolved ? "bg-red-500/5" : ""}`}>
-                        <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-300 whitespace-nowrap">
-                          {new Date(error.timestamp).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                        </td>
-                        <td className="p-3 sm:p-4">
-                          <span className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded text-cyan-400">{error.source}</span>
-                        </td>
-                        <td className="p-3 sm:p-4">
-                          <span className="text-xs font-mono bg-red-500/10 px-2 py-1 rounded text-red-400">{error.errorType}</span>
-                        </td>
-                        <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-300 max-w-xs truncate">{error.message}</td>
-                        <td className="p-3 sm:p-4 text-xs text-slate-500 max-w-xs truncate hidden lg:table-cell">{error.details ? error.details.substring(0, 80) + (error.details.length > 80 ? "..." : "") : "-"}</td>
-                        <td className="p-3 sm:p-4">
-                          {error.resolved ? (
-                            <span className="text-xs text-green-400 font-medium">Resolved</span>
-                          ) : canEdit ? (
-                            <button
-                              onClick={() => resolveError({ errorId: error._id as any })}
-                              className="text-xs px-3 py-1.5 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors font-medium"
-                            >
-                              Resolve
-                            </button>
-                          ) : (
-                            <span className="text-xs text-red-400 font-medium">Unresolved</span>
-                          )}
-                        </td>
-                      </tr>
+                    {errorLogs.map((error: any) => (
+                      <Fragment key={error._id}>
+                        <tr className={`border-b border-slate-700/20 hover:bg-slate-700/20 transition-colors cursor-pointer ${!error.resolved ? "bg-red-500/5" : ""}`}
+                          onClick={() => {
+                            const el = document.getElementById(`error-detail-${error._id}`);
+                            if (el) el.classList.toggle("hidden");
+                          }}
+                        >
+                          <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-300 whitespace-nowrap">
+                            {new Date(error.timestamp).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </td>
+                          <td className="p-3 sm:p-4">
+                            <div className="flex flex-col gap-0.5">
+                              {error.userName && <span className="text-xs text-slate-200 font-medium">{error.userName}</span>}
+                              <div className="flex gap-1.5 flex-wrap">
+                                {error.userLocation && <span className="text-xs bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">{error.userLocation}</span>}
+                                {error.truckNumber && <span className="text-xs bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded">Truck {error.truckNumber}</span>}
+                              </div>
+                              {!error.userName && !error.truckNumber && <span className="text-xs text-slate-500">—</span>}
+                            </div>
+                          </td>
+                          <td className="p-3 sm:p-4">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded text-cyan-400">{error.source}</span>
+                              <span className="text-xs font-mono bg-red-500/10 px-2 py-1 rounded text-red-400">{error.errorType}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-300 max-w-xs">{error.message}</td>
+                          <td className="p-3 sm:p-4">
+                            {error.resolved ? (
+                              <span className="text-xs text-green-400 font-medium">Resolved</span>
+                            ) : canEdit ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); resolveError({ errorId: error._id as any }); }}
+                                className="text-xs px-3 py-1.5 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors font-medium"
+                              >
+                                Resolve
+                              </button>
+                            ) : (
+                              <span className="text-xs text-red-400 font-medium">Unresolved</span>
+                            )}
+                          </td>
+                        </tr>
+                        <tr id={`error-detail-${error._id}`} className="hidden">
+                          <td colSpan={5} className="p-3 sm:p-4 bg-slate-800/60 border-b border-slate-700/20">
+                            <div className="flex flex-col gap-2 text-xs">
+                              {error.rawBarcode && (
+                                <div>
+                                  <span className="text-slate-400 font-medium">Raw Barcode: </span>
+                                  <code className="text-amber-300 bg-slate-900/60 px-2 py-1 rounded font-mono break-all">{error.rawBarcode}</code>
+                                </div>
+                              )}
+                              {error.trackingNumber && (
+                                <div>
+                                  <span className="text-slate-400 font-medium">Tracking: </span>
+                                  <code className="text-cyan-300 font-mono">{error.trackingNumber}</code>
+                                </div>
+                              )}
+                              {error.details && (
+                                <div>
+                                  <span className="text-slate-400 font-medium">Full Details: </span>
+                                  <code className="text-slate-400 font-mono text-[10px] break-all">{error.details}</code>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
