@@ -284,6 +284,7 @@ export const addReturnItem = mutation({
     tireBrand: v.optional(v.string()),
     tireModel: v.optional(v.string()),
     tireSize: v.optional(v.string()),
+    partNumber: v.optional(v.string()),
     quantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -295,6 +296,7 @@ export const addReturnItem = mutation({
       returnBatchId: args.batchId,
       poNumber: args.poNumber,
       invNumber: args.invNumber,
+      partNumber: args.partNumber,
       fromAddress: args.fromAddress,
       imageUrl: args.imageUrl,
       rawText: args.rawText,
@@ -666,6 +668,7 @@ export const updateReturnItem = mutation({
     itemId: v.id("returnItems"),
     poNumber: v.optional(v.string()),
     invNumber: v.optional(v.string()),
+    partNumber: v.optional(v.string()),
     tireBrand: v.optional(v.string()),
     tireModel: v.optional(v.string()),
     tireSize: v.optional(v.string()),
@@ -679,6 +682,24 @@ export const updateReturnItem = mutation({
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined)
     );
+
+    // Sync batch itemCount when quantity changes
+    if (args.quantity !== undefined) {
+      const item = await ctx.db.get(itemId);
+      if (item) {
+        const oldQty = item.quantity || 1;
+        const diff = args.quantity - oldQty;
+        if (diff !== 0) {
+          const batch = await ctx.db.get(item.returnBatchId);
+          if (batch) {
+            await ctx.db.patch(item.returnBatchId, {
+              itemCount: Math.max(0, batch.itemCount + diff),
+            });
+          }
+        }
+      }
+    }
+
     await ctx.db.patch(itemId, filteredUpdates);
     return { success: true };
   },
