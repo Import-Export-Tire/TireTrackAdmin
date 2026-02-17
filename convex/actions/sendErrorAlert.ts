@@ -86,7 +86,7 @@ export const sendErrorAlert = internalAction({
       },
       body: JSON.stringify({
         from: "TireTrack <onboarding@resend.dev>",
-        to: ["terry@ietires.com"],
+        to: ["andy@ietires.com"],
         subject: `TireTrack Alert: ${errorCount} error${errorCount !== 1 ? "s" : ""} detected`,
         html,
       }),

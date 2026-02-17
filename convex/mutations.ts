@@ -106,26 +106,30 @@ export const addScan = mutation({
     movedFromScanId: v.optional(v.id("scans")),
   },
   handler: async (ctx, args) => {
-    // Cross-truck duplicate check: was this tracking number scanned on another truck?
+    // Cross-truck duplicate check: was this tracking number scanned on another OPEN truck?
+    // Only checks open trucks — closed trucks are no longer relevant
     if (!args.forceCrossTruckMove) {
       const existingScans = await ctx.db
         .query("scans")
         .withIndex("by_tracking", (q) => q.eq("trackingNumber", args.trackingNumber))
         .collect();
 
-      const otherTruckScan = existingScans.find(
+      const otherTruckScans = existingScans.filter(
         (scan) => scan.truckId !== args.truckId && !scan.isDuplicate
       );
 
-      if (otherTruckScan) {
-        const otherTruck = await ctx.db.get(otherTruckScan.truckId);
-        return {
-          needsCrossTruckConfirmation: true as const,
-          existingScanId: otherTruckScan._id,
-          existingTruckNumber: otherTruck?.truckNumber || "Unknown",
-          existingTruckId: otherTruckScan.truckId,
-          existingScannedAt: otherTruckScan.scannedAt,
-        };
+      // Only flag if the other truck is still open
+      for (const scan of otherTruckScans) {
+        const otherTruck = await ctx.db.get(scan.truckId);
+        if (otherTruck && otherTruck.status === "open") {
+          return {
+            needsCrossTruckConfirmation: true as const,
+            existingScanId: scan._id,
+            existingTruckNumber: otherTruck.truckNumber || "Unknown",
+            existingTruckId: scan.truckId,
+            existingScannedAt: scan.scannedAt,
+          };
+        }
       }
     }
 

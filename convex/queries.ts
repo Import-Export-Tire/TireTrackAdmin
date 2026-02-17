@@ -964,21 +964,54 @@ export const getErrorLogs = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 100;
 
+    let errors;
     if (args.unresolvedOnly) {
-      const errors = await ctx.db
+      errors = await ctx.db
         .query("errorLogs")
         .withIndex("by_resolved", (q) => q.eq("resolved", false))
         .order("desc")
         .take(limit);
-      return errors;
+    } else {
+      errors = await ctx.db
+        .query("errorLogs")
+        .withIndex("by_timestamp")
+        .order("desc")
+        .take(limit);
     }
 
-    const errors = await ctx.db
-      .query("errorLogs")
-      .withIndex("by_timestamp")
-      .order("desc")
-      .take(limit);
-    return errors;
+    // Enrich with user names and parse details for context
+    const enriched = await Promise.all(
+      errors.map(async (error) => {
+        let userName: string | undefined;
+        let userLocation: string | undefined;
+        if (error.userId) {
+          const user = await ctx.db.get(error.userId);
+          userName = user?.name;
+          userLocation = user?.locationId || error.locationId;
+        }
+        // Parse details JSON to extract truck info
+        let truckNumber: string | undefined;
+        let rawBarcode: string | undefined;
+        let trackingNumber: string | undefined;
+        if (error.details) {
+          try {
+            const parsed = JSON.parse(error.details);
+            truckNumber = parsed.truckNumber;
+            rawBarcode = parsed.rawBarcode;
+            trackingNumber = parsed.trackingNumber;
+          } catch {}
+        }
+        return {
+          ...error,
+          userName,
+          userLocation: userLocation || error.locationId,
+          truckNumber,
+          rawBarcode,
+          trackingNumber,
+        };
+      })
+    );
+    return enriched;
   },
 });
 
