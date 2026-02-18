@@ -20,6 +20,7 @@ const VENDOR_ACCOUNTS = [
   { account: "7655055", vendor: "WTD" },
   { account: "9598934", vendor: "Turn 5" },
   { account: "XH0456", vendor: "Amazon" },
+  { account: "0J469X", vendor: "WTD" },
 ];
 
 export const openTruck = mutation({
@@ -139,6 +140,25 @@ export const addScan = mutation({
     let vendorAccount = "";
     const raw = args.rawBarcode || "";
 
+    // Server-side UPS tracking correction: old clients send routing codes (96...)
+    // as tracking numbers. Re-extract the 1Z from the raw barcode for uniqueness.
+    let correctedTracking = args.trackingNumber;
+    if (/upsn/i.test(raw)) {
+      const match1Z = raw.match(/(?<!\d)1Z([A-Z0-9]+)/i);
+      if (match1Z) {
+        let raw1Z = match1Z[1].toUpperCase();
+        const markerIdx = raw1Z.indexOf("UPSN");
+        if (markerIdx > 0) raw1Z = raw1Z.substring(0, markerIdx);
+        if (raw1Z.length >= 16) {
+          // Full 1Z tracking
+          correctedTracking = "1Z" + raw1Z.substring(0, 16);
+        } else {
+          // Truncated 1Z — use as-is (still unique per shipper)
+          correctedTracking = "1Z" + raw1Z;
+        }
+      }
+    }
+
     for (const va of VENDOR_ACCOUNTS) {
       if (raw.includes(va.account)) {
         vendor = va.vendor;
@@ -211,7 +231,7 @@ export const addScan = mutation({
 
     const scanId = await ctx.db.insert("scans", {
       truckId: args.truckId,
-      trackingNumber: args.trackingNumber,
+      trackingNumber: correctedTracking,
       carrier: scanCarrier,
       destination: args.destination,
       recipientName: args.recipientName,

@@ -792,15 +792,14 @@ export const getMatchedScanStats = query({
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Only get non-archived trucks to reduce data volume
-    // Use take() with a reasonable limit to avoid byte limits
+    // Scope "overall" to last 30 days — older scans predate vendor matching
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const recentTrucks = await ctx.db.query("trucks").order("desc").take(500);
-    const trucks = recentTrucks.filter(t => !t.archived);
+    const trucks = recentTrucks.filter(t => !t.archived && t.openedAt >= thirtyDaysAgo);
 
     const overallTotal = trucks.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
 
     // Estimate matched based on trucks with vendors
-    // Note: This is approximate - for exact counts, use a dedicated aggregation
     const trucksWithVendors = trucks.filter(t => t.vendors && t.vendors.length > 0 && !t.vendors.includes("Unknown"));
     const estimatedMatched = trucksWithVendors.reduce((sum, t) => sum + (t.scanCount ?? 0), 0);
 
