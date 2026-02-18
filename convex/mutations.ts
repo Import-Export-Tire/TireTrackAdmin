@@ -18,6 +18,8 @@ const VENDOR_ACCOUNTS = [
   { account: "878898850", vendor: "WTD" },
   { account: "200729671", vendor: "WTD" },
   { account: "7655055", vendor: "WTD" },
+  { account: "9598934", vendor: "Turn 5" },
+  { account: "XH0456", vendor: "Amazon" },
 ];
 
 export const openTruck = mutation({
@@ -379,7 +381,8 @@ export const backfillVendors = mutation({
     detectMiscans: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const scans = await ctx.db.query("scans").collect();
+    // Only query scans with Unknown vendor to avoid hitting byte limits
+    const scans = await ctx.db.query("scans").withIndex("by_vendor", (q) => q.eq("vendor", "Unknown")).collect();
     let updated = 0;
     let miscansDetected = 0;
     for (const scan of scans) {
