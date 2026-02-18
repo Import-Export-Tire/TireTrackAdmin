@@ -183,17 +183,28 @@ export const addScan = mutation({
     // Get the truck for carrier fallback and mismatch detection
     const truck = await ctx.db.get(args.truckId);
 
+    // Server-side carrier correction: FedEx 2D barcodes contain FDEG/FDEX markers.
+    // Older clients may misparse these as UPS due to field codes like 31Z containing "1Z".
+    let correctedCarrier = args.carrier;
+    if (raw.includes("FDEG") || raw.includes("FDEX")) {
+      correctedCarrier = "FedEx";
+    } else if (/upsn/i.test(raw)) {
+      correctedCarrier = "UPS";
+    }
+
     // Fall back to the truck's carrier if the barcode parser returned Unknown/empty
-    const scanCarrier = (!args.carrier || args.carrier === "Unknown")
+    const scanCarrier = (!correctedCarrier || correctedCarrier === "Unknown" || correctedCarrier === "Unrecognized")
       ? truck?.carrier
-      : args.carrier;
+      : correctedCarrier;
 
     // Detect carrier mismatch: package carrier differs from truck carrier
     const carrierMismatch = !!(
-      args.carrier &&
-      args.carrier !== "Unknown" &&
+      correctedCarrier &&
+      correctedCarrier !== "Unknown" &&
+      correctedCarrier !== "Unrecognized" &&
       truck?.carrier &&
-      args.carrier.toLowerCase() !== truck.carrier.toLowerCase()
+      !correctedCarrier.toLowerCase().includes(truck.carrier.toLowerCase()) &&
+      !truck.carrier.toLowerCase().includes(correctedCarrier.toLowerCase())
     );
 
     const scanId = await ctx.db.insert("scans", {
