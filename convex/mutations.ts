@@ -31,9 +31,11 @@ export const openTruck = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Auto-detect carrier from truck number
+    const carrier = /ups/i.test(args.truckNumber) ? "UPS" : args.carrier;
     const truckId = await ctx.db.insert("trucks", {
       truckNumber: args.truckNumber,
-      carrier: args.carrier,
+      carrier,
       status: "open",
       locationId: args.locationId,
       openedBy: args.userId,

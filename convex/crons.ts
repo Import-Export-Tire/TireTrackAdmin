@@ -18,6 +18,13 @@ crons.cron(
   internal.actions.sendManifestEmail.sendDailyManifestEmail
 );
 
+// Clear error logs nightly at midnight EST (5:00 AM UTC)
+crons.cron(
+  "clear error logs nightly",
+  "0 5 * * *",
+  internal.scheduled.clearErrorLogsNightly
+);
+
 // Health check: look for unresolved errors every 15 minutes and email alert
 crons.cron(
   "health check and error alerts",

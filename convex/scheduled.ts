@@ -67,6 +67,24 @@ export const detectFedExMiscans = mutation({
   },
 });
 
+// Clear all error logs nightly (resolve everything)
+export const clearErrorLogsNightly = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const unresolved = await ctx.db
+      .query("errorLogs")
+      .withIndex("by_resolved", (q) => q.eq("resolved", false))
+      .collect();
+
+    for (const error of unresolved) {
+      await ctx.db.patch(error._id, { resolved: true });
+    }
+
+    console.log(`[Nightly Cleanup] Resolved ${unresolved.length} error logs at ${new Date().toISOString()}`);
+    return { resolved: unresolved.length };
+  },
+});
+
 // Health check: count unresolved errors from last 15 minutes, send alert if any
 export const checkHealthAndAlert = internalMutation({
   args: {},
