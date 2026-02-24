@@ -438,10 +438,24 @@ export const getAllReturnBatches = query({
       batches.map(async (batch) => {
         const opener = await ctx.db.get(batch.openedBy);
         const closer = batch.closedBy ? await ctx.db.get(batch.closedBy) : null;
+        // Resolve location name
+        let locationName = "Unknown";
+        if (batch.locationId) {
+          try {
+            const location = await ctx.db.get(batch.locationId as any);
+            if (location && (location as any).name) {
+              locationName = (location as any).name;
+            }
+          } catch {
+            // locationId might not be a valid doc ID (could be a string name)
+            locationName = batch.locationId;
+          }
+        }
         return {
           ...batch,
           openedByName: opener?.name || "Unknown",
           closedByName: closer?.name || undefined,
+          locationName,
         };
       })
     );

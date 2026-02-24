@@ -409,6 +409,8 @@ function ReturnsDashboard() {
                             <span>{batch.itemCount} items</span>
                             <span className="text-slate-500">•</span>
                             <span className="text-slate-400">{batch.openedByName}</span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-cyan-400">{batch.locationName}</span>
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
                             {formatDate(batch.openedAt)}
