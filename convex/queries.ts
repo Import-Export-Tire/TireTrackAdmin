@@ -524,8 +524,8 @@ export const getReturnStats = query({
 export const getAllScans = query({
   args: {},
   handler: async (ctx) => {
-    // Limit to 5000 most recent scans to avoid memory issues
-    return await ctx.db.query("scans").order("desc").take(5000);
+    // Limit to 2000 most recent scans to stay under 16MB byte limit
+    return await ctx.db.query("scans").order("desc").take(2000);
   },
 });
 
@@ -1105,11 +1105,11 @@ export const getNoVendorKnownCount = query({
 export const getUserAccuracyStats = query({
   args: {},
   handler: async (ctx) => {
-    // Limit scans to last 90 days for performance
-    const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    // Limit scans to last 30 days for performance (raw barcodes are large)
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
     const scans = await ctx.db
       .query("scans")
-      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", ninetyDaysAgo))
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
       .collect();
     const users = await ctx.db.query("users").take(500);
 
@@ -1312,11 +1312,11 @@ export const analyzeUnknownCarrierPatterns = query({
 export const getDuplicateScansReport = query({
   args: {},
   handler: async (ctx) => {
-    // Limit to last 90 days for performance
-    const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    // Limit to last 30 days for performance (raw barcodes are large)
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
     const scans = await ctx.db
       .query("scans")
-      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", ninetyDaysAgo))
+      .withIndex("by_scannedAt", (q) => q.gte("scannedAt", thirtyDaysAgo))
       .collect();
     const users = await ctx.db.query("users").take(500);
     const trucks = await ctx.db.query("trucks").order("desc").take(500);
