@@ -26,10 +26,10 @@ function detectColumnMapping(headers: string[]): { upc: number; brand: number; m
 
   // Look for Amazon UPC format with named columns
   const upcIdx = normalized.findIndex(h => h === "upc");
-  const lineIdx = normalized.findIndex(h => h === "line"); // "Line" = model in Amazon format
+  const lineIdx = normalized.findIndex(h => h === "line" || h === "model"); // "Line" or "Model"
   const brandIdx = normalized.findIndex(h => h === "brand" || h === "manufacturer");
   const sizeIdx = normalized.findIndex(h => h === "size" || h === "tiresize");
-  const invIdx = normalized.findIndex(h => h === "inventorynumber" || h === "inventory" || h === "sku");
+  const invIdx = normalized.findIndex(h => h === "inventorynumber" || h === "inventory" || h === "sku" || h === "inventory #");
 
   if (upcIdx >= 0) {
     return {

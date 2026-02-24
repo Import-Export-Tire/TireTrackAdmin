@@ -389,12 +389,12 @@ export const searchUPCs = query({
     const limit = args.limit || 50;
 
     if (!args.search || args.search.length < 2) {
-      return await ctx.db.query("tireUPCs").take(limit);
+      return await ctx.db.query("tireUPCs").order("desc").take(limit);
     }
 
     const search = args.search.toLowerCase();
-    // Limit to 10000 UPCs max to avoid memory issues
-    const all = await ctx.db.query("tireUPCs").take(10000);
+    // UPC records are small (~200 bytes each), safe to load all
+    const all = await ctx.db.query("tireUPCs").take(50000);
 
     return all
       .filter((t) =>
