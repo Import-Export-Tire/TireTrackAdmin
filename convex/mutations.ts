@@ -331,19 +331,39 @@ export const addReturnItem = mutation({
     if (!batch) {
       return { success: false, error: "Batch not found" };
     }
+
+    // Auto-fill tire info from UPC lookup if UPC provided and tire info missing
+    let tireBrand = args.tireBrand;
+    let tireModel = args.tireModel;
+    let tireSize = args.tireSize;
+    let tirePartNumber = args.partNumber;
+    if (args.upcCode && (!tireBrand || !tireModel || !tireSize)) {
+      const upcMatch = await ctx.db
+        .query("tireUPCs")
+        .withIndex("by_upc", (q) => q.eq("upc", args.upcCode!))
+        .first();
+      if (upcMatch) {
+        tireBrand = tireBrand || upcMatch.brand;
+        tireModel = tireModel || upcMatch.model;
+        tireSize = tireSize || upcMatch.size;
+        tirePartNumber = tirePartNumber || upcMatch.inventoryNumber;
+      }
+    }
+
     const itemId = await ctx.db.insert("returnItems", {
       returnBatchId: args.batchId,
       poNumber: args.poNumber,
       invNumber: args.invNumber,
-      partNumber: args.partNumber,
+      partNumber: tirePartNumber,
+      tirePartNumber: tirePartNumber,
       fromAddress: args.fromAddress,
       imageUrl: args.imageUrl,
       rawText: args.rawText,
       aiConfidence: args.aiConfidence,
       upcCode: args.upcCode,
-      tireBrand: args.tireBrand,
-      tireModel: args.tireModel,
-      tireSize: args.tireSize,
+      tireBrand,
+      tireModel,
+      tireSize,
       quantity: args.quantity || 1,
       scannedBy: args.userId,
       scannedAt: Date.now(),
