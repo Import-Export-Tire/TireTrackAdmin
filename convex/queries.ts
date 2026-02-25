@@ -438,19 +438,13 @@ export const getAllReturnBatches = query({
       batches.map(async (batch) => {
         const opener = await ctx.db.get(batch.openedBy);
         const closer = batch.closedBy ? await ctx.db.get(batch.closedBy) : null;
-        // Resolve location name
-        let locationName = "Unknown";
-        if (batch.locationId) {
-          try {
-            const location = await ctx.db.get(batch.locationId as any);
-            if (location && (location as any).name) {
-              locationName = (location as any).name;
-            }
-          } catch {
-            // locationId might not be a valid doc ID (could be a string name)
-            locationName = batch.locationId;
-          }
-        }
+        // Resolve location name from known locations
+        const KNOWN_LOCATIONS: Record<string, string> = {
+          "kj7q0v1qxbf6z1b1h2cjhf4m8h74vjbe": "Latrobe",
+          "kj74zfr66q23wgv5xc3qdc0a6s74vvtr": "Everson",
+          "kj70r8fvdeg83dhapvp91kqs2574vqng": "Chestnut",
+        };
+        const locationName = KNOWN_LOCATIONS[batch.locationId] || batch.locationId || "Unknown";
         return {
           ...batch,
           openedByName: opener?.name || "Unknown",
