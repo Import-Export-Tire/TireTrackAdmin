@@ -338,10 +338,22 @@ export const addReturnItem = mutation({
     let tireSize = args.tireSize;
     let tirePartNumber = args.partNumber;
     if (args.upcCode && (!tireBrand || !tireModel || !tireSize)) {
-      const upcMatch = await ctx.db
+      // Try direct UPC match first
+      let upcMatch = await ctx.db
         .query("tireUPCs")
         .withIndex("by_upc", (q) => q.eq("upc", args.upcCode!))
         .first();
+
+      // If no UPC match, try inventory number (scanned barcode may be
+      // an inventory# with a check digit appended — strip last digit)
+      if (!upcMatch && args.upcCode!.length >= 5 && args.upcCode!.length <= 8) {
+        const possibleInv = args.upcCode!.slice(0, -1);
+        upcMatch = await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_inventoryNumber", (q) => q.eq("inventoryNumber", possibleInv))
+          .first();
+      }
+
       if (upcMatch) {
         tireBrand = tireBrand || upcMatch.brand;
         tireModel = tireModel || upcMatch.model;
@@ -1040,11 +1052,20 @@ export const backfillReturnItemsTireData = mutation({
         continue;
       }
 
-      // Look up the tire in tireUPCs
-      const tire = await ctx.db
+      // Look up the tire in tireUPCs by UPC first, then by inventory number
+      let tire = await ctx.db
         .query("tireUPCs")
         .withIndex("by_upc", (q) => q.eq("upc", item.upcCode!))
         .first();
+
+      // If no UPC match, try inventory number (strip check digit)
+      if (!tire && item.upcCode!.length >= 5 && item.upcCode!.length <= 8) {
+        const possibleInv = item.upcCode!.slice(0, -1);
+        tire = await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_inventoryNumber", (q) => q.eq("inventoryNumber", possibleInv))
+          .first();
+      }
 
       if (tire) {
         // Update with correct data from tireUPCs

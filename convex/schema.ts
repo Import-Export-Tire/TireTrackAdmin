@@ -139,7 +139,8 @@ export default defineSchema({
     size: v.string(),
     inventoryNumber: v.optional(v.string()),
     auctionTitle: v.optional(v.string()),
-  }).index("by_upc", ["upc"]),
+  }).index("by_upc", ["upc"])
+    .index("by_inventoryNumber", ["inventoryNumber"]),
 
   // Error logs for debugging issues
   errorLogs: defineTable({
