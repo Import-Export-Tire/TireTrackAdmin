@@ -1207,3 +1207,93 @@ export const archiveOldRecords = mutation({
     };
   },
 });
+
+// ==================== BONUS TRACKER ====================
+
+export const updateTruckBonusInfo = mutation({
+  args: {
+    truckId: v.id("trucks"),
+    truckLength: v.optional(v.string()),
+    helpers: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const updates: Record<string, any> = {};
+    if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
+    if (args.helpers !== undefined) updates.helpers = args.helpers;
+    await ctx.db.patch(args.truckId, updates);
+    return { success: true };
+  },
+});
+
+export const openReceivingTruck = mutation({
+  args: {
+    truckNumber: v.string(),
+    helpers: v.array(v.string()),
+    locationId: v.string(),
+    userId: v.id("users"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const id = await ctx.db.insert("receivingTrucks", {
+      truckNumber: args.truckNumber,
+      helpers: args.helpers,
+      status: "open",
+      locationId: args.locationId,
+      openedBy: args.userId,
+      openedAt: Date.now(),
+      notes: args.notes,
+    });
+    return { success: true, receivingTruckId: id };
+  },
+});
+
+export const closeReceivingTruck = mutation({
+  args: {
+    receivingTruckId: v.id("receivingTrucks"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const truck = await ctx.db.get(args.receivingTruckId);
+    if (!truck) return { success: false, error: "Not found" };
+
+    const now = Date.now();
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
+
+    await ctx.db.patch(args.receivingTruckId, {
+      status: "closed",
+      closedAt: now,
+      closedBy: args.userId,
+      bonusEarned,
+    });
+    return { success: true, bonusEarned };
+  },
+});
+
+export const updateReceivingTruck = mutation({
+  args: {
+    receivingTruckId: v.id("receivingTrucks"),
+    helpers: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const updates: Record<string, any> = {};
+    if (args.helpers !== undefined) updates.helpers = args.helpers;
+    if (args.notes !== undefined) updates.notes = args.notes;
+    await ctx.db.patch(args.receivingTruckId, updates);
+    return { success: true };
+  },
+});
+
+export const overrideReceivingBonus = mutation({
+  args: {
+    receivingTruckId: v.id("receivingTrucks"),
+    bonusEarned: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.receivingTruckId, {
+      bonusEarned: args.bonusEarned,
+    });
+    return { success: true };
+  },
+});

@@ -52,6 +52,9 @@ export default defineSchema({
     archived: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
     vendors: v.optional(v.array(v.string())),
+    // Bonus tracking fields (set by supervisors)
+    truckLength: v.optional(v.string()), // "28ft" | "40ft" | "48ft" | "53ft"
+    helpers: v.optional(v.array(v.string())), // Freeform helper names
   }).index("by_location_status", ["locationId", "status"])
     .index("by_base44Id", ["base44Id"])
     .index("by_archived", ["archived"]),
@@ -87,6 +90,23 @@ export default defineSchema({
     .index("by_tracking", ["trackingNumber"])
     .index("by_scannedAt", ["scannedAt"])
     .index("by_noVendorKnown", ["noVendorKnown"]),
+
+  // Receiving trucks for bonus tracking (separate from shipping trucks)
+  receivingTrucks: defineTable({
+    truckNumber: v.string(),
+    helpers: v.array(v.string()),
+    status: v.string(), // "open" | "closed"
+    locationId: v.string(),
+    openedBy: v.id("users"),
+    openedAt: v.number(),
+    closedAt: v.optional(v.number()),
+    closedBy: v.optional(v.id("users")),
+    bonusEarned: v.optional(v.boolean()),
+    notes: v.optional(v.string()),
+    archived: v.optional(v.boolean()),
+    archivedAt: v.optional(v.number()),
+  }).index("by_location_status", ["locationId", "status"])
+    .index("by_openedAt", ["openedAt"]),
 
   vendorAccounts: defineTable({
     accountNumber: v.string(),

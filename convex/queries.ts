@@ -1539,3 +1539,143 @@ export const getSimpleTireUPSDuplicates = query({
     };
   },
 });
+
+// ==================== BONUS TRACKER ====================
+
+export const getRecentTrucksForBonus = query({
+  args: { locationId: v.string() },
+  handler: async (ctx, args) => {
+    const openTrucks = await ctx.db
+      .query("trucks")
+      .withIndex("by_location_status", (q) =>
+        q.eq("locationId", args.locationId).eq("status", "open")
+      )
+      .collect();
+
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const allTrucks = await ctx.db.query("trucks").order("desc").take(200);
+    const recentClosed = allTrucks.filter(
+      (t) =>
+        t.locationId === args.locationId &&
+        t.status === "closed" &&
+        t.closedAt &&
+        t.closedAt >= twentyFourHoursAgo
+    );
+
+    const combined = [...openTrucks, ...recentClosed];
+
+    const enriched = await Promise.all(
+      combined.map(async (truck) => {
+        const openedByUser = await ctx.db.get(truck.openedBy);
+        return {
+          ...truck,
+          openedByName: openedByUser?.name ?? "Unknown",
+        };
+      })
+    );
+
+    return enriched.sort((a, b) => b.openedAt - a.openedAt);
+  },
+});
+
+export const getReceivingTrucks = query({
+  args: { locationId: v.string() },
+  handler: async (ctx, args) => {
+    const openTrucks = await ctx.db
+      .query("receivingTrucks")
+      .withIndex("by_location_status", (q) =>
+        q.eq("locationId", args.locationId).eq("status", "open")
+      )
+      .collect();
+
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = await ctx.db
+      .query("receivingTrucks")
+      .withIndex("by_openedAt")
+      .order("desc")
+      .take(100);
+    const recentClosed = recent.filter(
+      (t) =>
+        t.locationId === args.locationId &&
+        t.status === "closed" &&
+        t.openedAt >= twentyFourHoursAgo
+    );
+
+    const enriched = await Promise.all(
+      [...openTrucks, ...recentClosed].map(async (truck) => {
+        const openedByUser = await ctx.db.get(truck.openedBy);
+        return {
+          ...truck,
+          openedByName: openedByUser?.name ?? "Unknown",
+        };
+      })
+    );
+
+    return enriched.sort((a, b) => b.openedAt - a.openedAt);
+  },
+});
+
+export const getBonusReport = query({
+  args: {
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const startDate = args.startDate ?? now - 30 * 24 * 60 * 60 * 1000;
+    const endDate = args.endDate ?? now;
+
+    // Shipping trucks with bonus data
+    const allTrucks = await ctx.db.query("trucks").order("desc").take(500);
+    const shippingTrucks = allTrucks
+      .filter(
+        (t) =>
+          t.openedAt >= startDate &&
+          t.openedAt <= endDate &&
+          !t.archived &&
+          (t.truckLength || (t.helpers && t.helpers.length > 0))
+      )
+      .map((t) => ({
+        _id: t._id,
+        type: "shipping" as const,
+        truckNumber: t.truckNumber,
+        carrier: t.carrier,
+        truckLength: t.truckLength ?? null,
+        helpers: t.helpers ?? [],
+        openedAt: t.openedAt,
+        closedAt: t.closedAt ?? null,
+        duration: t.closedAt ? t.closedAt - t.openedAt : null,
+        status: t.status,
+        locationId: t.locationId,
+        bonusEarned: null, // TBD — depends on truck length bonus amounts
+      }));
+
+    // Receiving trucks
+    const allReceiving = await ctx.db
+      .query("receivingTrucks")
+      .order("desc")
+      .take(500);
+    const receivingTrucks = allReceiving
+      .filter(
+        (t) => t.openedAt >= startDate && t.openedAt <= endDate && !t.archived
+      )
+      .map((t) => ({
+        _id: t._id,
+        type: "receiving" as const,
+        truckNumber: t.truckNumber,
+        carrier: null,
+        truckLength: null,
+        helpers: t.helpers,
+        openedAt: t.openedAt,
+        closedAt: t.closedAt ?? null,
+        duration: t.closedAt ? t.closedAt - t.openedAt : null,
+        status: t.status,
+        locationId: t.locationId,
+        bonusEarned: t.bonusEarned ?? null,
+      }));
+
+    return [...shippingTrucks, ...receivingTrucks].sort(
+      (a, b) => b.openedAt - a.openedAt
+    );
+  },
+});
