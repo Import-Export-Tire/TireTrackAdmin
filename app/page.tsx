@@ -406,10 +406,10 @@ function Dashboard() {
           {/* Navigation and controls */}
           <div className="flex flex-col gap-3">
             {/* Navigation tabs */}
-            <div className="flex flex-wrap gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1">
+            <div className="flex flex-wrap gap-1.5 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1.5">
               <button
                 onClick={() => { setShowUsers(false); setShowAdmins(false); setShowErrorLogs(false); }}
-                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                   !showUsers && !showAdmins && !showErrorLogs
                     ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
@@ -419,37 +419,37 @@ function Dashboard() {
               </button>
               <Link
                 href="/returns"
-                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 Returns
               </Link>
               <Link
                 href="/upcs"
-                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 UPCs
               </Link>
               <Link
                 href="/reports"
-                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 Reports
               </Link>
               <Link
                 href="/bonuses"
-                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 Bonuses
               </Link>
               <Link
                 href="/app-download"
-                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
                 App
               </Link>
               <button
                 onClick={() => { setShowUsers(true); setShowAdmins(false); setShowErrorLogs(false); }}
-                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                   showUsers && !showAdmins && !showErrorLogs
                     ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
@@ -460,7 +460,7 @@ function Dashboard() {
               {canManageAdmins && (
                 <button
                   onClick={() => { setShowAdmins(true); setShowUsers(false); setShowErrorLogs(false); }}
-                  className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                     showAdmins
                       ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                       : "text-slate-400 hover:text-white hover:bg-slate-700/50"
@@ -471,7 +471,7 @@ function Dashboard() {
               )}
               <button
                 onClick={() => { setShowErrorLogs(true); setShowUsers(false); setShowAdmins(false); }}
-                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
                   showErrorLogs
                     ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
