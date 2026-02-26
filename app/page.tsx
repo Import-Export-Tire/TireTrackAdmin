@@ -406,105 +406,78 @@ function Dashboard() {
           {/* Navigation and controls */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Navigation tabs */}
-            <div className="flex gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1 overflow-x-auto">
+            <div className="flex flex-wrap gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1">
               <button
                 onClick={() => { setShowUsers(false); setShowAdmins(false); setShowErrorLogs(false); }}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                   !showUsers && !showAdmins && !showErrorLogs
                     ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <span className="hidden sm:inline">Manifests</span>
+                Manifests
               </button>
               <Link
                 href="/returns"
-                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap flex items-center gap-1.5"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span className="hidden sm:inline">Returns</span>
+                Returns
               </Link>
               <Link
                 href="/upcs"
-                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap flex items-center gap-1.5"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                <span className="hidden sm:inline">UPCs</span>
+                UPCs
               </Link>
               <Link
                 href="/reports"
-                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap flex items-center gap-1.5"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span className="hidden sm:inline">Reports</span>
+                Reports
               </Link>
               <Link
                 href="/bonuses"
-                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap flex items-center gap-1.5"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="hidden sm:inline">Bonuses</span>
+                Bonuses
               </Link>
               <Link
                 href="/app-download"
-                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap flex items-center gap-1.5"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <span className="hidden sm:inline">App</span>
+                App
               </Link>
               <button
                 onClick={() => { setShowUsers(true); setShowAdmins(false); setShowErrorLogs(false); }}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                   showUsers && !showAdmins && !showErrorLogs
                     ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span className="hidden sm:inline">Users</span>
+                Users
               </button>
               {canManageAdmins && (
                 <button
                   onClick={() => { setShowAdmins(true); setShowUsers(false); setShowErrorLogs(false); }}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                     showAdmins
                       ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
                       : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span className="hidden sm:inline">Admins</span>
+                  Admins
                 </button>
               )}
               <button
                 onClick={() => { setShowErrorLogs(true); setShowUsers(false); setShowAdmins(false); }}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
                   showErrorLogs
                     ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/25"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <span className="hidden sm:inline">Errors</span>
+                Errors
                 {(unresolvedErrorCount ?? 0) > 0 && (
                   <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {unresolvedErrorCount! > 99 ? "99+" : unresolvedErrorCount}
@@ -912,7 +885,12 @@ function Dashboard() {
                       const accuracyColor = accuracy >= 99 ? "text-emerald-400" : accuracy >= 98 ? "text-yellow-400" : "text-red-400";
                       return (
                       <tr key={user._id} className="hover:bg-slate-800/50 transition-colors">
-                        <td className="px-5 py-4 font-medium text-white">{user.name}</td>
+                        <td className="px-5 py-4 font-medium text-white">
+                          {user.name}
+                          {user.role === "supervisor" && (
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-500/20 text-teal-400 border border-teal-500/20">SUP</span>
+                          )}
+                        </td>
                         <td className="px-5 py-4 text-slate-400 font-mono text-sm hidden sm:table-cell">{user.empId}</td>
                         <td className="px-5 py-4 text-slate-300">{user.locationName || "-"}</td>
                         <td className="px-5 py-4 text-right hidden md:table-cell">
@@ -1364,8 +1342,9 @@ function Dashboard() {
                 </svg>
               </button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={async (e) => { e.preventDefault(); const form = e.target as HTMLFormElement; const formData = new FormData(form); const updates: any = {}; const name = formData.get("name") as string; const pin = formData.get("pin") as string; const locationId = formData.get("locationId") as string; if (name && name.trim()) updates.name = name.trim(); if (pin && pin.length === 4 && /^\d{4}$/.test(pin)) updates.pin = pin; if (locationId && locationId !== editingUser.locationId) { updates.locationId = locationId; const loc = LOCATION_OPTIONS.find(l => l.id === locationId); if (loc) updates.locationName = loc.name; } if (Object.keys(updates).length > 0) { await handleUpdateUser(editingUser._id, updates); } else { setEditingUser(null); } }}>
+            <form className="p-6 space-y-4" onSubmit={async (e) => { e.preventDefault(); const form = e.target as HTMLFormElement; const formData = new FormData(form); const updates: any = {}; const name = formData.get("name") as string; const pin = formData.get("pin") as string; const locationId = formData.get("locationId") as string; const role = formData.get("role") as string; if (name && name.trim()) updates.name = name.trim(); if (pin && pin.length === 4 && /^\d{4}$/.test(pin)) updates.pin = pin; if (locationId && locationId !== editingUser.locationId) { updates.locationId = locationId; const loc = LOCATION_OPTIONS.find(l => l.id === locationId); if (loc) updates.locationName = loc.name; } if (role !== (editingUser.role || "")) updates.role = role || undefined; if (Object.keys(updates).length > 0) { await handleUpdateUser(editingUser._id, updates); } else { setEditingUser(null); } }}>
               <div><label className="block text-slate-400 text-sm mb-2">Name</label><input type="text" name="name" defaultValue={editingUser.name} required className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all" /></div>
+              <div><label className="block text-slate-400 text-sm mb-2">Role</label><select name="role" defaultValue={editingUser.role || ""} className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"><option value="">Standard</option><option value="supervisor">Supervisor</option></select><p className="text-xs text-slate-500 mt-1">Supervisors can access the Bonus Tracker</p></div>
               <div><label className="block text-slate-400 text-sm mb-2">Location</label><select name="locationId" defaultValue={editingUser.locationId} className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">{LOCATION_OPTIONS.map(loc => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}</select></div>
               <div><label className="block text-slate-400 text-sm mb-2">New PIN (4 digits)</label><input type="text" name="pin" placeholder="Leave blank to keep current" maxLength={4} pattern="\d{4}" className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono" /><p className="text-xs text-slate-500 mt-1">Enter 4 digits to change PIN</p></div>
               <div className="flex gap-3 pt-2"><button type="button" onClick={() => setEditingUser(null)} className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition-colors">Cancel</button><button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl font-medium shadow-lg shadow-cyan-500/20 transition-all">Save</button></div>
