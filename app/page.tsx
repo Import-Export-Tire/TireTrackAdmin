@@ -404,7 +404,7 @@ function Dashboard() {
           </div>
 
           {/* Navigation and controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col gap-3">
             {/* Navigation tabs */}
             <div className="flex flex-wrap gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1">
               <button
