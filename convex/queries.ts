@@ -1579,8 +1579,12 @@ export const getRecentTrucksForBonus = query({
 });
 
 export const getReceivingTrucks = query({
-  args: { locationId: v.string() },
+  args: {
+    locationId: v.string(),
+    type: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    const filterType = args.type ?? "receiving";
     const openTrucks = await ctx.db
       .query("receivingTrucks")
       .withIndex("by_location_status", (q) =>
@@ -1601,8 +1605,13 @@ export const getReceivingTrucks = query({
         t.openedAt >= twentyFourHoursAgo
     );
 
+    // Filter by type (undefined/null treated as "receiving" for backward compat)
+    const typeFiltered = [...openTrucks, ...recentClosed].filter(
+      (t) => (t.type ?? "receiving") === filterType
+    );
+
     const enriched = await Promise.all(
-      [...openTrucks, ...recentClosed].map(async (truck) => {
+      typeFiltered.map(async (truck) => {
         const openedByUser = await ctx.db.get(truck.openedBy);
         return {
           ...truck,
@@ -1619,6 +1628,7 @@ export const getBonusReport = query({
   args: {
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
+    helperName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -1635,22 +1645,32 @@ export const getBonusReport = query({
           !t.archived &&
           (t.status === "open" || t.truckLength || (t.helpers && t.helpers.length > 0))
       )
-      .map((t) => ({
-        _id: t._id,
-        type: "shipping" as const,
-        truckNumber: t.truckNumber,
-        carrier: t.carrier,
-        truckLength: t.truckLength ?? null,
-        helpers: t.helpers ?? [],
-        openedAt: t.openedAt,
-        closedAt: t.closedAt ?? null,
-        duration: t.closedAt ? t.closedAt - t.openedAt : null,
-        status: t.status,
-        locationId: t.locationId,
-        bonusEarned: null, // TBD — depends on truck length bonus amounts
-      }));
+      .map((t) => {
+        // Shipping bonus: $10/person (max 3), all sizes, closed with security tag
+        const helpers = t.helpers ?? [];
+        const isBonusEligible =
+          t.status === "closed" &&
+          !!t.securityTag &&
+          helpers.length > 0;
+        const bonusAmount = isBonusEligible ? 10 * Math.min(helpers.length, 3) : 0;
+        return {
+          _id: t._id,
+          type: "shipping" as const,
+          truckNumber: t.truckNumber,
+          carrier: t.carrier,
+          truckLength: t.truckLength ?? null,
+          helpers,
+          openedAt: t.openedAt,
+          closedAt: t.closedAt ?? null,
+          duration: t.closedAt ? t.closedAt - t.openedAt : null,
+          status: t.status,
+          locationId: t.locationId,
+          bonusEarned: isBonusEligible ? true : null,
+          bonusAmount,
+        };
+      });
 
-    // Receiving trucks
+    // Receiving + Outbound trucks
     const allReceiving = await ctx.db
       .query("receivingTrucks")
       .order("desc")
@@ -1661,10 +1681,10 @@ export const getBonusReport = query({
       )
       .map((t) => ({
         _id: t._id,
-        type: "receiving" as const,
+        type: (t.type ?? "receiving") as "receiving" | "outbound",
         truckNumber: t.truckNumber,
         carrier: null,
-        truckLength: null,
+        truckLength: t.truckLength ?? null,
         helpers: t.helpers,
         openedAt: t.openedAt,
         closedAt: t.closedAt ?? null,
@@ -1672,10 +1692,146 @@ export const getBonusReport = query({
         status: t.status,
         locationId: t.locationId,
         bonusEarned: t.bonusEarned ?? null,
+        bonusAmount: t.bonusAmount ?? 0,
       }));
 
-    return [...shippingTrucks, ...receivingTrucks].sort(
+    let combined = [...shippingTrucks, ...receivingTrucks].sort(
       (a, b) => b.openedAt - a.openedAt
     );
+
+    // Filter by helper name if provided
+    if (args.helperName) {
+      const filterName = args.helperName.toLowerCase();
+      combined = combined.filter((t) =>
+        t.helpers.some((h) => h.toLowerCase() === filterName)
+      );
+    }
+
+    return combined;
+  },
+});
+
+export const getKnownHelpers = query({
+  args: { locationId: v.string() },
+  handler: async (ctx, args) => {
+    const helpers = await ctx.db
+      .query("knownHelpers")
+      .withIndex("by_location", (q) => q.eq("locationId", args.locationId))
+      .collect();
+    return helpers
+      .filter((h) => h.isActive)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
+export const getPayPeriodBonusSummary = query({
+  args: { locationId: v.string() },
+  handler: async (ctx, args) => {
+    // Bi-weekly pay period anchored at Feb 23, 2025
+    const ANCHOR = new Date("2025-02-23T00:00:00").getTime();
+    const PERIOD_MS = 14 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    // Find current pay period
+    const elapsed = now - ANCHOR;
+    const periodIndex = Math.floor(elapsed / PERIOD_MS);
+    const periodStart = ANCHOR + periodIndex * PERIOD_MS;
+    const periodEnd = periodStart + PERIOD_MS;
+
+    // Get shipping trucks in this period
+    const allTrucks = await ctx.db.query("trucks").order("desc").take(500);
+    const shippingTrucks = allTrucks.filter(
+      (t) =>
+        t.openedAt >= periodStart &&
+        t.openedAt < periodEnd &&
+        t.locationId === args.locationId &&
+        !t.archived &&
+        t.helpers &&
+        t.helpers.length > 0
+    );
+
+    // Get receiving + outbound trucks in this period
+    const allReceiving = await ctx.db
+      .query("receivingTrucks")
+      .withIndex("by_openedAt")
+      .order("desc")
+      .take(500);
+    const recvTrucks = allReceiving.filter(
+      (t) =>
+        t.openedAt >= periodStart &&
+        t.openedAt < periodEnd &&
+        t.locationId === args.locationId &&
+        !t.archived
+    );
+
+    // Build per-helper summary
+    const helperMap: Record<
+      string,
+      {
+        name: string;
+        shippingCount: number;
+        outboundCount: number;
+        receivingCount: number;
+        totalAmount: number;
+      }
+    > = {};
+
+    const getOrCreate = (name: string) => {
+      const key = name.toLowerCase();
+      if (!helperMap[key]) {
+        helperMap[key] = {
+          name,
+          shippingCount: 0,
+          outboundCount: 0,
+          receivingCount: 0,
+          totalAmount: 0,
+        };
+      }
+      return helperMap[key];
+    };
+
+    // Process shipping trucks — $10/person (max 3), all sizes
+    for (const t of shippingTrucks) {
+      const isBonusEligible =
+        t.status === "closed" && !!t.securityTag && t.helpers!.length > 0;
+      const eligibleCount = Math.min(t.helpers!.length, 3);
+      for (let i = 0; i < t.helpers!.length; i++) {
+        const h = t.helpers![i];
+        const entry = getOrCreate(h);
+        entry.shippingCount++;
+        // Only first 3 helpers get the $10 bonus
+        if (isBonusEligible && i < 3) {
+          entry.totalAmount += 10;
+        }
+      }
+    }
+
+    // Process receiving + outbound trucks
+    for (const t of recvTrucks) {
+      const truckType = t.type ?? "receiving";
+      const bonusEarned = t.bonusEarned === true;
+      for (const h of t.helpers) {
+        const entry = getOrCreate(h);
+        if (truckType === "outbound") {
+          entry.outboundCount++;
+        } else {
+          entry.receivingCount++;
+        }
+        if (bonusEarned && t.helpers.length > 0) {
+          const perPerson = (t.bonusAmount ?? 0) / t.helpers.length;
+          entry.totalAmount += perPerson;
+        }
+      }
+    }
+
+    const helpers = Object.values(helperMap).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
+    return {
+      periodStart,
+      periodEnd,
+      helpers,
+    };
   },
 });

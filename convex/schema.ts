@@ -106,8 +106,18 @@ export default defineSchema({
     notes: v.optional(v.string()),
     archived: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
+    type: v.optional(v.string()), // "receiving" | "outbound" (undefined = "receiving" for backward compat)
+    truckLength: v.optional(v.string()), // "40ft" | "53ft"
+    bonusAmount: v.optional(v.number()), // dollar amount locked in at close time
   }).index("by_location_status", ["locationId", "status"])
     .index("by_openedAt", ["openedAt"]),
+
+  // Known helper names for autocomplete and standardization
+  knownHelpers: defineTable({
+    name: v.string(), // Title Case normalized
+    locationId: v.string(),
+    isActive: v.boolean(),
+  }).index("by_location", ["locationId"]),
 
   vendorAccounts: defineTable({
     accountNumber: v.string(),

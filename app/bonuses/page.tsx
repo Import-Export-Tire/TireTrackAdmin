@@ -37,7 +37,7 @@ function printBonusReport(
   data: any[],
   dateRange: { start: string; end: string },
   locationLabel: string,
-  stats: { shipping: number; receiving: number; earned: number; missed: number }
+  stats: { shipping: number; outbound: number; receiving: number; earned: number; missed: number; totalBonus: number }
 ) {
   const fmtDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -49,40 +49,69 @@ function printBonusReport(
   const locName = (id: string) => LOCATION_OPTIONS.find((l) => l.id === id)?.name ?? id;
 
   const shipping = data.filter((t) => t.type === "shipping");
+  const outbound = data.filter((t) => t.type === "outbound");
   const receiving = data.filter((t) => t.type === "receiving");
-  const recEarned = receiving.filter((t) => t.bonusEarned === true).length;
-  const recMissed = receiving.filter((t) => t.bonusEarned === false).length;
+  const recEarned = [...receiving, ...outbound].filter((t) => t.bonusEarned === true).length;
+  const recMissed = [...receiving, ...outbound].filter((t) => t.bonusEarned === false).length;
 
   // Collect unique helper names across all entries for the helpers summary
-  const helperMap: Record<string, { shipping: number; receiving: number; receivingEarned: number }> = {};
+  const helperMap: Record<string, { shipping: number; outbound: number; receiving: number; earned: number; totalAmount: number }> = {};
   data.forEach((t) => {
     t.helpers.forEach((name: string) => {
-      if (!helperMap[name]) helperMap[name] = { shipping: 0, receiving: 0, receivingEarned: 0 };
-      if (t.type === "shipping") helperMap[name].shipping++;
-      else {
+      if (!helperMap[name]) helperMap[name] = { shipping: 0, outbound: 0, receiving: 0, earned: 0, totalAmount: 0 };
+      if (t.type === "shipping") {
+        helperMap[name].shipping++;
+        if (t.bonusEarned === true) {
+          helperMap[name].earned++;
+          helperMap[name].totalAmount += (t.bonusAmount ?? 0) / Math.max(1, t.helpers.length);
+        }
+      } else if (t.type === "outbound") {
+        helperMap[name].outbound++;
+        if (t.bonusEarned === true) {
+          helperMap[name].earned++;
+          helperMap[name].totalAmount += (t.bonusAmount ?? 0) / Math.max(1, t.helpers.length);
+        }
+      } else {
         helperMap[name].receiving++;
-        if (t.bonusEarned === true) helperMap[name].receivingEarned++;
+        if (t.bonusEarned === true) {
+          helperMap[name].earned++;
+          helperMap[name].totalAmount += (t.bonusAmount ?? 0) / Math.max(1, t.helpers.length);
+        }
       }
     });
   });
   const helperNames = Object.keys(helperMap).sort();
 
-  const shippingRows = shipping.map((t) => `<tr>
+  const shippingRows = shipping.map((t: any) => `<tr>
     <td>${fmtDate(t.openedAt)}</td>
     <td>${t.truckNumber}</td>
     <td>${t.truckLength ?? "-"}</td>
     <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
     <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
     <td>${locName(t.locationId)}</td>
+    <td style="text-align:right">$${t.bonusAmount ?? 0}</td>
   </tr>`).join("");
 
-  const receivingRows = receiving.map((t) => `<tr>
+  const outboundRows = outbound.map((t: any) => `<tr>
     <td>${fmtDate(t.openedAt)}</td>
     <td>${t.truckNumber}</td>
+    <td>${t.truckLength ?? "-"}</td>
     <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
     <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
     <td>${locName(t.locationId)}</td>
     <td style="text-align:center;font-weight:700;${t.bonusEarned === true ? "color:#16a34a" : t.bonusEarned === false ? "color:#dc2626" : ""}">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
+    <td style="text-align:right">$${t.bonusAmount ?? 0}</td>
+  </tr>`).join("");
+
+  const receivingRows = receiving.map((t: any) => `<tr>
+    <td>${fmtDate(t.openedAt)}</td>
+    <td>${t.truckNumber}</td>
+    <td>${t.truckLength ?? "-"}</td>
+    <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
+    <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
+    <td>${locName(t.locationId)}</td>
+    <td style="text-align:center;font-weight:700;${t.bonusEarned === true ? "color:#16a34a" : t.bonusEarned === false ? "color:#dc2626" : ""}">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
+    <td style="text-align:right">$${t.bonusAmount ?? 0}</td>
   </tr>`).join("");
 
   const helperRows = helperNames.map((name) => {
@@ -90,11 +119,14 @@ function printBonusReport(
     return `<tr>
       <td style="font-weight:600">${name}</td>
       <td style="text-align:center">${h.shipping}</td>
+      <td style="text-align:center">${h.outbound}</td>
       <td style="text-align:center">${h.receiving}</td>
-      <td style="text-align:center;font-weight:700;color:#16a34a">${h.receivingEarned}</td>
-      <td style="text-align:center">${h.shipping + h.receiving}</td>
+      <td style="text-align:center;font-weight:700;color:#16a34a">${h.earned}</td>
+      <td style="text-align:right;font-weight:700">$${Math.round(h.totalAmount)}</td>
     </tr>`;
   }).join("");
+
+  const grandTotal = data.reduce((sum: number, t: any) => sum + (t.bonusAmount ?? 0), 0);
 
   const html = `<!DOCTYPE html>
 <html><head><title>Bonus Report</title>
@@ -119,6 +151,7 @@ function printBonusReport(
   tr:nth-child(even) { background: #f9fafb; }
   .empty { text-align: center; padding: 20px; color: #999; font-style: italic; }
   .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 12px; }
+  .grand-total { text-align: right; font-size: 16px; font-weight: 700; margin-top: 16px; padding: 12px; border: 2px solid #111; border-radius: 4px; }
   @media print { body { padding: 20px; } .section { page-break-inside: avoid; } }
 </style></head><body>
 <div class="header">
@@ -127,27 +160,39 @@ function printBonusReport(
   <div class="meta">${dateRange.start} &mdash; ${dateRange.end} &nbsp;|&nbsp; Location: ${locationLabel}</div>
 </div>
 <div class="stats">
-  <div class="stat"><div class="label">Shipping Trucks</div><div class="value">${stats.shipping}</div></div>
-  <div class="stat"><div class="label">Receiving Trucks</div><div class="value">${stats.receiving}</div></div>
-  <div class="stat"><div class="label">Bonuses Earned</div><div class="value" style="color:#16a34a">${stats.earned}</div></div>
-  <div class="stat"><div class="label">Bonuses Missed</div><div class="value" style="color:#dc2626">${stats.missed}</div></div>
+  <div class="stat"><div class="label">Shipping</div><div class="value">${stats.shipping}</div></div>
+  <div class="stat"><div class="label">Outbound</div><div class="value">${stats.outbound}</div></div>
+  <div class="stat"><div class="label">Receiving</div><div class="value">${stats.receiving}</div></div>
+  <div class="stat"><div class="label">Earned</div><div class="value" style="color:#16a34a">${stats.earned}</div></div>
+  <div class="stat"><div class="label">Missed</div><div class="value" style="color:#dc2626">${stats.missed}</div></div>
+  <div class="stat"><div class="label">Total $</div><div class="value" style="color:#0d9488">$${stats.totalBonus}</div></div>
 </div>
 
 <div class="section">
   <div class="section-title">Shipping <span class="count">${shipping.length} truck${shipping.length !== 1 ? "s" : ""}</span></div>
   ${shipping.length > 0 ? `<table>
     <thead><tr>
-      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:right">Bonus $</th>
     </tr></thead>
     <tbody>${shippingRows}</tbody>
   </table>` : `<div class="empty">No shipping trucks in this period</div>`}
 </div>
 
 <div class="section">
+  <div class="section-title">Outbound <span class="count">${outbound.length} truck${outbound.length !== 1 ? "s" : ""}</span></div>
+  ${outbound.length > 0 ? `<table>
+    <thead><tr>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th><th style="text-align:right">Bonus $</th>
+    </tr></thead>
+    <tbody>${outboundRows}</tbody>
+  </table>` : `<div class="empty">No outbound trucks in this period</div>`}
+</div>
+
+<div class="section">
   <div class="section-title">Receiving <span class="count">${receiving.length} truck${receiving.length !== 1 ? "s" : ""} &nbsp;&bull;&nbsp; ${recEarned} earned &nbsp;&bull;&nbsp; ${recMissed} missed</span></div>
   ${receiving.length > 0 ? `<table>
     <thead><tr>
-      <th>Date</th><th>Truck #</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th><th style="text-align:right">Bonus $</th>
     </tr></thead>
     <tbody>${receivingRows}</tbody>
   </table>` : `<div class="empty">No receiving trucks in this period</div>`}
@@ -157,11 +202,13 @@ ${helperNames.length > 0 ? `<div class="section">
   <div class="section-title">Helper Summary <span class="count">${helperNames.length} helper${helperNames.length !== 1 ? "s" : ""}</span></div>
   <table>
     <thead><tr>
-      <th>Name</th><th style="text-align:center">Shipping</th><th style="text-align:center">Receiving</th><th style="text-align:center">Rec. Earned</th><th style="text-align:center">Total</th>
+      <th>Name</th><th style="text-align:center">Shipping</th><th style="text-align:center">Outbound</th><th style="text-align:center">Receiving</th><th style="text-align:center">Earned</th><th style="text-align:right">Total $</th>
     </tr></thead>
     <tbody>${helperRows}</tbody>
   </table>
 </div>` : ""}
+
+<div class="grand-total">Grand Total Bonus: $${grandTotal}</div>
 
 <div class="footer">Generated ${new Date().toLocaleString()} &nbsp;|&nbsp; TireTrack Admin</div>
 </body></html>`;
@@ -178,6 +225,7 @@ function BonusesDashboard() {
   const overrideBonus = useMutation(api.mutations.overrideReceivingBonus);
   const deleteBonusEntry = useMutation(api.mutations.deleteBonusEntry);
   const [locationFilter, setLocationFilter] = useState("all");
+  const [helperFilter, setHelperFilter] = useState("all");
   const [dateRange, setDateRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -194,6 +242,7 @@ function BonusesDashboard() {
   const bonusData = useQuery(api.queries.getBonusReport, {
     startDate: startTimestamp,
     endDate: endTimestamp,
+    helperName: helperFilter !== "all" ? helperFilter : undefined,
   });
 
   const filteredData = useMemo(() => {
@@ -204,13 +253,23 @@ function BonusesDashboard() {
     return bonusData.filter((t) => t.locationId === loc.id);
   }, [bonusData, locationFilter]);
 
+  // Collect unique helper names for the filter dropdown
+  const uniqueHelperNames = useMemo(() => {
+    if (!bonusData) return [];
+    const names = new Set<string>();
+    bonusData.forEach((t) => t.helpers.forEach((h: string) => names.add(h)));
+    return Array.from(names).sort();
+  }, [bonusData]);
+
   const stats = useMemo(() => {
-    if (!filteredData) return { shipping: 0, receiving: 0, earned: 0, missed: 0 };
+    if (!filteredData) return { shipping: 0, outbound: 0, receiving: 0, earned: 0, missed: 0, totalBonus: 0 };
     return {
       shipping: filteredData.filter((t) => t.type === "shipping").length,
+      outbound: filteredData.filter((t) => t.type === "outbound").length,
       receiving: filteredData.filter((t) => t.type === "receiving").length,
       earned: filteredData.filter((t) => t.bonusEarned === true).length,
       missed: filteredData.filter((t) => t.bonusEarned === false).length,
+      totalBonus: filteredData.reduce((sum, t) => sum + (t.bonusAmount ?? 0), 0),
     };
   }, [filteredData]);
 
@@ -232,7 +291,7 @@ function BonusesDashboard() {
               </Link>
               <div>
                 <h1 className="text-xl font-bold">Bonus Tracker</h1>
-                <p className="text-xs text-slate-500">Shipping &amp; Receiving Bonus Reports</p>
+                <p className="text-xs text-slate-500">Shipping, Outbound &amp; Receiving Bonus Reports</p>
               </div>
             </div>
             <button
@@ -283,25 +342,46 @@ function BonusesDashboard() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Helper</label>
+            <select
+              value={helperFilter}
+              onChange={(e) => setHelperFilter(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            >
+              <option value="all">All Helpers</option>
+              {uniqueHelperNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Shipping Trucks</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Shipping</p>
             <p className="text-2xl font-bold text-blue-400 mt-1">{stats.shipping}</p>
           </div>
           <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Receiving Trucks</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Outbound</p>
+            <p className="text-2xl font-bold text-amber-400 mt-1">{stats.outbound}</p>
+          </div>
+          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Receiving</p>
             <p className="text-2xl font-bold text-purple-400 mt-1">{stats.receiving}</p>
           </div>
           <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Bonuses Earned</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Earned</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.earned}</p>
           </div>
           <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Bonuses Missed</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Missed</p>
             <p className="text-2xl font-bold text-red-400 mt-1">{stats.missed}</p>
+          </div>
+          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Total Bonus $</p>
+            <p className="text-2xl font-bold text-teal-400 mt-1">${stats.totalBonus}</p>
           </div>
         </div>
 
@@ -319,6 +399,7 @@ function BonusesDashboard() {
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Duration</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Location</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus</th>
+                  <th className="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus $</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Status</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -326,14 +407,14 @@ function BonusesDashboard() {
               <tbody>
                 {!bonusData && (
                   <tr>
-                    <td colSpan={10} className="text-center py-12 text-slate-500">
+                    <td colSpan={11} className="text-center py-12 text-slate-500">
                       Loading...
                     </td>
                   </tr>
                 )}
                 {filteredData?.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="text-center py-12 text-slate-500">
+                    <td colSpan={11} className="text-center py-12 text-slate-500">
                       No bonus data for the selected date range
                     </td>
                   </tr>
@@ -350,9 +431,11 @@ function BonusesDashboard() {
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         truck.type === "shipping"
                           ? "bg-blue-500/20 text-blue-400 border border-blue-500/20"
-                          : "bg-purple-500/20 text-purple-400 border border-purple-500/20"
+                          : truck.type === "outbound"
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/20"
+                            : "bg-purple-500/20 text-purple-400 border border-purple-500/20"
                       }`}>
-                        {truck.type === "shipping" ? "Shipping" : "Receiving"}
+                        {truck.type === "shipping" ? "Shipping" : truck.type === "outbound" ? "Outbound" : "Receiving"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-300">
@@ -383,7 +466,7 @@ function BonusesDashboard() {
                       {truck.bonusEarned === true && (
                         <div className="flex items-center gap-2">
                           <span className="text-emerald-400 text-lg" title="Bonus earned">&#x2705;</span>
-                          {truck.type === "receiving" && (
+                          {(truck.type === "receiving" || truck.type === "outbound") && (
                             <button
                               onClick={() => {
                                 if (confirm("Revoke this bonus override?")) {
@@ -401,7 +484,7 @@ function BonusesDashboard() {
                       {truck.bonusEarned === false && (
                         <div className="flex items-center gap-2">
                           <span className="text-red-400 text-lg" title="No bonus">&#x274C;</span>
-                          {truck.type === "receiving" && (
+                          {(truck.type === "receiving" || truck.type === "outbound") && (
                             <button
                               onClick={() => {
                                 if (confirm(`Override bonus for truck ${truck.truckNumber}? This will mark the bonus as earned despite exceeding the 2-hour window.`)) {
@@ -419,6 +502,13 @@ function BonusesDashboard() {
                         <span className="text-slate-600">-</span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {(truck.bonusAmount ?? 0) > 0 ? (
+                        <span className="text-emerald-400 font-medium">${truck.bonusAmount}</span>
+                      ) : (
+                        <span className="text-slate-600">$0</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         truck.status === "open"
@@ -432,7 +522,7 @@ function BonusesDashboard() {
                       <button
                         onClick={() => {
                           if (confirm(`Delete bonus entry for truck ${truck.truckNumber}?`)) {
-                            deleteBonusEntry({ entryId: truck._id, type: truck.type });
+                            deleteBonusEntry({ entryId: truck._id, type: truck.type as any });
                           }
                         }}
                         className="text-slate-600 hover:text-red-400 transition-colors"

@@ -1234,6 +1234,38 @@ export const archiveOldRecords = mutation({
 
 // ==================== BONUS TRACKER ====================
 
+function toTitleCase(str: string): string {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+async function autoSaveHelpers(
+  ctx: any,
+  helpers: string[],
+  locationId: string
+) {
+  for (const raw of helpers) {
+    const name = toTitleCase(raw);
+    if (!name) continue;
+    const existing = await ctx.db
+      .query("knownHelpers")
+      .withIndex("by_location", (q: any) => q.eq("locationId", locationId))
+      .collect();
+    const found = existing.find(
+      (h: any) => h.name.toLowerCase() === name.toLowerCase()
+    );
+    if (!found) {
+      await ctx.db.insert("knownHelpers", {
+        name,
+        locationId,
+        isActive: true,
+      });
+    }
+  }
+}
+
 export const updateTruckBonusInfo = mutation({
   args: {
     truckId: v.id("trucks"),
@@ -1243,8 +1275,17 @@ export const updateTruckBonusInfo = mutation({
   handler: async (ctx, args) => {
     const updates: Record<string, any> = {};
     if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
-    if (args.helpers !== undefined) updates.helpers = args.helpers;
+    if (args.helpers !== undefined) {
+      updates.helpers = args.helpers.map(toTitleCase);
+    }
     await ctx.db.patch(args.truckId, updates);
+    // Auto-save new helper names
+    if (updates.helpers) {
+      const truck = await ctx.db.get(args.truckId);
+      if (truck) {
+        await autoSaveHelpers(ctx, updates.helpers, truck.locationId);
+      }
+    }
     return { success: true };
   },
 });
@@ -1256,17 +1297,24 @@ export const openReceivingTruck = mutation({
     locationId: v.string(),
     userId: v.id("users"),
     notes: v.optional(v.string()),
+    type: v.optional(v.string()),
+    truckLength: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const normalizedHelpers = args.helpers.map(toTitleCase);
     const id = await ctx.db.insert("receivingTrucks", {
       truckNumber: args.truckNumber,
-      helpers: args.helpers,
+      helpers: normalizedHelpers,
       status: "open",
       locationId: args.locationId,
       openedBy: args.userId,
       openedAt: Date.now(),
       notes: args.notes,
+      type: args.type ?? "receiving",
+      truckLength: args.truckLength ?? "53ft",
     });
+    // Auto-save helper names
+    await autoSaveHelpers(ctx, normalizedHelpers, args.locationId);
     return { success: true, receivingTruckId: id };
   },
 });
@@ -1284,13 +1332,36 @@ export const closeReceivingTruck = mutation({
     const TWO_HOURS = 2 * 60 * 60 * 1000;
     const bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
 
+    // Calculate bonus amount based on type + truckLength + helper count (3 person max)
+    let bonusAmount = 0;
+    if (bonusEarned && truck.helpers.length > 0) {
+      const truckType = truck.type ?? "receiving";
+      const truckLength = truck.truckLength ?? "53ft";
+      const helperCount = Math.min(truck.helpers.length, 3);
+      if (truckType === "outbound") {
+        // Outbound: $15/person, 53ft only
+        bonusAmount = 15 * helperCount;
+      } else {
+        // Receiving: Pup = $22.50 total split among helpers, 40ft = $10/person, 53ft = $15/person
+        if (truckLength === "Pup") {
+          bonusAmount = 22.50; // always $22.50 total, split among whoever is on it
+        } else if (truckLength === "40ft") {
+          bonusAmount = 10 * helperCount;
+        } else {
+          // 53ft
+          bonusAmount = 15 * helperCount;
+        }
+      }
+    }
+
     await ctx.db.patch(args.receivingTruckId, {
       status: "closed",
       closedAt: now,
       closedBy: args.userId,
       bonusEarned,
+      bonusAmount: bonusEarned ? bonusAmount : 0,
     });
-    return { success: true, bonusEarned };
+    return { success: true, bonusEarned, bonusAmount: bonusEarned ? bonusAmount : 0 };
   },
 });
 
@@ -1299,12 +1370,21 @@ export const updateReceivingTruck = mutation({
     receivingTruckId: v.id("receivingTrucks"),
     helpers: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
+    truckLength: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updates: Record<string, any> = {};
-    if (args.helpers !== undefined) updates.helpers = args.helpers;
+    if (args.helpers !== undefined) updates.helpers = args.helpers.map(toTitleCase);
     if (args.notes !== undefined) updates.notes = args.notes;
+    if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
     await ctx.db.patch(args.receivingTruckId, updates);
+    // Auto-save helper names
+    if (updates.helpers) {
+      const truck = await ctx.db.get(args.receivingTruckId);
+      if (truck) {
+        await autoSaveHelpers(ctx, updates.helpers, truck.locationId);
+      }
+    }
     return { success: true };
   },
 });
@@ -1312,7 +1392,7 @@ export const updateReceivingTruck = mutation({
 export const deleteBonusEntry = mutation({
   args: {
     entryId: v.string(),
-    type: v.union(v.literal("shipping"), v.literal("receiving")),
+    type: v.union(v.literal("shipping"), v.literal("receiving"), v.literal("outbound")),
   },
   handler: async (ctx, args) => {
     if (args.type === "shipping") {
@@ -1321,6 +1401,7 @@ export const deleteBonusEntry = mutation({
         truckLength: undefined,
       });
     } else {
+      // Both receiving and outbound are in receivingTrucks table
       await ctx.db.patch(args.entryId as any, {
         archived: true,
         archivedAt: Date.now(),
@@ -1340,5 +1421,31 @@ export const overrideReceivingBonus = mutation({
       bonusEarned: args.bonusEarned,
     });
     return { success: true };
+  },
+});
+
+export const addKnownHelper = mutation({
+  args: {
+    name: v.string(),
+    locationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const normalized = toTitleCase(args.name);
+    if (!normalized) return { success: false, error: "Name is required" };
+    // Check for duplicates
+    const existing = await ctx.db
+      .query("knownHelpers")
+      .withIndex("by_location", (q) => q.eq("locationId", args.locationId))
+      .collect();
+    const found = existing.find(
+      (h) => h.name.toLowerCase() === normalized.toLowerCase()
+    );
+    if (found) return { success: false, error: "Helper already exists" };
+    const id = await ctx.db.insert("knownHelpers", {
+      name: normalized,
+      locationId: args.locationId,
+      isActive: true,
+    });
+    return { success: true, id };
   },
 });
