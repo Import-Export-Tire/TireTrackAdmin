@@ -14,6 +14,7 @@ function ReturnsDashboard() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [viewingItem, setViewingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchStatusFilter, setSearchStatusFilter] = useState<string>("all");
   const [isSearching, setIsSearching] = useState(false);
@@ -529,7 +530,7 @@ function ReturnsDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-700/30">
                       {items.map((item) => (
-                        <tr key={item._id} className="hover:bg-slate-800/50 transition-colors">
+                        <tr key={item._id} className="hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => setViewingItem(item)}>
                           <td className="px-4 py-3">
                             {item.imageUrl && item.imageUrl.startsWith("http") ? (
                               <button
@@ -604,7 +605,7 @@ function ReturnsDashboard() {
                           </td>
                           <td className="px-4 py-3 text-slate-400 text-sm">{item.scannedByName}</td>
                           {canEdit && (
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handleStatusChange(item._id, "processed")}
@@ -651,6 +652,16 @@ function ReturnsDashboard() {
                                   </svg>
                                 </button>
                                 <button
+                                  onClick={() => setViewingItem(item)}
+                                  className="p-1.5 hover:bg-cyan-500/20 rounded-lg transition-all text-slate-500 hover:text-cyan-400"
+                                  title="View Details"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                                <button
                                   onClick={() => setEditingItem(item)}
                                   className="p-1.5 hover:bg-slate-700 rounded-lg transition-all text-slate-500 hover:text-white"
                                   title="Edit"
@@ -682,6 +693,159 @@ function ReturnsDashboard() {
         </div>
         )}
       </div>
+
+      {/* Detail View Modal */}
+      {viewingItem && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setViewingItem(null)}
+        >
+          <div
+            className="bg-slate-800 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Return Item Details</h3>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Scanned by {viewingItem.scannedByName} on {formatDate(viewingItem.scannedAt)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {canEdit && (
+                  <button
+                    onClick={() => { setEditingItem(viewingItem); setViewingItem(null); }}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit
+                  </button>
+                )}
+                <button onClick={() => setViewingItem(null)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Image */}
+              {viewingItem.imageUrl && viewingItem.imageUrl.startsWith("http") ? (
+                <div>
+                  <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Captured Image</label>
+                  <button
+                    onClick={() => setViewingImage(viewingItem.imageUrl)}
+                    className="w-full max-h-80 rounded-xl overflow-hidden border border-slate-700 hover:border-cyan-500 transition-colors"
+                  >
+                    <img
+                      src={viewingItem.imageUrl}
+                      alt="Return item"
+                      className="w-full h-full object-contain bg-slate-900"
+                    />
+                  </button>
+                  <p className="text-slate-600 text-xs mt-1">Click image to view full size</p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 py-4 px-4 bg-slate-900/50 rounded-xl border border-slate-700/30">
+                  <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-slate-500 text-sm">No image captured for this item</span>
+                </div>
+              )}
+
+              {/* Status */}
+              <div className="flex items-center gap-3">
+                {getStatusBadge(viewingItem.status)}
+                {viewingItem.notes && (
+                  <span className="text-slate-400 text-sm">{viewingItem.notes}</span>
+                )}
+              </div>
+
+              {/* Order Info */}
+              <div>
+                <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Order Information</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">PO Number</p>
+                    <p className="font-mono text-sm">{viewingItem.poNumber || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Invoice Number</p>
+                    <p className="font-mono text-sm">{viewingItem.invNumber || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">UPC Code</p>
+                    <p className="font-mono text-sm">{viewingItem.upcCode || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Quantity</p>
+                    <p className="text-sm font-medium">{viewingItem.quantity || 1}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tire Info */}
+              <div>
+                <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Tire Information</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Brand</p>
+                    <p className="text-sm font-medium">{viewingItem.tireBrand || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Model</p>
+                    <p className="text-sm">{viewingItem.tireModel || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Size</p>
+                    <p className="text-sm">{viewingItem.tireSize || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Part Number</p>
+                    <p className="font-mono text-sm">{viewingItem.tirePartNumber || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* From Address */}
+              {viewingItem.fromAddress && (
+                <div>
+                  <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">From Address</label>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-sm whitespace-pre-line">{viewingItem.fromAddress}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Raw OCR Text */}
+              {viewingItem.rawText && (
+                <div>
+                  <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">
+                    Raw Scan Text
+                    {viewingItem.aiConfidence && (
+                      <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                        viewingItem.aiConfidence === "high" ? "bg-emerald-500/20 text-emerald-400" :
+                        viewingItem.aiConfidence === "medium" ? "bg-amber-500/20 text-amber-400" :
+                        "bg-red-500/20 text-red-400"
+                      }`}>
+                        {viewingItem.aiConfidence} confidence
+                      </span>
+                    )}
+                  </label>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30 max-h-40 overflow-y-auto">
+                    <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap">{viewingItem.rawText}</pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Viewer Modal */}
       {viewingImage && (
