@@ -39,29 +39,62 @@ function printBonusReport(
   locationLabel: string,
   stats: { shipping: number; receiving: number; earned: number; missed: number }
 ) {
-  const formatDatePrint = (ts: number) =>
+  const fmtDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const formatDur = (ms: number) => {
+  const fmtDur = (ms: number) => {
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
-  const getLocName = (id: string) => LOCATION_OPTIONS.find((l) => l.id === id)?.name ?? id;
+  const locName = (id: string) => LOCATION_OPTIONS.find((l) => l.id === id)?.name ?? id;
 
-  const rows = data
-    .map(
-      (t) => `<tr>
-        <td>${formatDatePrint(t.openedAt)}</td>
-        <td>${t.truckNumber}</td>
-        <td>${t.type === "shipping" ? "Shipping" : "Receiving"}</td>
-        <td>${t.truckLength ?? "-"}</td>
-        <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
-        <td>${t.duration ? formatDur(t.duration) : "In progress"}</td>
-        <td>${getLocName(t.locationId)}</td>
-        <td style="text-align:center">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
-      </tr>`
-    )
-    .join("");
+  const shipping = data.filter((t) => t.type === "shipping");
+  const receiving = data.filter((t) => t.type === "receiving");
+  const recEarned = receiving.filter((t) => t.bonusEarned === true).length;
+  const recMissed = receiving.filter((t) => t.bonusEarned === false).length;
+
+  // Collect unique helper names across all entries for the helpers summary
+  const helperMap: Record<string, { shipping: number; receiving: number; receivingEarned: number }> = {};
+  data.forEach((t) => {
+    t.helpers.forEach((name: string) => {
+      if (!helperMap[name]) helperMap[name] = { shipping: 0, receiving: 0, receivingEarned: 0 };
+      if (t.type === "shipping") helperMap[name].shipping++;
+      else {
+        helperMap[name].receiving++;
+        if (t.bonusEarned === true) helperMap[name].receivingEarned++;
+      }
+    });
+  });
+  const helperNames = Object.keys(helperMap).sort();
+
+  const shippingRows = shipping.map((t) => `<tr>
+    <td>${fmtDate(t.openedAt)}</td>
+    <td>${t.truckNumber}</td>
+    <td>${t.truckLength ?? "-"}</td>
+    <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
+    <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
+    <td>${locName(t.locationId)}</td>
+  </tr>`).join("");
+
+  const receivingRows = receiving.map((t) => `<tr>
+    <td>${fmtDate(t.openedAt)}</td>
+    <td>${t.truckNumber}</td>
+    <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
+    <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
+    <td>${locName(t.locationId)}</td>
+    <td style="text-align:center;font-weight:700;${t.bonusEarned === true ? "color:#16a34a" : t.bonusEarned === false ? "color:#dc2626" : ""}">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
+  </tr>`).join("");
+
+  const helperRows = helperNames.map((name) => {
+    const h = helperMap[name];
+    return `<tr>
+      <td style="font-weight:600">${name}</td>
+      <td style="text-align:center">${h.shipping}</td>
+      <td style="text-align:center">${h.receiving}</td>
+      <td style="text-align:center;font-weight:700;color:#16a34a">${h.receivingEarned}</td>
+      <td style="text-align:center">${h.shipping + h.receiving}</td>
+    </tr>`;
+  }).join("");
 
   const html = `<!DOCTYPE html>
 <html><head><title>Bonus Report</title>
@@ -72,17 +105,21 @@ function printBonusReport(
   .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
   .header h2 { font-size: 14px; font-weight: 400; color: #555; margin-bottom: 8px; }
   .header .meta { font-size: 12px; color: #666; }
-  .stats { display: flex; justify-content: space-between; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; }
+  .stats { display: flex; justify-content: space-between; margin-bottom: 24px; border: 1px solid #ccc; border-radius: 4px; }
   .stat { flex: 1; text-align: center; padding: 12px 8px; }
   .stat:not(:last-child) { border-right: 1px solid #ccc; }
   .stat .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 4px; }
   .stat .value { font-size: 20px; font-weight: 700; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #111; display: flex; justify-content: space-between; align-items: baseline; }
+  .section-title .count { font-size: 12px; font-weight: 400; color: #666; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db; }
   td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
   tr:nth-child(even) { background: #f9fafb; }
+  .empty { text-align: center; padding: 20px; color: #999; font-style: italic; }
   .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 12px; }
-  @media print { body { padding: 20px; } }
+  @media print { body { padding: 20px; } .section { page-break-inside: avoid; } }
 </style></head><body>
 <div class="header">
   <h1>Import Export Tire Company</h1>
@@ -92,15 +129,40 @@ function printBonusReport(
 <div class="stats">
   <div class="stat"><div class="label">Shipping Trucks</div><div class="value">${stats.shipping}</div></div>
   <div class="stat"><div class="label">Receiving Trucks</div><div class="value">${stats.receiving}</div></div>
-  <div class="stat"><div class="label">Bonuses Earned</div><div class="value">${stats.earned}</div></div>
-  <div class="stat"><div class="label">Bonuses Missed</div><div class="value">${stats.missed}</div></div>
+  <div class="stat"><div class="label">Bonuses Earned</div><div class="value" style="color:#16a34a">${stats.earned}</div></div>
+  <div class="stat"><div class="label">Bonuses Missed</div><div class="value" style="color:#dc2626">${stats.missed}</div></div>
 </div>
-<table>
-  <thead><tr>
-    <th>Date</th><th>Truck #</th><th>Type</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th>
-  </tr></thead>
-  <tbody>${rows}</tbody>
-</table>
+
+<div class="section">
+  <div class="section-title">Shipping <span class="count">${shipping.length} truck${shipping.length !== 1 ? "s" : ""}</span></div>
+  ${shipping.length > 0 ? `<table>
+    <thead><tr>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th>
+    </tr></thead>
+    <tbody>${shippingRows}</tbody>
+  </table>` : `<div class="empty">No shipping trucks in this period</div>`}
+</div>
+
+<div class="section">
+  <div class="section-title">Receiving <span class="count">${receiving.length} truck${receiving.length !== 1 ? "s" : ""} &nbsp;&bull;&nbsp; ${recEarned} earned &nbsp;&bull;&nbsp; ${recMissed} missed</span></div>
+  ${receiving.length > 0 ? `<table>
+    <thead><tr>
+      <th>Date</th><th>Truck #</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th>
+    </tr></thead>
+    <tbody>${receivingRows}</tbody>
+  </table>` : `<div class="empty">No receiving trucks in this period</div>`}
+</div>
+
+${helperNames.length > 0 ? `<div class="section">
+  <div class="section-title">Helper Summary <span class="count">${helperNames.length} helper${helperNames.length !== 1 ? "s" : ""}</span></div>
+  <table>
+    <thead><tr>
+      <th>Name</th><th style="text-align:center">Shipping</th><th style="text-align:center">Receiving</th><th style="text-align:center">Rec. Earned</th><th style="text-align:center">Total</th>
+    </tr></thead>
+    <tbody>${helperRows}</tbody>
+  </table>
+</div>` : ""}
+
 <div class="footer">Generated ${new Date().toLocaleString()} &nbsp;|&nbsp; TireTrack Admin</div>
 </body></html>`;
 
