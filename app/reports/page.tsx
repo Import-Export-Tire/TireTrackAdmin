@@ -1183,9 +1183,9 @@ function ReportsPage() {
     const scans = truck.byVendor[vendor] || [];
     if (scans.length === 0) return;
 
-    const headers = ["Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account"];
+    const headers = ["Tracking Number", "Carrier", "Qty", "Location", "Scanned At", "Vendor Account"];
     const rows = scans.map((s: any) => [
-      s.trackingNumber || "", s.carrier || "", getLocationName(truck.locationId), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+      s.trackingNumber || "", s.carrier || "", String(s.quantity ?? 1), getLocationName(truck.locationId), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
     ]);
 
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
@@ -1201,9 +1201,9 @@ function ReportsPage() {
   const generateVendorRangeCSV = (vendorName: string) => {
     if (!vendorReport?.byVendor) return;
     const scans = vendorReport.byVendor[vendorName] || [];
-    const headers = ["Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account", "Truck"];
+    const headers = ["Tracking Number", "Carrier", "Qty", "Location", "Scanned At", "Vendor Account", "Truck"];
     const rows = scans.map((s: any) => [
-      s.trackingNumber || "", s.carrier || "", getLocationName(s.locationId || ""), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
+      s.trackingNumber || "", s.carrier || "", String(s.quantity ?? 1), getLocationName(s.locationId || ""), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
     ]);
 
     const csv = [headers.join(","), ...rows.map((r: string[]) => r.map(v => `"${v}"`).join(","))].join("\n");
@@ -1219,14 +1219,14 @@ function ReportsPage() {
   const generateAllVendorsRangeCSV = () => {
     if (!vendorReport?.vendors || !vendorReport?.byVendor) return;
 
-    const headers = ["Vendor", "Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account", "Truck"];
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Qty", "Location", "Scanned At", "Vendor Account", "Truck"];
     const rows: string[][] = [];
 
     for (const v of vendorReport.vendors) {
       const scans = vendorReport.byVendor[v.vendor] || [];
       for (const s of scans) {
         rows.push([
-          v.vendor, s.trackingNumber || "", s.carrier || "", getLocationName(s.locationId || ""), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
+          v.vendor, s.trackingNumber || "", s.carrier || "", String(s.quantity ?? 1), getLocationName(s.locationId || ""), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "", s.truckNumber || "",
         ]);
       }
     }
@@ -1242,14 +1242,14 @@ function ReportsPage() {
   };
 
   const generateAllCSVsForTruck = (truck: any) => {
-    const headers = ["Vendor", "Tracking Number", "Carrier", "Location", "Scanned At", "Vendor Account"];
+    const headers = ["Vendor", "Tracking Number", "Carrier", "Qty", "Location", "Scanned At", "Vendor Account"];
     const rows: string[][] = [];
 
     for (const vendor of Object.keys(truck.byVendor).sort()) {
       const scans = truck.byVendor[vendor] || [];
       for (const s of scans) {
         rows.push([
-          vendor, s.trackingNumber || "", s.carrier || "", getLocationName(truck.locationId), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
+          vendor, s.trackingNumber || "", s.carrier || "", String(s.quantity ?? 1), getLocationName(truck.locationId), new Date(s.scannedAt).toLocaleString(), s.vendorAccount || "",
         ]);
       }
     }

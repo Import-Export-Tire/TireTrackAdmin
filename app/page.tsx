@@ -282,11 +282,11 @@ function Dashboard() {
       `Vendor: ${vendor}`,
       `Time Prepared: ${preparedTime}`,
       ``,
-      `Tracking,Vendor,Timestamp`,
+      `Tracking,Vendor,Qty,Timestamp`,
     ];
 
-    vendorScans.forEach((s) => {
-      lines.push(`${s.trackingNumber},${s.vendor || "Unknown"},${formatExportDate(s.scannedAt)}`);
+    vendorScans.forEach((s: any) => {
+      lines.push(`${s.trackingNumber},${s.vendor || "Unknown"},${s.quantity ?? 1},${formatExportDate(s.scannedAt)}`);
     });
 
     const csv = lines.join("\n");
@@ -312,11 +312,11 @@ function Dashboard() {
       `Vendor: ALL`,
       `Time Prepared: ${preparedTime}`,
       ``,
-      `Tracking,Vendor,Timestamp`,
+      `Tracking,Vendor,Qty,Timestamp`,
     ];
 
-    scans.forEach((s) => {
-      lines.push(`${s.trackingNumber},${s.vendor || "Unknown"},${formatExportDate(s.scannedAt)}`);
+    scans.forEach((s: any) => {
+      lines.push(`${s.trackingNumber},${s.vendor || "Unknown"},${s.quantity ?? 1},${formatExportDate(s.scannedAt)}`);
     });
 
     const csv = lines.join("\n");
@@ -344,12 +344,12 @@ function Dashboard() {
       `Time Prepared: ${preparedTime}`,
       `Total Unknown: ${unknowns.length}`,
       ``,
-      `Tracking,Timestamp,Raw Barcode (partial)`,
+      `Tracking,Qty,Timestamp,Raw Barcode (partial)`,
     ];
 
-    unknowns.forEach((s) => {
+    unknowns.forEach((s: any) => {
       const rawPartial = (s.rawBarcode || "").substring(0, 100).replace(/,/g, ";");
-      lines.push(`${s.trackingNumber},${formatExportDate(s.scannedAt)},"${rawPartial}"`);
+      lines.push(`${s.trackingNumber},${s.quantity ?? 1},${formatExportDate(s.scannedAt)},"${rawPartial}"`);
     });
 
     const csv = lines.join("\n");
