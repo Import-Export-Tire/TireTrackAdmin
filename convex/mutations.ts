@@ -273,6 +273,30 @@ export const addScan = mutation({
   },
 });
 
+export const markScanAsDouble = mutation({
+  args: {
+    scanId: v.id("scans"),
+    isDouble: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const scan = await ctx.db.get(args.scanId);
+    if (!scan) return { success: false };
+    const currentQty = scan.quantity ?? 1;
+    const newQty = args.isDouble ? 2 : 1;
+    if (currentQty === newQty) return { success: true };
+    await ctx.db.patch(args.scanId, { quantity: newQty });
+    // Adjust truck scanCount: +1 when marking double, -1 when unmarking
+    const truck = await ctx.db.get(scan.truckId);
+    if (truck) {
+      const diff = newQty - currentQty;
+      await ctx.db.patch(scan.truckId, {
+        scanCount: (truck.scanCount ?? 1) + diff,
+      });
+    }
+    return { success: true };
+  },
+});
+
 export const closeTruck = mutation({
   args: {
     truckId: v.id("trucks"),

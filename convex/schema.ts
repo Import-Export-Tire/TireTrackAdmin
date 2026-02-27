@@ -82,6 +82,7 @@ export default defineSchema({
     duplicateOfScanId: v.optional(v.id("scans")),
     duplicateAddedAt: v.optional(v.number()),
     carrierMismatch: v.optional(v.boolean()), // Package carrier doesn't match truck carrier
+    quantity: v.optional(v.number()), // 1 = single, 2 = bundled double
     // Cross-truck move tracking
     movedFromTruckId: v.optional(v.id("trucks")),
     movedFromScanId: v.optional(v.id("scans")),
