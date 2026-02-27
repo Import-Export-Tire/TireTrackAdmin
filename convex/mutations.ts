@@ -1285,6 +1285,27 @@ export const updateReceivingTruck = mutation({
   },
 });
 
+export const deleteBonusEntry = mutation({
+  args: {
+    entryId: v.string(),
+    type: v.union(v.literal("shipping"), v.literal("receiving")),
+  },
+  handler: async (ctx, args) => {
+    if (args.type === "shipping") {
+      await ctx.db.patch(args.entryId as any, {
+        helpers: [],
+        truckLength: undefined,
+      });
+    } else {
+      await ctx.db.patch(args.entryId as any, {
+        archived: true,
+        archivedAt: Date.now(),
+      });
+    }
+    return { success: true };
+  },
+});
+
 export const overrideReceivingBonus = mutation({
   args: {
     receivingTruckId: v.id("receivingTrucks"),

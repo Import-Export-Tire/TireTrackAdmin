@@ -33,8 +33,88 @@ function formatDate(timestamp: number): string {
   });
 }
 
+function printBonusReport(
+  data: any[],
+  dateRange: { start: string; end: string },
+  locationLabel: string,
+  stats: { shipping: number; receiving: number; earned: number; missed: number }
+) {
+  const formatDatePrint = (ts: number) =>
+    new Date(ts).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const formatDur = (ms: number) => {
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+  const getLocName = (id: string) => LOCATION_OPTIONS.find((l) => l.id === id)?.name ?? id;
+
+  const rows = data
+    .map(
+      (t) => `<tr>
+        <td>${formatDatePrint(t.openedAt)}</td>
+        <td>${t.truckNumber}</td>
+        <td>${t.type === "shipping" ? "Shipping" : "Receiving"}</td>
+        <td>${t.truckLength ?? "-"}</td>
+        <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
+        <td>${t.duration ? formatDur(t.duration) : "In progress"}</td>
+        <td>${getLocName(t.locationId)}</td>
+        <td style="text-align:center">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
+      </tr>`
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html><head><title>Bonus Report</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 40px; font-size: 12px; }
+  .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #111; padding-bottom: 16px; }
+  .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+  .header h2 { font-size: 14px; font-weight: 400; color: #555; margin-bottom: 8px; }
+  .header .meta { font-size: 12px; color: #666; }
+  .stats { display: flex; justify-content: space-between; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; }
+  .stat { flex: 1; text-align: center; padding: 12px 8px; }
+  .stat:not(:last-child) { border-right: 1px solid #ccc; }
+  .stat .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 4px; }
+  .stat .value { font-size: 20px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) { background: #f9fafb; }
+  .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 12px; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+<div class="header">
+  <h1>Import Export Tire Company</h1>
+  <h2>Bonus Report</h2>
+  <div class="meta">${dateRange.start} &mdash; ${dateRange.end} &nbsp;|&nbsp; Location: ${locationLabel}</div>
+</div>
+<div class="stats">
+  <div class="stat"><div class="label">Shipping Trucks</div><div class="value">${stats.shipping}</div></div>
+  <div class="stat"><div class="label">Receiving Trucks</div><div class="value">${stats.receiving}</div></div>
+  <div class="stat"><div class="label">Bonuses Earned</div><div class="value">${stats.earned}</div></div>
+  <div class="stat"><div class="label">Bonuses Missed</div><div class="value">${stats.missed}</div></div>
+</div>
+<table>
+  <thead><tr>
+    <th>Date</th><th>Truck #</th><th>Type</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer">Generated ${new Date().toLocaleString()} &nbsp;|&nbsp; TireTrack Admin</div>
+</body></html>`;
+
+  const w = window.open("", "_blank");
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => w.print();
+  }
+}
+
 function BonusesDashboard() {
   const overrideBonus = useMutation(api.mutations.overrideReceivingBonus);
+  const deleteBonusEntry = useMutation(api.mutations.deleteBonusEntry);
   const [locationFilter, setLocationFilter] = useState("all");
   const [dateRange, setDateRange] = useState(() => {
     const end = new Date();
@@ -93,6 +173,16 @@ function BonusesDashboard() {
                 <p className="text-xs text-slate-500">Shipping &amp; Receiving Bonus Reports</p>
               </div>
             </div>
+            <button
+              onClick={() => {
+                const locLabel = locationFilter === "all" ? "All Locations" : (LOCATION_OPTIONS.find((l) => l.shortId === locationFilter)?.name ?? "All");
+                printBonusReport(filteredData, dateRange, locLabel, stats);
+              }}
+              disabled={!filteredData || filteredData.length === 0}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Print Report
+            </button>
           </div>
         </div>
       </div>
@@ -168,19 +258,20 @@ function BonusesDashboard() {
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Location</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Status</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {!bonusData && (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-slate-500">
+                    <td colSpan={10} className="text-center py-12 text-slate-500">
                       Loading...
                     </td>
                   </tr>
                 )}
                 {filteredData?.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-slate-500">
+                    <td colSpan={10} className="text-center py-12 text-slate-500">
                       No bonus data for the selected date range
                     </td>
                   </tr>
@@ -274,6 +365,21 @@ function BonusesDashboard() {
                       }`}>
                         {truck.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete bonus entry for truck ${truck.truckNumber}?`)) {
+                            deleteBonusEntry({ entryId: truck._id, type: truck.type });
+                          }
+                        }}
+                        className="text-slate-600 hover:text-red-400 transition-colors"
+                        title="Delete entry"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
