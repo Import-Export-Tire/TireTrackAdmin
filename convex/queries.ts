@@ -1633,7 +1633,7 @@ export const getBonusReport = query({
           t.openedAt >= startDate &&
           t.openedAt <= endDate &&
           !t.archived &&
-          (t.truckLength || (t.helpers && t.helpers.length > 0))
+          (t.status === "open" || t.truckLength || (t.helpers && t.helpers.length > 0))
       )
       .map((t) => ({
         _id: t._id,
