@@ -48,21 +48,11 @@ export const getOpenTrucks = query({
       )
       .collect();
 
-    // Enrich with scan counts
-    const enrichedTrucks = await Promise.all(
-      trucks.map(async (truck) => {
-        const scans = await ctx.db
-          .query("scans")
-          .withIndex("by_truck", (q) => q.eq("truckId", truck._id))
-          .collect();
-        return {
-          ...truck,
-          scanCount: scans.reduce((sum, s) => sum + (s.quantity ?? 1), 0),
-        };
-      })
-    );
-
-    return enrichedTrucks;
+    // Use stored scanCount — maintained by addScan and markScanAsDouble mutations
+    return trucks.map((truck) => ({
+      ...truck,
+      scanCount: truck.scanCount ?? 0,
+    }));
   },
 });
 
@@ -80,18 +70,15 @@ export const getTruckScans = query({
       scans = scans.filter((scan) => !scan.isDuplicate);
     }
 
-    // Enrich with user names
-    const enrichedScans = await Promise.all(
-      scans.map(async (scan) => {
-        const user = await ctx.db.get(scan.scannedBy);
-        return {
-          ...scan,
-          scannedByName: user?.name ?? "Unknown",
-        };
-      })
-    );
+    // Pre-fetch unique users
+    const userIds = [...new Set(scans.map((s) => s.scannedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enrichedScans;
+    return scans.map((scan) => ({
+      ...scan,
+      scannedByName: userMap.get(scan.scannedBy)?.name ?? "Unknown",
+    }));
   },
 });
 
@@ -142,17 +129,14 @@ export const getRecentTruckScans = query({
       .order("desc")
       .take(args.limit ?? 10);
 
-    const enrichedScans = await Promise.all(
-      scans.map(async (scan) => {
-        const user = await ctx.db.get(scan.scannedBy);
-        return {
-          ...scan,
-          scannedByName: user?.name ?? "Unknown",
-        };
-      })
-    );
+    const userIds = [...new Set(scans.map((s) => s.scannedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enrichedScans;
+    return scans.map((scan) => ({
+      ...scan,
+      scannedByName: userMap.get(scan.scannedBy)?.name ?? "Unknown",
+    }));
   },
 });
 
@@ -167,22 +151,17 @@ export const getOpenReturnBatches = query({
       )
       .collect();
 
-    const enrichedBatches = await Promise.all(
-      batches.map(async (batch) => {
-        const items = await ctx.db
-          .query("returnItems")
-          .withIndex("by_batch", (q) => q.eq("returnBatchId", batch._id))
-          .collect();
-        const openedByUser = await ctx.db.get(batch.openedBy);
-        return {
-          ...batch,
-          itemCount: items.length,
-          openedByName: openedByUser?.name ?? "Unknown",
-        };
-      })
-    );
+    // Pre-fetch unique users
+    const userIds = [...new Set(batches.map((b) => b.openedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enrichedBatches;
+    // Use stored itemCount — maintained by addReturnItem/deleteReturnItem mutations
+    return batches.map((batch) => ({
+      ...batch,
+      itemCount: batch.itemCount ?? 0,
+      openedByName: userMap.get(batch.openedBy)?.name ?? "Unknown",
+    }));
   },
 });
 
@@ -218,17 +197,14 @@ export const getReturnItems = query({
       .order("desc")
       .collect();
 
-    const enrichedItems = await Promise.all(
-      items.map(async (item) => {
-        const user = await ctx.db.get(item.scannedBy);
-        return {
-          ...item,
-          scannedByName: user?.name ?? "Unknown",
-        };
-      })
-    );
+    const userIds = [...new Set(items.map((i) => i.scannedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enrichedItems;
+    return items.map((item) => ({
+      ...item,
+      scannedByName: userMap.get(item.scannedBy)?.name ?? "Unknown",
+    }));
   },
 });
 
@@ -351,24 +327,24 @@ export const getAllTrucks = query({
       .filter(t => !t.archived)
       .slice(0, 200);
 
-    const enrichedTrucks = await Promise.all(
-      trucks.map(async (truck) => {
-        const openedByUser = await ctx.db.get(truck.openedBy);
-        const closedByUser = truck.closedBy ? await ctx.db.get(truck.closedBy) : null;
+    // Pre-fetch all unique users (openers + closers)
+    const userIds = [...new Set([
+      ...trucks.map((t) => t.openedBy),
+      ...trucks.filter((t) => t.closedBy).map((t) => t.closedBy!),
+    ])];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-        return {
-          ...truck,
-          // Use stored scanCount and vendors instead of loading all scans
-          scanCount: truck.scanCount ?? 0,
-          openedByName: openedByUser?.name ?? "Unknown",
-          closedByName: closedByUser?.name ?? null,
-          vendors: truck.vendors ?? [],
-          trackingNumbers: [], // Empty for backward compatibility
-        };
-      })
-    );
-
-    return enrichedTrucks;
+    return trucks.map((truck) => ({
+      ...truck,
+      scanCount: truck.scanCount ?? 0,
+      openedByName: userMap.get(truck.openedBy)?.name ?? "Unknown",
+      closedByName: truck.closedBy
+        ? userMap.get(truck.closedBy)?.name ?? null
+        : null,
+      vendors: truck.vendors ?? [],
+      trackingNumbers: [],
+    }));
   },
 });
 
@@ -434,27 +410,28 @@ export const getAllReturnBatches = query({
     const allBatches = await ctx.db.query("returnBatches").order("desc").take(500);
     const batches = allBatches.filter(b => !b.archived);
 
-    const enrichedBatches = await Promise.all(
-      batches.map(async (batch) => {
-        const opener = await ctx.db.get(batch.openedBy);
-        const closer = batch.closedBy ? await ctx.db.get(batch.closedBy) : null;
-        // Resolve location name from known locations
-        const KNOWN_LOCATIONS: Record<string, string> = {
-          "kj7q0v1qxbf6z1b1h2cjhf4m8h74vjbe": "Latrobe",
-          "kj74zfr66q23wgv5xc3qdc0a6s74vvtr": "Everson",
-          "kj70r8fvdeg83dhapvp91kqs2574vqng": "Chestnut",
-        };
-        const locationName = KNOWN_LOCATIONS[batch.locationId] || batch.locationId || "Unknown";
-        return {
-          ...batch,
-          openedByName: opener?.name || "Unknown",
-          closedByName: closer?.name || undefined,
-          locationName,
-        };
-      })
-    );
+    // Pre-fetch all unique users (openers + closers)
+    const userIds = [...new Set([
+      ...batches.map((b) => b.openedBy),
+      ...batches.filter((b) => b.closedBy).map((b) => b.closedBy!),
+    ])];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enrichedBatches;
+    const KNOWN_LOCATIONS: Record<string, string> = {
+      "kj7q0v1qxbf6z1b1h2cjhf4m8h74vjbe": "Latrobe",
+      "kj74zfr66q23wgv5xc3qdc0a6s74vvtr": "Everson",
+      "kj70r8fvdeg83dhapvp91kqs2574vqng": "Chestnut",
+    };
+
+    return batches.map((batch) => ({
+      ...batch,
+      openedByName: userMap.get(batch.openedBy)?.name || "Unknown",
+      closedByName: batch.closedBy
+        ? userMap.get(batch.closedBy)?.name || undefined
+        : undefined,
+      locationName: KNOWN_LOCATIONS[batch.locationId] || batch.locationId || "Unknown",
+    }));
   },
 });
 
@@ -466,28 +443,26 @@ export const getReturnBatchItems = query({
       .withIndex("by_batch", (q) => q.eq("returnBatchId", args.batchId))
       .collect();
 
+    // Pre-fetch unique users
+    const userIds = [...new Set(items.map((i) => i.scannedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, idx) => [id, users[idx]]));
+
+    // Storage URL resolution must stay per-item (each is a unique storage ID)
     const enrichedItems = await Promise.all(
       items.map(async (item) => {
-        const scanner = await ctx.db.get(item.scannedBy);
-
-        // Resolve image URL if it's a storage ID
         let resolvedImageUrl = item.imageUrl;
         if (item.imageUrl && !item.imageUrl.startsWith("http")) {
-          // It might be a Convex storage ID - try to resolve it
           try {
             const url = await ctx.storage.getUrl(item.imageUrl as any);
-            if (url) {
-              resolvedImageUrl = url;
-            }
-          } catch {
-            // If it fails, keep the original value
-          }
+            if (url) resolvedImageUrl = url;
+          } catch {}
         }
 
         return {
           ...item,
           imageUrl: resolvedImageUrl,
-          scannedByName: scanner?.name || "Unknown",
+          scannedByName: userMap.get(item.scannedBy)?.name || "Unknown",
         };
       })
     );
@@ -681,22 +656,26 @@ export const searchTrackingNumber = query({
       .filter(scan => scan.trackingNumber.toLowerCase().includes(searchTermLower))
       .slice(0, limit);
 
-    // Enrich with truck info
-    const enriched = await Promise.all(
-      matchingScans.map(async (scan) => {
-        const truck = await ctx.db.get(scan.truckId);
-        const user = await ctx.db.get(scan.scannedBy);
-        return {
-          ...scan,
-          truckNumber: truck?.truckNumber || "Unknown",
-          truckStatus: truck?.status || "unknown",
-          truckCarrier: truck?.carrier || "Unknown",
-          scannedByName: user?.name || "Unknown",
-        };
-      })
-    );
+    // Pre-fetch unique trucks and users
+    const truckIds = [...new Set(matchingScans.map((s) => s.truckId))];
+    const truckResults = await Promise.all(truckIds.map((id) => ctx.db.get(id)));
+    const truckMap = new Map(truckIds.map((id, i) => [id, truckResults[i]]));
 
-    return enriched;
+    const userIds = [...new Set(matchingScans.map((s) => s.scannedBy))];
+    const userResults = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, userResults[i]]));
+
+    return matchingScans.map((scan) => {
+      const truck = truckMap.get(scan.truckId);
+      const user = userMap.get(scan.scannedBy);
+      return {
+        ...scan,
+        truckNumber: truck?.truckNumber || "Unknown",
+        truckStatus: truck?.status || "unknown",
+        truckCarrier: truck?.carrier || "Unknown",
+        scannedByName: user?.name || "Unknown",
+      };
+    });
   },
 });
 
@@ -857,32 +836,38 @@ export const getUnmatchedScansReport = query({
     // Limit enriched results to avoid memory issues
     const unmatchedToEnrich = unmatched.slice(0, 500);
 
-    // Get truck and user info for each scan
-    const enriched = await Promise.all(
-      unmatchedToEnrich.map(async (scan) => {
-        const truck = await ctx.db.get(scan.truckId);
-        const user = await ctx.db.get(scan.scannedBy);
-        const raw = scan.rawBarcode || "";
-        const isUPS = raw.includes("UPSN") || raw.startsWith("1Z");
-        const isFedEx = raw.includes("FDEG") || raw.includes("[)>");
-        const category = isUPS ? "UPS" : isFedEx ? "FedEx unmapped" : "Other";
+    // Pre-fetch unique trucks and users
+    const truckIds = [...new Set(unmatchedToEnrich.map((s) => s.truckId))];
+    const truckResults = await Promise.all(truckIds.map((id) => ctx.db.get(id)));
+    const truckMap = new Map(truckIds.map((id, i) => [id, truckResults[i]]));
 
-        return {
-          _id: scan._id,
-          trackingNumber: scan.trackingNumber,
-          carrier: scan.carrier || "",
-          rawBarcode: scan.rawBarcode || "",
-          category,
-          truckNumber: truck?.truckNumber || "Unknown",
-          scannedAt: scan.scannedAt,
-          recipientName: scan.recipientName || "",
-          destination: scan.destination || "",
-          scannedByName: user?.name || "Unknown",
-          scannedByEmpId: user?.empId || "",
-          isMiscan: scan.isMiscan || false,
-        };
-      })
-    );
+    const userIds = [...new Set(unmatchedToEnrich.map((s) => s.scannedBy))];
+    const userResults = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, userResults[i]]));
+
+    const enriched = unmatchedToEnrich.map((scan) => {
+      const truck = truckMap.get(scan.truckId);
+      const user = userMap.get(scan.scannedBy);
+      const raw = scan.rawBarcode || "";
+      const isUPS = raw.includes("UPSN") || raw.startsWith("1Z");
+      const isFedEx = raw.includes("FDEG") || raw.includes("[)>");
+      const category = isUPS ? "UPS" : isFedEx ? "FedEx unmapped" : "Other";
+
+      return {
+        _id: scan._id,
+        trackingNumber: scan.trackingNumber,
+        carrier: scan.carrier || "",
+        rawBarcode: scan.rawBarcode || "",
+        category,
+        truckNumber: truck?.truckNumber || "Unknown",
+        scannedAt: scan.scannedAt,
+        recipientName: scan.recipientName || "",
+        destination: scan.destination || "",
+        scannedByName: user?.name || "Unknown",
+        scannedByEmpId: user?.empId || "",
+        isMiscan: scan.isMiscan || false,
+      };
+    });
 
     // Calculate daily breakdown for last 30 days
     const dailyBreakdown: Record<string, { total: number; unmatched: number; miscan: number }> = {};
@@ -986,39 +971,41 @@ export const getErrorLogs = query({
         .take(limit);
     }
 
-    // Enrich with user names and parse details for context
-    const enriched = await Promise.all(
-      errors.map(async (error) => {
-        let userName: string | undefined;
-        let userLocation: string | undefined;
-        if (error.userId) {
-          const user = await ctx.db.get(error.userId);
-          userName = user?.name;
-          userLocation = user?.locationId || error.locationId;
-        }
-        // Parse details JSON to extract truck info
-        let truckNumber: string | undefined;
-        let rawBarcode: string | undefined;
-        let trackingNumber: string | undefined;
-        if (error.details) {
-          try {
-            const parsed = JSON.parse(error.details);
-            truckNumber = parsed.truckNumber;
-            rawBarcode = parsed.rawBarcode;
-            trackingNumber = parsed.trackingNumber;
-          } catch {}
-        }
-        return {
-          ...error,
-          userName,
-          userLocation: userLocation || error.locationId,
-          truckNumber,
-          rawBarcode,
-          trackingNumber,
-        };
-      })
-    );
-    return enriched;
+    // Pre-fetch unique users from error logs
+    const userIds = [...new Set(
+      errors.filter((e) => e.userId).map((e) => e.userId!)
+    )];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
+
+    return errors.map((error) => {
+      let userName: string | undefined;
+      let userLocation: string | undefined;
+      if (error.userId) {
+        const user = userMap.get(error.userId);
+        userName = user?.name;
+        userLocation = user?.locationId || error.locationId;
+      }
+      let truckNumber: string | undefined;
+      let rawBarcode: string | undefined;
+      let trackingNumber: string | undefined;
+      if (error.details) {
+        try {
+          const parsed = JSON.parse(error.details);
+          truckNumber = parsed.truckNumber;
+          rawBarcode = parsed.rawBarcode;
+          trackingNumber = parsed.trackingNumber;
+        } catch {}
+      }
+      return {
+        ...error,
+        userName,
+        userLocation: userLocation || error.locationId,
+        truckNumber,
+        rawBarcode,
+        trackingNumber,
+      };
+    });
   },
 });
 
@@ -1564,17 +1551,16 @@ export const getRecentTrucksForBonus = query({
 
     const combined = [...openTrucks, ...recentClosed];
 
-    const enriched = await Promise.all(
-      combined.map(async (truck) => {
-        const openedByUser = await ctx.db.get(truck.openedBy);
-        return {
-          ...truck,
-          openedByName: openedByUser?.name ?? "Unknown",
-        };
-      })
-    );
+    const userIds = [...new Set(combined.map((t) => t.openedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enriched.sort((a, b) => b.openedAt - a.openedAt);
+    return combined
+      .map((truck) => ({
+        ...truck,
+        openedByName: userMap.get(truck.openedBy)?.name ?? "Unknown",
+      }))
+      .sort((a, b) => b.openedAt - a.openedAt);
   },
 });
 
@@ -1610,17 +1596,16 @@ export const getReceivingTrucks = query({
       (t) => (t.type ?? "receiving") === filterType
     );
 
-    const enriched = await Promise.all(
-      typeFiltered.map(async (truck) => {
-        const openedByUser = await ctx.db.get(truck.openedBy);
-        return {
-          ...truck,
-          openedByName: openedByUser?.name ?? "Unknown",
-        };
-      })
-    );
+    const userIds = [...new Set(typeFiltered.map((t) => t.openedBy))];
+    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
 
-    return enriched.sort((a, b) => b.openedAt - a.openedAt);
+    return typeFiltered
+      .map((truck) => ({
+        ...truck,
+        openedByName: userMap.get(truck.openedBy)?.name ?? "Unknown",
+      }))
+      .sort((a, b) => b.openedAt - a.openedAt);
   },
 });
 
