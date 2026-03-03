@@ -57,7 +57,7 @@ export const getOpenTrucks = query({
           .collect();
         return {
           ...truck,
-          scanCount: scans.length,
+          scanCount: scans.reduce((sum, s) => sum + (s.quantity ?? 1), 0),
         };
       })
     );
@@ -115,7 +115,7 @@ export const getTruck = query({
 
     return {
       ...truck,
-      scanCount: scans.length,
+      scanCount: scans.reduce((sum, s) => sum + (s.quantity ?? 1), 0),
       openedByName: openedByUser?.name ?? "Unknown",
       closedByName: closedByUser?.name ?? null,
     };
@@ -582,7 +582,7 @@ export const getTrucksForReport = query({
         return {
           ...truck,
           scans,
-          scanCount: scans.length,
+          scanCount: scans.reduce((sum, s) => sum + (s.quantity ?? 1), 0),
           byVendor,
           vendors: Object.keys(byVendor),
         };
@@ -1459,7 +1459,7 @@ export const getTrucksForManifestEmail = internalQuery({
           openedAt: truck.openedAt,
           closedAt: truck.closedAt,
           openedByName,
-          scanCount: validScans.length,
+          scanCount: validScans.reduce((sum, s) => sum + (s.quantity ?? 1), 0),
           byVendor,
         };
       })
