@@ -1265,7 +1265,12 @@ function Dashboard() {
                     <tbody className="divide-y divide-slate-700/30">
                       {filteredScans?.map((scan) => (
                         <tr key={scan._id} className="hover:bg-slate-800/50 transition-colors">
-                          <td className="px-5 py-3 font-mono text-xs text-cyan-300">{scan.trackingNumber}</td>
+                          <td className="px-5 py-3 font-mono text-xs text-cyan-300">
+                            {scan.trackingNumber}
+                            {(scan.quantity ?? 1) >= 2 && (
+                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">x2</span>
+                            )}
+                          </td>
                           <td className="px-5 py-3">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
                               scan.vendor === "Unknown" || !scan.vendor
@@ -1318,6 +1323,7 @@ function Dashboard() {
                 <div><p className="text-slate-400 text-sm mb-1">Recipient</p><p>{selectedScan.recipientName || "-"}</p></div>
                 <div><p className="text-slate-400 text-sm mb-1">Scanned By</p><p className="text-cyan-400">{selectedScan.scannedByName || "Unknown"}</p></div>
                 <div><p className="text-slate-400 text-sm mb-1">Scanned At</p><p className="text-slate-300">{selectedScan.scannedAt ? new Date(selectedScan.scannedAt).toLocaleString() : "-"}</p></div>
+                <div><p className="text-slate-400 text-sm mb-1">Quantity</p><p className={(selectedScan.quantity ?? 1) >= 2 ? "text-amber-400 font-semibold" : "text-slate-300"}>{(selectedScan.quantity ?? 1) >= 2 ? "Bundled Double (x2)" : "Single"}</p></div>
               </div>
               {selectedScan.address && (
                 <div><p className="text-slate-400 text-sm mb-1">Address</p><p>{selectedScan.address}{selectedScan.city ? `, ${selectedScan.city}` : ""}{selectedScan.state ? `, ${selectedScan.state}` : ""}</p></div>

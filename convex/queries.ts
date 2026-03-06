@@ -595,6 +595,7 @@ export const getTruckManifestByVendor = query({
         state: scan.state,
         scannedAt: scan.scannedAt,
         vendorAccount: scan.vendorAccount,
+        quantity: scan.quantity,
       });
     }
 
@@ -1424,6 +1425,7 @@ export const getTrucksForManifestEmail = internalQuery({
             carrier: string;
             destination: string;
             scannedByName: string;
+            quantity?: number;
           }>
         > = {};
         for (const scan of validScans) {
@@ -1434,6 +1436,7 @@ export const getTrucksForManifestEmail = internalQuery({
             carrier: scan.carrier || "",
             destination: scan.destination,
             scannedByName: userMap.get(scan.scannedBy) || "Unknown",
+            quantity: scan.quantity,
           });
         }
 

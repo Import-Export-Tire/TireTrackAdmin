@@ -437,7 +437,12 @@ function UnmatchedScansModal({
                     <tbody className="divide-y divide-slate-800">
                       {filteredScans.slice(0, 200).map((scan: any) => (
                         <tr key={scan._id} className={`hover:bg-slate-800/50 ${scan.isMiscan ? "bg-amber-500/10" : ""}`}>
-                          <td className="py-3 px-4 font-mono text-xs text-slate-300">{scan.trackingNumber}</td>
+                          <td className="py-3 px-4 font-mono text-xs text-slate-300">
+                            {scan.trackingNumber}
+                            {(scan.quantity ?? 1) >= 2 && (
+                              <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">x2</span>
+                            )}
+                          </td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                               scan.category === "UPS" ? "bg-yellow-500/20 text-yellow-400" :
@@ -1836,7 +1841,12 @@ function ReportsPage() {
                                 <tbody className="divide-y divide-slate-800">
                                   {vendorScans.slice(0, 100).map((scan: any, i: number) => (
                                     <tr key={i} className="text-slate-300 hover:bg-slate-800/30">
-                                      <td className="py-2 px-2 font-mono text-xs">{scan.trackingNumber}</td>
+                                      <td className="py-2 px-2 font-mono text-xs">
+                                        {scan.trackingNumber}
+                                        {(scan.quantity ?? 1) >= 2 && (
+                                          <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">x2</span>
+                                        )}
+                                      </td>
                                       <td className="py-2 px-2 text-xs">{getLocationName(scan.locationId || "")}</td>
                                       <td className="py-2 px-2">{scan.truckNumber}</td>
                                       <td className="py-2 px-2 text-slate-500 text-xs">{new Date(scan.scannedAt).toLocaleDateString()}</td>

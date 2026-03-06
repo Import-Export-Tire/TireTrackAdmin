@@ -97,6 +97,7 @@ type TruckData = {
       carrier: string;
       destination: string;
       scannedByName: string;
+      quantity?: number;
     }>
   >;
 };
@@ -129,7 +130,7 @@ function buildEmailHtml(
             .map(
               (s) => `
               <tr>
-                <td style="padding:4px 8px;border-bottom:1px solid #eee;font-family:monospace;font-size:13px;">${s.trackingNumber}</td>
+                <td style="padding:4px 8px;border-bottom:1px solid #eee;font-family:monospace;font-size:13px;">${s.trackingNumber}${(s.quantity ?? 1) >= 2 ? ' <span style="background:#f59e0b;color:#fff;padding:1px 4px;border-radius:3px;font-size:10px;font-weight:bold;">x2</span>' : ''}</td>
                 <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${s.carrier}</td>
                 <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${s.destination}</td>
                 <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${s.scannedByName}</td>
