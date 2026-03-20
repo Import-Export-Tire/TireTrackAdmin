@@ -13,7 +13,8 @@ frontend:
         # Write environment variables to .env.production for Next.js standalone build
         - echo "EXPO_TOKEN=$EXPO_TOKEN" >> .env.production
         - echo "NEXT_PUBLIC_CONVEX_URL=$NEXT_PUBLIC_CONVEX_URL" >> .env.production
-        - npm run build
+        # Run Convex deploy with explicit key, then Next.js build
+        - export CONVEX_DEPLOY_KEY=$CONVEX_DEPLOY_KEY && npx convex deploy --cmd 'next build'
   artifacts:
     baseDirectory: .next
     files:
