@@ -1449,3 +1449,154 @@ export const addKnownHelper = mutation({
     return { success: true, id };
   },
 });
+
+export const removeKnownHelper = mutation({
+  args: {
+    helperId: v.id("knownHelpers"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.helperId, { isActive: false });
+    return { success: true };
+  },
+});
+
+// ==================== ADMIN BONUS MANAGEMENT ====================
+
+export const adminOpenReceivingTruck = mutation({
+  args: {
+    truckNumber: v.string(),
+    helpers: v.array(v.string()),
+    locationId: v.string(),
+    adminName: v.string(),
+    notes: v.optional(v.string()),
+    type: v.optional(v.string()),
+    truckLength: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const normalizedHelpers = args.helpers.map(toTitleCase);
+    const id = await ctx.db.insert("receivingTrucks", {
+      truckNumber: args.truckNumber,
+      helpers: normalizedHelpers,
+      status: "open",
+      locationId: args.locationId,
+      openedByAdmin: args.adminName,
+      openedAt: Date.now(),
+      notes: args.notes,
+      type: args.type ?? "receiving",
+      truckLength: args.truckLength ?? "53ft",
+    });
+    await autoSaveHelpers(ctx, normalizedHelpers, args.locationId);
+    return { success: true, receivingTruckId: id };
+  },
+});
+
+export const adminCloseReceivingTruck = mutation({
+  args: {
+    receivingTruckId: v.id("receivingTrucks"),
+    adminName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const truck = await ctx.db.get(args.receivingTruckId);
+    if (!truck) return { success: false, error: "Not found" };
+
+    const now = Date.now();
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
+
+    let bonusAmount = 0;
+    if (bonusEarned && truck.helpers.length > 0) {
+      const truckType = truck.type ?? "receiving";
+      const truckLength = truck.truckLength ?? "53ft";
+      const helperCount = Math.min(truck.helpers.length, 3);
+      if (truckType === "outbound") {
+        bonusAmount = 15 * helperCount;
+      } else {
+        if (truckLength === "Pup") {
+          bonusAmount = 22.50;
+        } else if (truckLength === "40ft") {
+          bonusAmount = 10 * helperCount;
+        } else {
+          bonusAmount = 15 * helperCount;
+        }
+      }
+    }
+
+    await ctx.db.patch(args.receivingTruckId, {
+      status: "closed",
+      closedAt: now,
+      closedByAdmin: args.adminName,
+      bonusEarned,
+      bonusAmount: bonusEarned ? bonusAmount : 0,
+    });
+    return { success: true, bonusEarned, bonusAmount: bonusEarned ? bonusAmount : 0 };
+  },
+});
+
+export const adminEditBonusEntry = mutation({
+  args: {
+    entryId: v.string(),
+    type: v.union(v.literal("shipping"), v.literal("receiving"), v.literal("outbound")),
+    helpers: v.optional(v.array(v.string())),
+    truckLength: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    openedAt: v.optional(v.number()),
+    closedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (args.type === "shipping") {
+      const updates: Record<string, any> = {};
+      if (args.helpers !== undefined) updates.helpers = args.helpers.map(toTitleCase);
+      if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
+      if (args.openedAt !== undefined) updates.openedAt = args.openedAt;
+      if (args.closedAt !== undefined) updates.closedAt = args.closedAt;
+      await ctx.db.patch(args.entryId as any, updates);
+      if (updates.helpers) {
+        const truck = await ctx.db.get(args.entryId as any) as any;
+        if (truck?.locationId) await autoSaveHelpers(ctx, updates.helpers, truck.locationId);
+      }
+    } else {
+      const updates: Record<string, any> = {};
+      if (args.helpers !== undefined) updates.helpers = args.helpers.map(toTitleCase);
+      if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
+      if (args.notes !== undefined) updates.notes = args.notes;
+      if (args.openedAt !== undefined) updates.openedAt = args.openedAt;
+      if (args.closedAt !== undefined) updates.closedAt = args.closedAt;
+      // Recalculate bonus if times changed on a closed receiving/outbound truck
+      if (args.openedAt !== undefined || args.closedAt !== undefined) {
+        const truck = await ctx.db.get(args.entryId as any) as any;
+        if (truck && truck.status === "closed") {
+          const openedAt = args.openedAt ?? truck.openedAt;
+          const closedAt = args.closedAt ?? truck.closedAt;
+          if (openedAt && closedAt) {
+            const TWO_HOURS = 2 * 60 * 60 * 1000;
+            const bonusEarned = (closedAt - openedAt) <= TWO_HOURS;
+            const helpers = args.helpers?.map(toTitleCase) ?? truck.helpers ?? [];
+            const helperCount = Math.min(helpers.length, 3);
+            const truckType = truck.type ?? "receiving";
+            const truckLength = args.truckLength ?? truck.truckLength ?? "53ft";
+            let bonusAmount = 0;
+            if (bonusEarned && helperCount > 0) {
+              if (truckType === "outbound") {
+                bonusAmount = 15 * helperCount;
+              } else if (truckLength === "Pup") {
+                bonusAmount = 22.50;
+              } else if (truckLength === "40ft") {
+                bonusAmount = 10 * helperCount;
+              } else {
+                bonusAmount = 15 * helperCount;
+              }
+            }
+            updates.bonusEarned = bonusEarned;
+            updates.bonusAmount = bonusEarned ? bonusAmount : 0;
+          }
+        }
+      }
+      await ctx.db.patch(args.entryId as any, updates);
+      if (updates.helpers) {
+        const truck = await ctx.db.get(args.entryId as any) as any;
+        if (truck?.locationId) await autoSaveHelpers(ctx, updates.helpers, truck.locationId);
+      }
+    }
+    return { success: true };
+  },
+});

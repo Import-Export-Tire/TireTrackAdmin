@@ -98,16 +98,18 @@ export default defineSchema({
     helpers: v.array(v.string()),
     status: v.string(), // "open" | "closed"
     locationId: v.string(),
-    openedBy: v.id("users"),
+    openedBy: v.optional(v.id("users")), // warehouse user (optional for admin-opened trucks)
+    openedByAdmin: v.optional(v.string()), // admin name who opened (when opened from dashboard)
     openedAt: v.number(),
     closedAt: v.optional(v.number()),
     closedBy: v.optional(v.id("users")),
+    closedByAdmin: v.optional(v.string()), // admin name who closed (when closed from dashboard)
     bonusEarned: v.optional(v.boolean()),
     notes: v.optional(v.string()),
     archived: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
     type: v.optional(v.string()), // "receiving" | "outbound" (undefined = "receiving" for backward compat)
-    truckLength: v.optional(v.string()), // "40ft" | "53ft"
+    truckLength: v.optional(v.string()), // "40ft" | "53ft" | "Pup"
     bonusAmount: v.optional(v.number()), // dollar amount locked in at close time
   }).index("by_location_status", ["locationId", "status"])
     .index("by_openedAt", ["openedAt"]),

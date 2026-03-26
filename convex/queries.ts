@@ -607,7 +607,7 @@ export const getTruckManifestByVendor = query({
         openedAt: truck.openedAt,
         closedAt: truck.closedAt,
       },
-      totalScans: scans.length,
+      totalScans: scans.reduce((sum, s) => sum + ((s as any).quantity ?? 1), 0),
       byVendor,
     };
   },
@@ -729,14 +729,14 @@ export const getVendorDateRangeReport = query({
     const vendors = Object.keys(byVendor).sort();
     const stats = vendors.map(vendor => ({
       vendor,
-      count: byVendor[vendor].length,
+      count: byVendor[vendor].reduce((sum: number, s: any) => sum + (s.quantity ?? 1), 0),
       trucks: [...new Set(byVendor[vendor].map(s => s.truckNumber))].length,
     }));
 
     return {
       startDate: args.startDate,
       endDate: args.endDate,
-      totalScans: allScans.length,
+      totalScans: allScans.reduce((sum: number, s: any) => sum + (s.quantity ?? 1), 0),
       totalTrucks: filteredTrucks.length,
       vendors: stats,
       byVendor,
@@ -1599,14 +1599,14 @@ export const getReceivingTrucks = query({
       (t) => (t.type ?? "receiving") === filterType
     );
 
-    const userIds = [...new Set(typeFiltered.map((t) => t.openedBy))];
-    const users = await Promise.all(userIds.map((id) => ctx.db.get(id)));
-    const userMap = new Map(userIds.map((id, i) => [id, users[i]]));
+    const userIds = [...new Set(typeFiltered.map((t) => t.openedBy).filter(Boolean))] as any[];
+    const users = await Promise.all(userIds.map((id: any) => ctx.db.get(id)));
+    const userMap = new Map(userIds.map((id: any, i: number) => [id, users[i]]));
 
     return typeFiltered
       .map((truck) => ({
         ...truck,
-        openedByName: userMap.get(truck.openedBy)?.name ?? "Unknown",
+        openedByName: truck.openedByAdmin ?? (truck.openedBy ? (userMap.get(truck.openedBy) as any)?.name : null) ?? "Unknown",
       }))
       .sort((a, b) => b.openedAt - a.openedAt);
   },
@@ -1623,8 +1623,8 @@ export const getBonusReport = query({
     const startDate = args.startDate ?? now - 30 * 24 * 60 * 60 * 1000;
     const endDate = args.endDate ?? now;
 
-    // Shipping trucks with bonus data
-    const allTrucks = await ctx.db.query("trucks").order("desc").take(500);
+    // Shipping trucks with bonus data (only those with helpers, truckLength, or still open)
+    const allTrucks = await ctx.db.query("trucks").order("desc").take(200);
     const shippingTrucks = allTrucks
       .filter(
         (t) =>
@@ -1662,7 +1662,7 @@ export const getBonusReport = query({
     const allReceiving = await ctx.db
       .query("receivingTrucks")
       .order("desc")
-      .take(500);
+      .take(200);
     const receivingTrucks = allReceiving
       .filter(
         (t) => t.openedAt >= startDate && t.openedAt <= endDate && !t.archived

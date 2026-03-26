@@ -2,8 +2,9 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Protected } from "../protected";
+import { useAuth } from "../auth-context";
 import Link from "next/link";
 
 const LOCATION_OPTIONS = [
@@ -221,20 +222,551 @@ ${helperNames.length > 0 ? `<div class="section">
   }
 }
 
+function OpenTruckModal({
+  onClose,
+  adminName,
+  knownHelpers,
+}: {
+  onClose: () => void;
+  adminName: string;
+  knownHelpers: { _id: any; name: string; locationId: string }[];
+}) {
+  const adminOpen = useMutation(api.mutations.adminOpenReceivingTruck);
+  const [truckNumber, setTruckNumber] = useState("");
+  const [type, setType] = useState<"receiving" | "outbound">("receiving");
+  const [truckLength, setTruckLength] = useState("53ft");
+  const [locationId, setLocationId] = useState(LOCATION_OPTIONS[0].id);
+  const [notes, setNotes] = useState("");
+  const [helperInput, setHelperInput] = useState("");
+  const [helpers, setHelpers] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filteredSuggestions = knownHelpers
+    .filter(
+      (h) =>
+        h.locationId === locationId &&
+        h.name.toLowerCase().includes(helperInput.toLowerCase()) &&
+        !helpers.some((added) => added.toLowerCase() === h.name.toLowerCase())
+    )
+    .slice(0, 8);
+
+  const addHelper = (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed && !helpers.some((h) => h.toLowerCase() === trimmed.toLowerCase())) {
+      setHelpers([...helpers, trimmed]);
+    }
+    setHelperInput("");
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const handleSubmit = async () => {
+    if (!truckNumber.trim() || helpers.length === 0) return;
+    setSubmitting(true);
+    try {
+      await adminOpen({
+        truckNumber: truckNumber.trim(),
+        helpers,
+        locationId,
+        adminName,
+        notes: notes.trim() || undefined,
+        type,
+        truckLength,
+      });
+      onClose();
+    } catch (e) {
+      alert("Failed to open truck: " + (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-lg font-bold">Open Truck</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Truck #</label>
+              <input
+                type="text"
+                value={truckNumber}
+                onChange={(e) => setTruckNumber(e.target.value)}
+                placeholder="e.g. 12345"
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as any)}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              >
+                <option value="receiving">Receiving</option>
+                <option value="outbound">Outbound</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Truck Length</label>
+              <select
+                value={truckLength}
+                onChange={(e) => setTruckLength(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              >
+                <option value="Pup">Pup</option>
+                <option value="40ft">40ft</option>
+                <option value="53ft">53ft</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Location</label>
+              <select
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              >
+                {LOCATION_OPTIONS.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {/* Helpers */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Helpers</label>
+            {helpers.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {helpers.map((h, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/20">
+                    {h}
+                    <button onClick={() => setHelpers(helpers.filter((_, idx) => idx !== i))} className="text-cyan-400 hover:text-red-400 ml-0.5">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={helperInput}
+                onChange={(e) => { setHelperInput(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && helperInput.trim()) {
+                    e.preventDefault();
+                    addHelper(helperInput);
+                  }
+                }}
+                placeholder="Type name and press Enter..."
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              />
+              {showSuggestions && helperInput && filteredSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
+                  {filteredSuggestions.map((h) => (
+                    <button
+                      key={h._id}
+                      onClick={() => addHelper(h.name)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-600 transition-colors text-white"
+                    >
+                      {h.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Notes (optional)</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes..."
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            />
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={!truckNumber.trim() || helpers.length === 0 || submitting}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? "Opening..." : "Open Truck & Start Timer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function tsToLocalInput(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToTs(val: string): number | null {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function EditEntryModal({
+  entry,
+  onClose,
+  knownHelpers,
+}: {
+  entry: any;
+  onClose: () => void;
+  knownHelpers: { _id: any; name: string; locationId: string }[];
+}) {
+  const editEntry = useMutation(api.mutations.adminEditBonusEntry);
+  const [truckLength, setTruckLength] = useState(entry.truckLength ?? "");
+  const [helpers, setHelpers] = useState<string[]>(entry.helpers ?? []);
+  const [helperInput, setHelperInput] = useState("");
+  const [openedAtStr, setOpenedAtStr] = useState(tsToLocalInput(entry.openedAt));
+  const [closedAtStr, setClosedAtStr] = useState(entry.closedAt ? tsToLocalInput(entry.closedAt) : "");
+  const [submitting, setSubmitting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filteredSuggestions = knownHelpers
+    .filter(
+      (h) =>
+        h.locationId === entry.locationId &&
+        h.name.toLowerCase().includes(helperInput.toLowerCase()) &&
+        !helpers.some((added) => added.toLowerCase() === h.name.toLowerCase())
+    )
+    .slice(0, 8);
+
+  const addHelper = (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed && !helpers.some((h) => h.toLowerCase() === trimmed.toLowerCase())) {
+      setHelpers([...helpers, trimmed]);
+    }
+    setHelperInput("");
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  // Preview duration based on current input values
+  const previewDuration = useMemo(() => {
+    const openTs = localInputToTs(openedAtStr);
+    const closeTs = localInputToTs(closedAtStr);
+    if (!openTs || !closeTs) return null;
+    const ms = closeTs - openTs;
+    if (ms < 0) return "Invalid (closed before opened)";
+    return formatDuration(ms);
+  }, [openedAtStr, closedAtStr]);
+
+  const previewBonusEligible = useMemo(() => {
+    const openTs = localInputToTs(openedAtStr);
+    const closeTs = localInputToTs(closedAtStr);
+    if (!openTs || !closeTs || entry.type === "shipping") return null;
+    const ms = closeTs - openTs;
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    return ms <= TWO_HOURS;
+  }, [openedAtStr, closedAtStr, entry.type]);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      const newOpenedAt = localInputToTs(openedAtStr);
+      const newClosedAt = localInputToTs(closedAtStr);
+
+      await editEntry({
+        entryId: entry._id,
+        type: entry.type,
+        helpers,
+        truckLength: truckLength || undefined,
+        openedAt: newOpenedAt !== entry.openedAt ? (newOpenedAt ?? undefined) : undefined,
+        closedAt: newClosedAt !== (entry.closedAt ?? null) ? (newClosedAt ?? undefined) : undefined,
+      });
+      onClose();
+    } catch (e) {
+      alert("Failed to update: " + (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const lengthOptions = entry.type === "shipping"
+    ? ["28ft", "40ft", "48ft", "53ft"]
+    : ["Pup", "40ft", "53ft"];
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-lg font-bold">Edit Truck {entry.truckNumber}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {/* Times */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Opened At</label>
+              <input
+                type="datetime-local"
+                value={openedAtStr}
+                onChange={(e) => setOpenedAtStr(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Closed At</label>
+              <input
+                type="datetime-local"
+                value={closedAtStr}
+                onChange={(e) => setClosedAtStr(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              />
+            </div>
+          </div>
+          {/* Duration preview */}
+          {previewDuration && (
+            <div className="flex items-center gap-3 px-3 py-2 bg-slate-900/50 rounded-lg text-sm">
+              <span className="text-slate-500">Duration:</span>
+              <span className="text-white font-medium">{previewDuration}</span>
+              {previewBonusEligible !== null && (
+                <>
+                  <span className="text-slate-600">|</span>
+                  <span className={previewBonusEligible ? "text-emerald-400" : "text-red-400"}>
+                    {previewBonusEligible ? "Within 2hr window" : "Exceeds 2hr window"}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Truck Length</label>
+            <select
+              value={truckLength}
+              onChange={(e) => setTruckLength(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            >
+              <option value="">Not set</option>
+              {lengthOptions.map((len) => (
+                <option key={len} value={len}>{len}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Helpers</label>
+            {helpers.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {helpers.map((h, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/20">
+                    {h}
+                    <button onClick={() => setHelpers(helpers.filter((_, idx) => idx !== i))} className="text-cyan-400 hover:text-red-400 ml-0.5">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={helperInput}
+                onChange={(e) => { setHelperInput(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && helperInput.trim()) {
+                    e.preventDefault();
+                    addHelper(helperInput);
+                  }
+                }}
+                placeholder="Type name and press Enter..."
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              />
+              {showSuggestions && helperInput && filteredSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
+                  {filteredSuggestions.map((h) => (
+                    <button
+                      key={h._id}
+                      onClick={() => addHelper(h.name)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-600 transition-colors text-white"
+                    >
+                      {h.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HelperManagementModal({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  const [locationId, setLocationId] = useState(LOCATION_OPTIONS[0].id);
+  const knownHelpers = useQuery(api.queries.getKnownHelpers, { locationId });
+  const addHelper = useMutation(api.mutations.addKnownHelper);
+  const removeHelper = useMutation(api.mutations.removeKnownHelper);
+  const [newName, setNewName] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    setAdding(true);
+    try {
+      const result = await addHelper({ name: newName.trim(), locationId });
+      if (result.success) {
+        setNewName("");
+      } else {
+        alert(result.error ?? "Failed to add helper");
+      }
+    } catch (e) {
+      alert("Error: " + (e as Error).message);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-lg font-bold">Manage Helper Names</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Location</label>
+            <select
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            >
+              {LOCATION_OPTIONS.map((loc) => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Add New Helper</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+                placeholder="Helper name..."
+                className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              />
+              <button
+                onClick={handleAdd}
+                disabled={!newName.trim() || adding}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-2">Current Helpers ({knownHelpers?.length ?? 0})</label>
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              {knownHelpers?.map((h) => (
+                <div key={h._id} className="flex items-center justify-between px-3 py-2 bg-slate-900/50 rounded-lg">
+                  <span className="text-sm text-white">{h.name}</span>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Remove ${h.name}?`)) removeHelper({ helperId: h._id });
+                    }}
+                    className="text-slate-500 hover:text-red-400 transition-colors text-xs"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {knownHelpers?.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-4">No helpers for this location</p>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-slate-700 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LiveTimer({ openedAt }: { openedAt: number }) {
+  const [elapsed, setElapsed] = useState(Date.now() - openedAt);
+  useEffect(() => {
+    const interval = setInterval(() => setElapsed(Date.now() - openedAt), 1000);
+    return () => clearInterval(interval);
+  }, [openedAt]);
+  const hours = Math.floor(elapsed / 3600000);
+  const minutes = Math.floor((elapsed % 3600000) / 60000);
+  const seconds = Math.floor((elapsed % 60000) / 1000);
+  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  const isOverTime = elapsed > TWO_HOURS;
+  return (
+    <span className={`font-mono text-sm ${isOverTime ? "text-red-400" : "text-cyan-400"}`}>
+      {hours > 0 && `${hours}h `}{minutes}m {seconds}s
+    </span>
+  );
+}
+
 function BonusesDashboard() {
+  const { admin } = useAuth();
   const overrideBonus = useMutation(api.mutations.overrideReceivingBonus);
   const deleteBonusEntry = useMutation(api.mutations.deleteBonusEntry);
+  const adminClose = useMutation(api.mutations.adminCloseReceivingTruck);
   const [locationFilter, setLocationFilter] = useState("all");
   const [helperFilter, setHelperFilter] = useState("all");
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [showHelperMgmt, setShowHelperMgmt] = useState(false);
   const [dateRange, setDateRange] = useState(() => {
     const end = new Date();
     const start = new Date();
-    start.setDate(start.getDate() - 30);
+    start.setDate(start.getDate() - 7);
     return {
       start: start.toISOString().split("T")[0],
       end: end.toISOString().split("T")[0],
     };
   });
+
+  // Fetch known helpers for all locations (for modals)
+  const helpersLatrobe = useQuery(api.queries.getKnownHelpers, { locationId: LOCATION_OPTIONS[0].id });
+  const helpersEverson = useQuery(api.queries.getKnownHelpers, { locationId: LOCATION_OPTIONS[1].id });
+  const helpersChestnut = useQuery(api.queries.getKnownHelpers, { locationId: LOCATION_OPTIONS[2].id });
+  const allKnownHelpers = useMemo(
+    () => [...(helpersLatrobe ?? []), ...(helpersEverson ?? []), ...(helpersChestnut ?? [])],
+    [helpersLatrobe, helpersEverson, helpersChestnut]
+  );
 
   const startTimestamp = new Date(dateRange.start).getTime();
   const endTimestamp = new Date(dateRange.end).setHours(23, 59, 59, 999);
@@ -273,8 +805,42 @@ function BonusesDashboard() {
     };
   }, [filteredData]);
 
+  const handleCloseTruck = async (truckId: string) => {
+    if (!admin) return;
+    if (!confirm("Close this truck and stop the timer?")) return;
+    try {
+      const result = await adminClose({ receivingTruckId: truckId as any, adminName: admin.name });
+      if (result.success) {
+        alert(`Truck closed. Bonus ${result.bonusEarned ? "EARNED" : "NOT earned"} — $${result.bonusAmount}`);
+      } else {
+        alert("Failed to close truck: " + (result as any).error);
+      }
+    } catch (e) {
+      alert("Error: " + (e as Error).message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
+      {/* Modals */}
+      {showOpenModal && (
+        <OpenTruckModal
+          onClose={() => setShowOpenModal(false)}
+          adminName={admin?.name ?? "Admin"}
+          knownHelpers={allKnownHelpers}
+        />
+      )}
+      {editingEntry && (
+        <EditEntryModal
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          knownHelpers={allKnownHelpers}
+        />
+      )}
+      {showHelperMgmt && (
+        <HelperManagementModal onClose={() => setShowHelperMgmt(false)} />
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -294,16 +860,30 @@ function BonusesDashboard() {
                 <p className="text-xs text-slate-500">Shipping, Outbound &amp; Receiving Bonus Reports</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                const locLabel = locationFilter === "all" ? "All Locations" : (LOCATION_OPTIONS.find((l) => l.shortId === locationFilter)?.name ?? "All");
-                printBonusReport(filteredData, dateRange, locLabel, stats);
-              }}
-              disabled={!filteredData || filteredData.length === 0}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Print Report
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowHelperMgmt(true)}
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors border border-slate-600"
+              >
+                Manage Helpers
+              </button>
+              <button
+                onClick={() => setShowOpenModal(true)}
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+              >
+                + Open Truck
+              </button>
+              <button
+                onClick={() => {
+                  const locLabel = locationFilter === "all" ? "All Locations" : (LOCATION_OPTIONS.find((l) => l.shortId === locationFilter)?.name ?? "All");
+                  printBonusReport(filteredData, dateRange, locLabel, stats);
+                }}
+                disabled={!filteredData || filteredData.length === 0}
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Print Report
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -456,7 +1036,7 @@ function BonusesDashboard() {
                     </td>
                     <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
                       {truck.duration ? formatDuration(truck.duration) : (
-                        <span className="text-cyan-400">In progress</span>
+                        <LiveTimer openedAt={truck.openedAt} />
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-400">
@@ -519,19 +1099,42 @@ function BonusesDashboard() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete bonus entry for truck ${truck.truckNumber}?`)) {
-                            deleteBonusEntry({ entryId: truck._id, type: truck.type as any });
-                          }
-                        }}
-                        className="text-slate-600 hover:text-red-400 transition-colors"
-                        title="Delete entry"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {/* Close button for open receiving/outbound trucks */}
+                        {truck.status === "open" && truck.type !== "shipping" && (
+                          <button
+                            onClick={() => handleCloseTruck(truck._id)}
+                            className="px-2 py-1 text-xs font-medium rounded bg-red-500/20 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition-colors"
+                            title="Close truck & stop timer"
+                          >
+                            Close
+                          </button>
+                        )}
+                        {/* Edit button */}
+                        <button
+                          onClick={() => setEditingEntry(truck)}
+                          className="text-slate-500 hover:text-cyan-400 transition-colors"
+                          title="Edit entry"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        {/* Delete button */}
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete bonus entry for truck ${truck.truckNumber}?`)) {
+                              deleteBonusEntry({ entryId: truck._id, type: truck.type as any });
+                            }
+                          }}
+                          className="text-slate-600 hover:text-red-400 transition-colors"
+                          title="Delete entry"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
