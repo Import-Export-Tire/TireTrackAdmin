@@ -1,6 +1,11 @@
 import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
+// Only Everson has bonus tracking enabled
+const BONUS_ENABLED_LOCATIONS = new Set([
+  "kj74zfr66q23wgv5xc3qdc0a6s74vvtr", // Everson
+]);
+
 // Get user by Employee ID (for login)
 export const getUserByEmpId = query({
   args: { empId: v.string() },
@@ -1636,7 +1641,8 @@ export const getBonusReport = query({
       .map((t) => {
         // Shipping bonus: $10/person (max 3), all sizes, closed with security tag
         const helpers = t.helpers ?? [];
-        const isBonusEligible =
+        const hasBonus = BONUS_ENABLED_LOCATIONS.has(t.locationId);
+        const isBonusEligible = hasBonus &&
           t.status === "closed" &&
           !!t.securityTag &&
           helpers.length > 0;
@@ -1778,9 +1784,11 @@ export const getPayPeriodBonusSummary = query({
       return helperMap[key];
     };
 
+    const locationHasBonus = BONUS_ENABLED_LOCATIONS.has(args.locationId);
+
     // Process shipping trucks — $10/person (max 3), all sizes
     for (const t of shippingTrucks) {
-      const isBonusEligible =
+      const isBonusEligible = locationHasBonus &&
         t.status === "closed" && !!t.securityTag && t.helpers!.length > 0;
       const eligibleCount = Math.min(t.helpers!.length, 3);
       for (let i = 0; i < t.helpers!.length; i++) {
@@ -1797,7 +1805,7 @@ export const getPayPeriodBonusSummary = query({
     // Process receiving + outbound trucks
     for (const t of recvTrucks) {
       const truckType = t.type ?? "receiving";
-      const bonusEarned = t.bonusEarned === true;
+      const bonusEarned = locationHasBonus && t.bonusEarned === true;
       for (const h of t.helpers) {
         const entry = getOrCreate(h);
         if (truckType === "outbound") {

@@ -23,6 +23,11 @@ const VENDOR_ACCOUNTS = [
   { account: "0J469X", vendor: "WTD" },
 ];
 
+// Only Everson has bonus tracking enabled
+const BONUS_ENABLED_LOCATIONS = new Set([
+  "kj74zfr66q23wgv5xc3qdc0a6s74vvtr", // Everson
+]);
+
 export const openTruck = mutation({
   args: {
     truckNumber: v.string(),
@@ -1329,27 +1334,33 @@ export const closeReceivingTruck = mutation({
     if (!truck) return { success: false, error: "Not found" };
 
     const now = Date.now();
-    const TWO_HOURS = 2 * 60 * 60 * 1000;
-    const bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
+    const locationHasBonus = BONUS_ENABLED_LOCATIONS.has(truck.locationId);
 
-    // Calculate bonus amount based on type + truckLength + helper count (3 person max)
+    let bonusEarned = false;
     let bonusAmount = 0;
-    if (bonusEarned && truck.helpers.length > 0) {
-      const truckType = truck.type ?? "receiving";
-      const truckLength = truck.truckLength ?? "53ft";
-      const helperCount = Math.min(truck.helpers.length, 3);
-      if (truckType === "outbound") {
-        // Outbound: $15/person, 53ft only
-        bonusAmount = 15 * helperCount;
-      } else {
-        // Receiving: Pup = $22.50 total split among helpers, 40ft = $10/person, 53ft = $15/person
-        if (truckLength === "Pup") {
-          bonusAmount = 22.50; // always $22.50 total, split among whoever is on it
-        } else if (truckLength === "40ft") {
-          bonusAmount = 10 * helperCount;
-        } else {
-          // 53ft
+
+    if (locationHasBonus) {
+      const TWO_HOURS = 2 * 60 * 60 * 1000;
+      bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
+
+      // Calculate bonus amount based on type + truckLength + helper count (3 person max)
+      if (bonusEarned && truck.helpers.length > 0) {
+        const truckType = truck.type ?? "receiving";
+        const truckLength = truck.truckLength ?? "53ft";
+        const helperCount = Math.min(truck.helpers.length, 3);
+        if (truckType === "outbound") {
+          // Outbound: $15/person, 53ft only
           bonusAmount = 15 * helperCount;
+        } else {
+          // Receiving: Pup = $22.50 total split among helpers, 40ft = $10/person, 53ft = $15/person
+          if (truckLength === "Pup") {
+            bonusAmount = 22.50; // always $22.50 total, split among whoever is on it
+          } else if (truckLength === "40ft") {
+            bonusAmount = 10 * helperCount;
+          } else {
+            // 53ft
+            bonusAmount = 15 * helperCount;
+          }
         }
       }
     }
@@ -1358,8 +1369,7 @@ export const closeReceivingTruck = mutation({
       status: "closed",
       closedAt: now,
       closedBy: args.userId,
-      bonusEarned,
-      bonusAmount: bonusEarned ? bonusAmount : 0,
+      ...(locationHasBonus ? { bonusEarned, bonusAmount: bonusEarned ? bonusAmount : 0 } : {}),
     });
     return { success: true, bonusEarned, bonusAmount: bonusEarned ? bonusAmount : 0 };
   },
@@ -1500,23 +1510,29 @@ export const adminCloseReceivingTruck = mutation({
     if (!truck) return { success: false, error: "Not found" };
 
     const now = Date.now();
-    const TWO_HOURS = 2 * 60 * 60 * 1000;
-    const bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
+    const locationHasBonus = BONUS_ENABLED_LOCATIONS.has(truck.locationId);
 
+    let bonusEarned = false;
     let bonusAmount = 0;
-    if (bonusEarned && truck.helpers.length > 0) {
-      const truckType = truck.type ?? "receiving";
-      const truckLength = truck.truckLength ?? "53ft";
-      const helperCount = Math.min(truck.helpers.length, 3);
-      if (truckType === "outbound") {
-        bonusAmount = 15 * helperCount;
-      } else {
-        if (truckLength === "Pup") {
-          bonusAmount = 22.50;
-        } else if (truckLength === "40ft") {
-          bonusAmount = 10 * helperCount;
-        } else {
+
+    if (locationHasBonus) {
+      const TWO_HOURS = 2 * 60 * 60 * 1000;
+      bonusEarned = (now - truck.openedAt) <= TWO_HOURS;
+
+      if (bonusEarned && truck.helpers.length > 0) {
+        const truckType = truck.type ?? "receiving";
+        const truckLength = truck.truckLength ?? "53ft";
+        const helperCount = Math.min(truck.helpers.length, 3);
+        if (truckType === "outbound") {
           bonusAmount = 15 * helperCount;
+        } else {
+          if (truckLength === "Pup") {
+            bonusAmount = 22.50;
+          } else if (truckLength === "40ft") {
+            bonusAmount = 10 * helperCount;
+          } else {
+            bonusAmount = 15 * helperCount;
+          }
         }
       }
     }
@@ -1525,8 +1541,7 @@ export const adminCloseReceivingTruck = mutation({
       status: "closed",
       closedAt: now,
       closedByAdmin: args.adminName,
-      bonusEarned,
-      bonusAmount: bonusEarned ? bonusAmount : 0,
+      ...(locationHasBonus ? { bonusEarned, bonusAmount: bonusEarned ? bonusAmount : 0 } : {}),
     });
     return { success: true, bonusEarned, bonusAmount: bonusEarned ? bonusAmount : 0 };
   },
@@ -1561,10 +1576,10 @@ export const adminEditBonusEntry = mutation({
       if (args.notes !== undefined) updates.notes = args.notes;
       if (args.openedAt !== undefined) updates.openedAt = args.openedAt;
       if (args.closedAt !== undefined) updates.closedAt = args.closedAt;
-      // Recalculate bonus if times changed on a closed receiving/outbound truck
+      // Recalculate bonus if times changed on a closed receiving/outbound truck (only for bonus-enabled locations)
       if (args.openedAt !== undefined || args.closedAt !== undefined) {
         const truck = await ctx.db.get(args.entryId as any) as any;
-        if (truck && truck.status === "closed") {
+        if (truck && truck.status === "closed" && BONUS_ENABLED_LOCATIONS.has(truck.locationId)) {
           const openedAt = args.openedAt ?? truck.openedAt;
           const closedAt = args.closedAt ?? truck.closedAt;
           if (openedAt && closedAt) {

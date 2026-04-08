@@ -8,10 +8,14 @@ import { useAuth } from "../auth-context";
 import Link from "next/link";
 
 const LOCATION_OPTIONS = [
-  { id: "kj7q0v1qxbf6z1b1h2cjhf4m8h74vjbe", name: "Latrobe", shortId: "latrobe" },
-  { id: "kj74zfr66q23wgv5xc3qdc0a6s74vvtr", name: "Everson", shortId: "everson" },
-  { id: "kj70r8fvdeg83dhapvp91kqs2574vqng", name: "Chestnut", shortId: "chestnut" },
+  { id: "kj7q0v1qxbf6z1b1h2cjhf4m8h74vjbe", name: "Latrobe", shortId: "latrobe", bonusEnabled: false },
+  { id: "kj74zfr66q23wgv5xc3qdc0a6s74vvtr", name: "Everson", shortId: "everson", bonusEnabled: true },
+  { id: "kj70r8fvdeg83dhapvp91kqs2574vqng", name: "Chestnut", shortId: "chestnut", bonusEnabled: false },
 ];
+
+function locationHasBonus(locationId: string): boolean {
+  return LOCATION_OPTIONS.find((l) => l.id === locationId)?.bonusEnabled ?? false;
+}
 
 function getLocationName(locationId: string): string {
   const loc = LOCATION_OPTIONS.find((l) => l.id === locationId);
@@ -52,29 +56,32 @@ function printBonusReport(
   const shipping = data.filter((t) => t.type === "shipping");
   const outbound = data.filter((t) => t.type === "outbound");
   const receiving = data.filter((t) => t.type === "receiving");
-  const recEarned = [...receiving, ...outbound].filter((t) => t.bonusEarned === true).length;
-  const recMissed = [...receiving, ...outbound].filter((t) => t.bonusEarned === false).length;
+  const bonusEligible = [...receiving, ...outbound].filter((t) => locationHasBonus(t.locationId));
+  const recEarned = bonusEligible.filter((t) => t.bonusEarned === true).length;
+  const recMissed = bonusEligible.filter((t) => t.bonusEarned === false).length;
+  const hasBonusData = data.some((t) => locationHasBonus(t.locationId));
 
   // Collect unique helper names across all entries for the helpers summary
   const helperMap: Record<string, { shipping: number; outbound: number; receiving: number; earned: number; totalAmount: number }> = {};
   data.forEach((t) => {
+    const hasBonus = locationHasBonus(t.locationId);
     t.helpers.forEach((name: string) => {
       if (!helperMap[name]) helperMap[name] = { shipping: 0, outbound: 0, receiving: 0, earned: 0, totalAmount: 0 };
       if (t.type === "shipping") {
         helperMap[name].shipping++;
-        if (t.bonusEarned === true) {
+        if (hasBonus && t.bonusEarned === true) {
           helperMap[name].earned++;
           helperMap[name].totalAmount += (t.bonusAmount ?? 0) / Math.max(1, t.helpers.length);
         }
       } else if (t.type === "outbound") {
         helperMap[name].outbound++;
-        if (t.bonusEarned === true) {
+        if (hasBonus && t.bonusEarned === true) {
           helperMap[name].earned++;
           helperMap[name].totalAmount += (t.bonusAmount ?? 0) / Math.max(1, t.helpers.length);
         }
       } else {
         helperMap[name].receiving++;
-        if (t.bonusEarned === true) {
+        if (hasBonus && t.bonusEarned === true) {
           helperMap[name].earned++;
           helperMap[name].totalAmount += (t.bonusAmount ?? 0) / Math.max(1, t.helpers.length);
         }
@@ -90,30 +97,36 @@ function printBonusReport(
     <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
     <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
     <td>${locName(t.locationId)}</td>
-    <td style="text-align:right">$${t.bonusAmount ?? 0}</td>
+    ${hasBonusData ? `<td style="text-align:right">$${locationHasBonus(t.locationId) ? (t.bonusAmount ?? 0) : "-"}</td>` : ""}
   </tr>`).join("");
 
-  const outboundRows = outbound.map((t: any) => `<tr>
+  const outboundRows = outbound.map((t: any) => {
+    const hasBonus = locationHasBonus(t.locationId);
+    return `<tr>
     <td>${fmtDate(t.openedAt)}</td>
     <td>${t.truckNumber}</td>
     <td>${t.truckLength ?? "-"}</td>
     <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
     <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
     <td>${locName(t.locationId)}</td>
-    <td style="text-align:center;font-weight:700;${t.bonusEarned === true ? "color:#16a34a" : t.bonusEarned === false ? "color:#dc2626" : ""}">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
-    <td style="text-align:right">$${t.bonusAmount ?? 0}</td>
-  </tr>`).join("");
+    ${hasBonusData ? `<td style="text-align:center;font-weight:700;${hasBonus && t.bonusEarned === true ? "color:#16a34a" : hasBonus && t.bonusEarned === false ? "color:#dc2626" : ""}">${!hasBonus ? "-" : t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
+    <td style="text-align:right">${hasBonus ? "$" + (t.bonusAmount ?? 0) : "-"}</td>` : ""}
+  </tr>`;
+  }).join("");
 
-  const receivingRows = receiving.map((t: any) => `<tr>
+  const receivingRows = receiving.map((t: any) => {
+    const hasBonus = locationHasBonus(t.locationId);
+    return `<tr>
     <td>${fmtDate(t.openedAt)}</td>
     <td>${t.truckNumber}</td>
     <td>${t.truckLength ?? "-"}</td>
     <td>${t.helpers.length > 0 ? t.helpers.join(", ") : "-"}</td>
     <td>${t.duration ? fmtDur(t.duration) : "In progress"}</td>
     <td>${locName(t.locationId)}</td>
-    <td style="text-align:center;font-weight:700;${t.bonusEarned === true ? "color:#16a34a" : t.bonusEarned === false ? "color:#dc2626" : ""}">${t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
-    <td style="text-align:right">$${t.bonusAmount ?? 0}</td>
-  </tr>`).join("");
+    ${hasBonusData ? `<td style="text-align:center;font-weight:700;${hasBonus && t.bonusEarned === true ? "color:#16a34a" : hasBonus && t.bonusEarned === false ? "color:#dc2626" : ""}">${!hasBonus ? "-" : t.bonusEarned === true ? "YES" : t.bonusEarned === false ? "NO" : "-"}</td>
+    <td style="text-align:right">${hasBonus ? "$" + (t.bonusAmount ?? 0) : "-"}</td>` : ""}
+  </tr>`;
+  }).join("");
 
   const helperRows = helperNames.map((name) => {
     const h = helperMap[name];
@@ -122,12 +135,12 @@ function printBonusReport(
       <td style="text-align:center">${h.shipping}</td>
       <td style="text-align:center">${h.outbound}</td>
       <td style="text-align:center">${h.receiving}</td>
-      <td style="text-align:center;font-weight:700;color:#16a34a">${h.earned}</td>
-      <td style="text-align:right;font-weight:700">$${Math.round(h.totalAmount)}</td>
+      ${hasBonusData ? `<td style="text-align:center;font-weight:700;color:#16a34a">${h.earned}</td>
+      <td style="text-align:right;font-weight:700">$${Math.round(h.totalAmount)}</td>` : ""}
     </tr>`;
   }).join("");
 
-  const grandTotal = data.reduce((sum: number, t: any) => sum + (t.bonusAmount ?? 0), 0);
+  const grandTotal = data.filter((t: any) => locationHasBonus(t.locationId)).reduce((sum: number, t: any) => sum + (t.bonusAmount ?? 0), 0);
 
   const html = `<!DOCTYPE html>
 <html><head><title>Bonus Report</title>
@@ -164,16 +177,16 @@ function printBonusReport(
   <div class="stat"><div class="label">Shipping</div><div class="value">${stats.shipping}</div></div>
   <div class="stat"><div class="label">Outbound</div><div class="value">${stats.outbound}</div></div>
   <div class="stat"><div class="label">Receiving</div><div class="value">${stats.receiving}</div></div>
-  <div class="stat"><div class="label">Earned</div><div class="value" style="color:#16a34a">${stats.earned}</div></div>
+  ${hasBonusData ? `<div class="stat"><div class="label">Earned</div><div class="value" style="color:#16a34a">${stats.earned}</div></div>
   <div class="stat"><div class="label">Missed</div><div class="value" style="color:#dc2626">${stats.missed}</div></div>
-  <div class="stat"><div class="label">Total $</div><div class="value" style="color:#0d9488">$${stats.totalBonus}</div></div>
+  <div class="stat"><div class="label">Total $</div><div class="value" style="color:#0d9488">$${stats.totalBonus}</div></div>` : ""}
 </div>
 
 <div class="section">
   <div class="section-title">Shipping <span class="count">${shipping.length} truck${shipping.length !== 1 ? "s" : ""}</span></div>
   ${shipping.length > 0 ? `<table>
     <thead><tr>
-      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:right">Bonus $</th>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th>${hasBonusData ? `<th style="text-align:right">Bonus $</th>` : ""}
     </tr></thead>
     <tbody>${shippingRows}</tbody>
   </table>` : `<div class="empty">No shipping trucks in this period</div>`}
@@ -183,7 +196,7 @@ function printBonusReport(
   <div class="section-title">Outbound <span class="count">${outbound.length} truck${outbound.length !== 1 ? "s" : ""}</span></div>
   ${outbound.length > 0 ? `<table>
     <thead><tr>
-      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th><th style="text-align:right">Bonus $</th>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th>${hasBonusData ? `<th style="text-align:center">Bonus</th><th style="text-align:right">Bonus $</th>` : ""}
     </tr></thead>
     <tbody>${outboundRows}</tbody>
   </table>` : `<div class="empty">No outbound trucks in this period</div>`}
@@ -193,7 +206,7 @@ function printBonusReport(
   <div class="section-title">Receiving <span class="count">${receiving.length} truck${receiving.length !== 1 ? "s" : ""} &nbsp;&bull;&nbsp; ${recEarned} earned &nbsp;&bull;&nbsp; ${recMissed} missed</span></div>
   ${receiving.length > 0 ? `<table>
     <thead><tr>
-      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th><th style="text-align:center">Bonus</th><th style="text-align:right">Bonus $</th>
+      <th>Date</th><th>Truck #</th><th>Length</th><th>Helpers</th><th>Duration</th><th>Location</th>${hasBonusData ? `<th style="text-align:center">Bonus</th><th style="text-align:right">Bonus $</th>` : ""}
     </tr></thead>
     <tbody>${receivingRows}</tbody>
   </table>` : `<div class="empty">No receiving trucks in this period</div>`}
@@ -203,13 +216,13 @@ ${helperNames.length > 0 ? `<div class="section">
   <div class="section-title">Helper Summary <span class="count">${helperNames.length} helper${helperNames.length !== 1 ? "s" : ""}</span></div>
   <table>
     <thead><tr>
-      <th>Name</th><th style="text-align:center">Shipping</th><th style="text-align:center">Outbound</th><th style="text-align:center">Receiving</th><th style="text-align:center">Earned</th><th style="text-align:right">Total $</th>
+      <th>Name</th><th style="text-align:center">Shipping</th><th style="text-align:center">Outbound</th><th style="text-align:center">Receiving</th>${hasBonusData ? `<th style="text-align:center">Earned</th><th style="text-align:right">Total $</th>` : ""}
     </tr></thead>
     <tbody>${helperRows}</tbody>
   </table>
 </div>` : ""}
 
-<div class="grand-total">Grand Total Bonus: $${grandTotal}</div>
+${hasBonusData ? `<div class="grand-total">Grand Total Bonus: $${grandTotal}</div>` : ""}
 
 <div class="footer">Generated ${new Date().toLocaleString()} &nbsp;|&nbsp; TireTrack Admin</div>
 </body></html>`;
@@ -472,13 +485,14 @@ function EditEntryModal({
   }, [openedAtStr, closedAtStr]);
 
   const previewBonusEligible = useMemo(() => {
+    if (!locationHasBonus(entry.locationId)) return null;
     const openTs = localInputToTs(openedAtStr);
     const closeTs = localInputToTs(closedAtStr);
     if (!openTs || !closeTs || entry.type === "shipping") return null;
     const ms = closeTs - openTs;
     const TWO_HOURS = 2 * 60 * 60 * 1000;
     return ms <= TWO_HOURS;
-  }, [openedAtStr, closedAtStr, entry.type]);
+  }, [openedAtStr, closedAtStr, entry.type, entry.locationId]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -793,15 +807,23 @@ function BonusesDashboard() {
     return Array.from(names).sort();
   }, [bonusData]);
 
+  // Whether the current filter view shows any bonus-enabled locations
+  const showBonusColumns = useMemo(() => {
+    if (locationFilter === "all") return true;
+    const loc = LOCATION_OPTIONS.find((l) => l.shortId === locationFilter);
+    return loc?.bonusEnabled ?? false;
+  }, [locationFilter]);
+
   const stats = useMemo(() => {
     if (!filteredData) return { shipping: 0, outbound: 0, receiving: 0, earned: 0, missed: 0, totalBonus: 0 };
+    const bonusData = filteredData.filter((t) => locationHasBonus(t.locationId));
     return {
       shipping: filteredData.filter((t) => t.type === "shipping").length,
       outbound: filteredData.filter((t) => t.type === "outbound").length,
       receiving: filteredData.filter((t) => t.type === "receiving").length,
-      earned: filteredData.filter((t) => t.bonusEarned === true).length,
-      missed: filteredData.filter((t) => t.bonusEarned === false).length,
-      totalBonus: filteredData.reduce((sum, t) => sum + (t.bonusAmount ?? 0), 0),
+      earned: bonusData.filter((t) => t.bonusEarned === true).length,
+      missed: bonusData.filter((t) => t.bonusEarned === false).length,
+      totalBonus: bonusData.reduce((sum, t) => sum + (t.bonusAmount ?? 0), 0),
     };
   }, [filteredData]);
 
@@ -938,7 +960,7 @@ function BonusesDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <div className={`grid grid-cols-2 ${showBonusColumns ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}>
           <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
             <p className="text-xs text-slate-500 uppercase tracking-wider">Shipping</p>
             <p className="text-2xl font-bold text-blue-400 mt-1">{stats.shipping}</p>
@@ -951,18 +973,22 @@ function BonusesDashboard() {
             <p className="text-xs text-slate-500 uppercase tracking-wider">Receiving</p>
             <p className="text-2xl font-bold text-purple-400 mt-1">{stats.receiving}</p>
           </div>
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Earned</p>
-            <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.earned}</p>
-          </div>
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Missed</p>
-            <p className="text-2xl font-bold text-red-400 mt-1">{stats.missed}</p>
-          </div>
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Total Bonus $</p>
-            <p className="text-2xl font-bold text-teal-400 mt-1">${stats.totalBonus}</p>
-          </div>
+          {showBonusColumns && (
+            <>
+              <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Earned</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.earned}</p>
+              </div>
+              <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Missed</p>
+                <p className="text-2xl font-bold text-red-400 mt-1">{stats.missed}</p>
+              </div>
+              <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Total Bonus $</p>
+                <p className="text-2xl font-bold text-teal-400 mt-1">${stats.totalBonus}</p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Table */}
@@ -978,8 +1004,12 @@ function BonusesDashboard() {
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Helpers</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Duration</th>
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Location</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus</th>
-                  <th className="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus $</th>
+                  {showBonusColumns && (
+                    <>
+                      <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus</th>
+                      <th className="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus $</th>
+                    </>
+                  )}
                   <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Status</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -987,15 +1017,15 @@ function BonusesDashboard() {
               <tbody>
                 {!bonusData && (
                   <tr>
-                    <td colSpan={11} className="text-center py-12 text-slate-500">
+                    <td colSpan={showBonusColumns ? 11 : 9} className="text-center py-12 text-slate-500">
                       Loading...
                     </td>
                   </tr>
                 )}
                 {filteredData?.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="text-center py-12 text-slate-500">
-                      No bonus data for the selected date range
+                    <td colSpan={showBonusColumns ? 11 : 9} className="text-center py-12 text-slate-500">
+                      No data for the selected date range
                     </td>
                   </tr>
                 )}
@@ -1042,53 +1072,59 @@ function BonusesDashboard() {
                     <td className="px-4 py-3 text-slate-400">
                       {getLocationName(truck.locationId)}
                     </td>
-                    <td className="px-4 py-3">
-                      {truck.bonusEarned === true && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-emerald-400 text-lg" title="Bonus earned">&#x2705;</span>
-                          {(truck.type === "receiving" || truck.type === "outbound") && (
-                            <button
-                              onClick={() => {
-                                if (confirm("Revoke this bonus override?")) {
-                                  overrideBonus({ receivingTruckId: truck._id as any, bonusEarned: false });
-                                }
-                              }}
-                              className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-                              title="Revoke override"
-                            >
-                              undo
-                            </button>
+                    {showBonusColumns && (
+                      <>
+                        <td className="px-4 py-3">
+                          {!locationHasBonus(truck.locationId) ? (
+                            <span className="text-slate-600">-</span>
+                          ) : truck.bonusEarned === true ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 text-lg" title="Bonus earned">&#x2705;</span>
+                              {(truck.type === "receiving" || truck.type === "outbound") && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm("Revoke this bonus override?")) {
+                                      overrideBonus({ receivingTruckId: truck._id as any, bonusEarned: false });
+                                    }
+                                  }}
+                                  className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                                  title="Revoke override"
+                                >
+                                  undo
+                                </button>
+                              )}
+                            </div>
+                          ) : truck.bonusEarned === false ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400 text-lg" title="No bonus">&#x274C;</span>
+                              {(truck.type === "receiving" || truck.type === "outbound") && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Override bonus for truck ${truck.truckNumber}? This will mark the bonus as earned despite exceeding the 2-hour window.`)) {
+                                      overrideBonus({ receivingTruckId: truck._id as any, bonusEarned: true });
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 text-xs font-medium rounded bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:bg-amber-500/30 transition-colors"
+                                >
+                                  Override
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600">-</span>
                           )}
-                        </div>
-                      )}
-                      {truck.bonusEarned === false && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-red-400 text-lg" title="No bonus">&#x274C;</span>
-                          {(truck.type === "receiving" || truck.type === "outbound") && (
-                            <button
-                              onClick={() => {
-                                if (confirm(`Override bonus for truck ${truck.truckNumber}? This will mark the bonus as earned despite exceeding the 2-hour window.`)) {
-                                  overrideBonus({ receivingTruckId: truck._id as any, bonusEarned: true });
-                                }
-                              }}
-                              className="px-2 py-0.5 text-xs font-medium rounded bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:bg-amber-500/30 transition-colors"
-                            >
-                              Override
-                            </button>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          {!locationHasBonus(truck.locationId) ? (
+                            <span className="text-slate-600">-</span>
+                          ) : (truck.bonusAmount ?? 0) > 0 ? (
+                            <span className="text-emerald-400 font-medium">${truck.bonusAmount}</span>
+                          ) : (
+                            <span className="text-slate-600">$0</span>
                           )}
-                        </div>
-                      )}
-                      {truck.bonusEarned === null && (
-                        <span className="text-slate-600">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {(truck.bonusAmount ?? 0) > 0 ? (
-                        <span className="text-emerald-400 font-medium">${truck.bonusAmount}</span>
-                      ) : (
-                        <span className="text-slate-600">$0</span>
-                      )}
-                    </td>
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         truck.status === "open"
@@ -1113,12 +1149,10 @@ function BonusesDashboard() {
                         {/* Edit button */}
                         <button
                           onClick={() => setEditingEntry(truck)}
-                          className="text-slate-500 hover:text-cyan-400 transition-colors"
+                          className="px-2 py-1 text-xs font-medium rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/30 transition-colors"
                           title="Edit entry"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          Edit
                         </button>
                         {/* Delete button */}
                         <button
