@@ -10,6 +10,7 @@ export const generateUploadUrl = mutation({
 });
 
 // Get public URL from storage ID
+// Kept as mutation (not query) because it's called imperatively after upload
 export const getImageUrl = mutation({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {

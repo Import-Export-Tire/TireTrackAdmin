@@ -41,7 +41,7 @@ function isFedExMiscan(trackingNumber: string, rawBarcode: string, carrier?: str
 }
 
 // One-time migration to detect FedEx miscans
-export const detectFedExMiscans = mutation({
+export const detectFedExMiscans = internalMutation({
   args: {},
   handler: async (ctx) => {
     const scans = await ctx.db.query("scans").collect();

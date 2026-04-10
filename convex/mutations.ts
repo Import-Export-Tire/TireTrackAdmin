@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 const VENDOR_ACCOUNTS = [
@@ -417,6 +417,28 @@ export const addReturnItem = mutation({
   },
 });
 
+export const renameReturnBatch = mutation({
+  args: {
+    batchId: v.id("returnBatches"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) throw new Error("Batch not found");
+    if (batch.status !== "open") throw new Error("Can only rename open batches");
+
+    const trimmed = args.name.trim();
+    if (!trimmed) throw new Error("Name cannot be empty");
+
+    // Append 3-4 digit random number for uniqueness
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const batchNumber = `${trimmed}-${suffix}`;
+
+    await ctx.db.patch(args.batchId, { batchNumber });
+    return { success: true, batchNumber };
+  },
+});
+
 export const closeReturnBatch = mutation({
   args: {
     batchId: v.id("returnBatches"),
@@ -459,7 +481,7 @@ export const bulkInsertTireUPCs = mutation({
   },
 });
 
-export const backfillVendors = mutation({
+export const backfillVendors = internalMutation({
   args: {
     detectMiscans: v.optional(v.boolean()),
   },
@@ -525,7 +547,7 @@ export const backfillVendors = mutation({
 // 1. If rawBarcode contains UPSN or 1Z → carrier = "UPS"
 // 2. If rawBarcode contains FDEG or FDEX → carrier = "FedEx"
 // 3. Otherwise fall back to the truck's carrier
-export const backfillCarriers = mutation({
+export const backfillCarriers = internalMutation({
   args: { daysBack: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const daysBack = args.daysBack ?? 7;
@@ -591,7 +613,7 @@ export const backfillCarriers = mutation({
   },
 });
 
-export const analyzeVendorAccounts = mutation({
+export const analyzeVendorAccounts = internalMutation({
   args: {},
   handler: async (ctx) => {
     const scans = await ctx.db.query("scans").collect();
@@ -612,21 +634,26 @@ export const analyzeVendorAccounts = mutation({
   },
 });
 export const deleteTruck = mutation({
-  args: { truckId: v.id("trucks") },
+  args: { truckId: v.id("trucks"), callerAdminId: v.optional(v.id("adminUsers")) },
   handler: async (ctx, args) => {
+    // Require admin auth
+    if (!args.callerAdminId) return { deleted: false, error: "Unauthorized" };
+    const caller = await ctx.db.get(args.callerAdminId);
+    if (!caller || !caller.isActive) return { deleted: false, error: "Unauthorized" };
+
     // Delete all scans for this truck first
     const scans = await ctx.db
       .query("scans")
       .withIndex("by_truck", (q) => q.eq("truckId", args.truckId))
       .collect();
-    
+
     for (const scan of scans) {
       await ctx.db.delete(scan._id);
     }
-    
+
     // Delete the truck
     await ctx.db.delete(args.truckId);
-    
+
     return { deleted: true, scansRemoved: scans.length };
   },
 });
@@ -652,8 +679,12 @@ export const updateUser = mutation({
 });
 
 export const deleteUser = mutation({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), callerAdminId: v.optional(v.id("adminUsers")) },
   handler: async (ctx, args) => {
+    if (!args.callerAdminId) return { success: false, error: "Unauthorized" };
+    const caller = await ctx.db.get(args.callerAdminId);
+    if (!caller || !caller.isActive) return { success: false, error: "Unauthorized" };
+
     await ctx.db.delete(args.userId);
     return { success: true };
   },
@@ -824,18 +855,22 @@ export const deleteReturnItem = mutation({
 });
 
 export const deleteReturnBatch = mutation({
-  args: { batchId: v.id("returnBatches") },
+  args: { batchId: v.id("returnBatches"), callerAdminId: v.optional(v.id("adminUsers")) },
   handler: async (ctx, args) => {
+    if (!args.callerAdminId) return { success: false, error: "Unauthorized" };
+    const caller = await ctx.db.get(args.callerAdminId);
+    if (!caller || !caller.isActive) return { success: false, error: "Unauthorized" };
+
     // Delete all items in the batch first
     const items = await ctx.db
       .query("returnItems")
       .withIndex("by_batch", (q) => q.eq("returnBatchId", args.batchId))
       .collect();
-    
+
     for (const item of items) {
       await ctx.db.delete(item._id);
     }
-    
+
     // Delete the batch
     await ctx.db.delete(args.batchId);
     return { success: true, deletedItems: items.length };
@@ -896,10 +931,13 @@ export const adminCloseTruck = mutation({
   },
 });
 
-// Auto-close all open trucks (for nightly batch)
+// Auto-close all open trucks (admin action from dashboard)
 export const autoCloseAllTrucks = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { callerAdminId: v.optional(v.id("adminUsers")) },
+  handler: async (ctx, args) => {
+    if (!args.callerAdminId) return { success: false, error: "Unauthorized" };
+    const caller = await ctx.db.get(args.callerAdminId);
+    if (!caller || !caller.isActive) return { success: false, error: "Unauthorized" };
     const openTrucks = await ctx.db
       .query("trucks")
       .filter((q) => q.eq(q.field("status"), "open"))
@@ -918,7 +956,7 @@ export const autoCloseAllTrucks = mutation({
 });
 
 // Migration: Normalize all truck locationIds to lowercase "latrobe" and fill empty ones
-export const normalizeTruckLocations = mutation({
+export const normalizeTruckLocations = internalMutation({
   args: {},
   handler: async (ctx) => {
     const trucks = await ctx.db.query("trucks").collect();
@@ -978,7 +1016,7 @@ export const markScanAsNoVendorKnown = mutation({
 });
 
 // Backfill noVendorKnown for existing scans
-export const backfillNoVendorKnown = mutation({
+export const backfillNoVendorKnown = internalMutation({
   args: {},
   handler: async (ctx) => {
     const scans = await ctx.db.query("scans").collect();
@@ -1021,7 +1059,7 @@ export const backfillNoVendorKnown = mutation({
 });
 
 // Backfill auto-detect miscans for existing FedEx scans
-export const backfillFedExMiscans = mutation({
+export const backfillFedExMiscans = internalMutation({
   args: {},
   handler: async (ctx) => {
     const scans = await ctx.db.query("scans").collect();
@@ -1067,7 +1105,7 @@ export const backfillFedExMiscans = mutation({
 });
 
 // Backfill return items with correct tire data from tireUPCs table
-export const backfillReturnItemsTireData = mutation({
+export const backfillReturnItemsTireData = internalMutation({
   args: {},
   handler: async (ctx) => {
     const returnItems = await ctx.db.query("returnItems").collect();
@@ -1251,23 +1289,23 @@ async function autoSaveHelpers(
   helpers: string[],
   locationId: string
 ) {
+  // Load known helpers once instead of per-helper (was N+1)
+  const existing = await ctx.db
+    .query("knownHelpers")
+    .withIndex("by_location", (q: any) => q.eq("locationId", locationId))
+    .collect();
+  const existingNames = new Set(existing.map((h: any) => h.name.toLowerCase()));
+
   for (const raw of helpers) {
     const name = toTitleCase(raw);
     if (!name) continue;
-    const existing = await ctx.db
-      .query("knownHelpers")
-      .withIndex("by_location", (q: any) => q.eq("locationId", locationId))
-      .collect();
-    const found = existing.find(
-      (h: any) => h.name.toLowerCase() === name.toLowerCase()
-    );
-    if (!found) {
-      await ctx.db.insert("knownHelpers", {
-        name,
-        locationId,
-        isActive: true,
-      });
-    }
+    if (existingNames.has(name.toLowerCase())) continue;
+    await ctx.db.insert("knownHelpers", {
+      name,
+      locationId,
+      isActive: true,
+    });
+    existingNames.add(name.toLowerCase());
   }
 }
 

@@ -4,6 +4,19 @@ import { api } from "./_generated/api";
 
 const http = httpRouter();
 
+// Helper to check migration endpoint auth
+function checkMigrationAuth(request: Request): Response | null {
+  const authHeader = request.headers.get("Authorization");
+  const expectedKey = process.env.MIGRATION_API_KEY;
+  if (!expectedKey || !authHeader || authHeader !== `Bearer ${expectedKey}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return null;
+}
+
 http.route({
   path: "/api/health",
   method: "GET",
@@ -18,7 +31,10 @@ http.route({
 http.route({
   path: "/api/migrate/detect-miscans",
   method: "POST",
-  handler: httpAction(async (ctx) => {
+  handler: httpAction(async (ctx, request) => {
+    const authError = checkMigrationAuth(request);
+    if (authError) return authError;
+
     try {
       const scans = await ctx.runQuery(api.queries.getAllScans);
       let updated = 0;
@@ -76,7 +92,10 @@ http.route({
 http.route({
   path: "/api/migrate/backfill-truck-vendors",
   method: "POST",
-  handler: httpAction(async (ctx) => {
+  handler: httpAction(async (ctx, request) => {
+    const authError = checkMigrationAuth(request);
+    if (authError) return authError;
+
     try {
       const trucks = await ctx.runQuery(api.queries.getAllTrucks);
       let updated = 0;

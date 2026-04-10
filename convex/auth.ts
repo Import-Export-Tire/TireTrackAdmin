@@ -1,8 +1,30 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Simple hash function (in production, use bcrypt via action)
-function simpleHash(str: string): string {
+// Password hashing — salted SHA-256 via Web Crypto (available in Convex runtime).
+// Replaces the old trivially-reversible rolling hash.
+async function hashPassword(password: string, salt?: string): Promise<string> {
+  const s = salt ?? crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+  const data = new TextEncoder().encode(s + password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${s}:${hashHex}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  // Support legacy hashes (no colon = old simpleHash format)
+  if (!stored.includes(":")) {
+    return stored === legacySimpleHash(password);
+  }
+  const [salt] = stored.split(":");
+  const hashed = await hashPassword(password, salt);
+  return hashed === stored;
+}
+
+// Keep legacy hash for verifying old passwords during migration
+function legacySimpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -27,7 +49,7 @@ export const createFirstAdmin = mutation({
     
     const adminId = await ctx.db.insert("adminUsers", {
       email: args.email.toLowerCase(),
-      passwordHash: simpleHash(args.password),
+      passwordHash: await hashPassword(args.password),
       name: args.name,
       role: "superadmin",
       allowedLocations: ["all"],
@@ -60,10 +82,15 @@ export const login = mutation({
       return { success: false, error: "Account deactivated" };
     }
     
-    if (admin.passwordHash !== simpleHash(args.password)) {
+    if (!(await verifyPassword(args.password, admin.passwordHash))) {
       return { success: false, error: "Invalid credentials" };
     }
-    
+
+    // Auto-upgrade legacy hash to SHA-256 on successful login
+    if (!admin.passwordHash.includes(":")) {
+      await ctx.db.patch(admin._id, { passwordHash: await hashPassword(args.password) });
+    }
+
     // Update last login
     await ctx.db.patch(admin._id, { lastLoginAt: Date.now() });
     
@@ -111,13 +138,19 @@ export const getAdmin = query({
   },
 });
 
-// Emergency password reset - removes after first use
+// Emergency password reset - requires EMERGENCY_RESET_SECRET env var
 export const emergencyPasswordReset = mutation({
   args: {
     email: v.string(),
     newPassword: v.string(),
+    secret: v.string(),
   },
   handler: async (ctx, args) => {
+    const expectedSecret = process.env.EMERGENCY_RESET_SECRET;
+    if (!expectedSecret || args.secret !== expectedSecret) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const admin = await ctx.db
       .query("adminUsers")
       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
@@ -128,7 +161,7 @@ export const emergencyPasswordReset = mutation({
     }
 
     await ctx.db.patch(admin._id, {
-      passwordHash: simpleHash(args.newPassword),
+      passwordHash: await hashPassword(args.newPassword),
     });
 
     return { success: true, message: "Password reset successfully" };
@@ -163,7 +196,7 @@ export const createAdmin = mutation({
 
     const adminId = await ctx.db.insert("adminUsers", {
       email: args.email.toLowerCase(),
-      passwordHash: simpleHash(args.password),
+      passwordHash: await hashPassword(args.password),
       name: args.name,
       role: args.role,
       allowedLocations: args.allowedLocations,
@@ -233,16 +266,16 @@ export const changePassword = mutation({
       return { success: false, error: "Admin not found" };
     }
     
-    if (admin.passwordHash !== simpleHash(args.currentPassword)) {
+    if (!(await verifyPassword(args.currentPassword, admin.passwordHash))) {
       return { success: false, error: "Current password incorrect" };
     }
-    
+
     if (args.newPassword.length < 8) {
       return { success: false, error: "Password must be at least 8 characters" };
     }
-    
+
     await ctx.db.patch(args.adminId, {
-      passwordHash: simpleHash(args.newPassword),
+      passwordHash: await hashPassword(args.newPassword),
       forcePasswordChange: false,
       tempPasswordSetAt: undefined,
     });
@@ -266,7 +299,7 @@ export const resetAdminPassword = mutation({
     }
 
     await ctx.db.patch(args.adminId, {
-      passwordHash: simpleHash(args.newPassword),
+      passwordHash: await hashPassword(args.newPassword),
       forcePasswordChange: true,
       tempPasswordSetAt: Date.now(),
     });

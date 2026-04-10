@@ -3,24 +3,42 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Auto-close all open trucks at midnight EST (5:00 AM UTC)
-// During daylight saving time, midnight EST = 4:00 AM UTC
+// Auto-close all open trucks at midnight Eastern.
+// EDT = UTC-4 (midnight = 4 AM UTC), EST = UTC-5 (midnight = 5 AM UTC).
+// Run at both times; the handler is idempotent (no open trucks = no-op).
+crons.cron(
+  "auto-close trucks at midnight EDT",
+  "0 4 * * *",
+  internal.scheduled.autoCloseTrucksNightly
+);
 crons.cron(
   "auto-close trucks at midnight EST",
-  "0 5 * * *", // 5:00 AM UTC = 12:00 AM EST (standard time)
+  "0 5 * * *",
   internal.scheduled.autoCloseTrucksNightly
 );
 
-// Send daily truck manifest email at 6 AM EST (11:00 AM UTC)
+// Send daily truck manifest email at 6 AM Eastern.
+// EDT = 10 AM UTC, EST = 11 AM UTC. Run both; email action is idempotent
+// (checks if already sent for the date).
 crons.cron(
-  "send daily manifest email",
-  "0 11 * * *", // 11:00 AM UTC = 6:00 AM EST (standard time)
+  "send daily manifest email EDT",
+  "0 10 * * *",
+  internal.actions.sendManifestEmail.sendDailyManifestEmail
+);
+crons.cron(
+  "send daily manifest email EST",
+  "0 11 * * *",
   internal.actions.sendManifestEmail.sendDailyManifestEmail
 );
 
-// Clear error logs nightly at midnight EST (5:00 AM UTC)
+// Clear error logs nightly (same dual-schedule pattern)
 crons.cron(
-  "clear error logs nightly",
+  "clear error logs nightly EDT",
+  "0 4 * * *",
+  internal.scheduled.clearErrorLogsNightly
+);
+crons.cron(
+  "clear error logs nightly EST",
   "0 5 * * *",
   internal.scheduled.clearErrorLogsNightly
 );

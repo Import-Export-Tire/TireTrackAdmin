@@ -38,7 +38,9 @@ export const validateUserPin = query({
       return { valid: false, error: "Invalid PIN", user: null };
     }
 
-    return { valid: true, error: null, user };
+    // Strip PIN before returning to client
+    const { pin: _pin, ...safeUser } = user;
+    return { valid: true, error: null, user: safeUser };
   },
 });
 
@@ -177,16 +179,12 @@ export const getReturnBatch = query({
     const batch = await ctx.db.get(args.batchId);
     if (!batch) return null;
 
-    const items = await ctx.db
-      .query("returnItems")
-      .withIndex("by_batch", (q) => q.eq("returnBatchId", args.batchId))
-      .collect();
-
     const openedByUser = await ctx.db.get(batch.openedBy);
 
     return {
       ...batch,
-      itemCount: items.length,
+      // Use stored itemCount instead of re-counting all items
+      itemCount: batch.itemCount ?? 0,
       openedByName: openedByUser?.name ?? "Unknown",
     };
   },
@@ -374,8 +372,8 @@ export const searchUPCs = query({
     }
 
     const search = args.search.toLowerCase();
-    // UPC records are small (~200 bytes each), safe to load all
-    const all = await ctx.db.query("tireUPCs").take(50000);
+    // Cap at 5000 records for search — prevents memory issues as catalog grows
+    const all = await ctx.db.query("tireUPCs").take(5000);
 
     return all
       .filter((t) =>
@@ -391,9 +389,8 @@ export const searchUPCs = query({
 export const getUPCCount = query({
   args: {},
   handler: async (ctx) => {
-    // Use take() with a high limit to avoid collecting all at once
-    // This is still not ideal but prevents byte limit issues
-    const upcs = await ctx.db.query("tireUPCs").take(50000);
+    // Count with bounded take — accurate up to 10k, shows 10000+ beyond that
+    const upcs = await ctx.db.query("tireUPCs").take(10000);
     return upcs.length;
   },
 });
@@ -1022,7 +1019,7 @@ export const getUnresolvedErrorCount = query({
     const unresolved = await ctx.db
       .query("errorLogs")
       .withIndex("by_resolved", (q) => q.eq("resolved", false))
-      .collect();
+      .take(1000);
     return unresolved.length;
   },
 });
@@ -1093,11 +1090,10 @@ export const getNoVendorKnownReport = query({
 export const getNoVendorKnownCount = query({
   args: {},
   handler: async (ctx) => {
-    // Use index to get only noVendorKnown scans (requires by_noVendorKnown index)
     const scans = await ctx.db
       .query("scans")
       .withIndex("by_noVendorKnown", (q) => q.eq("noVendorKnown", true))
-      .collect();
+      .take(5000);
     return scans.length;
   },
 });

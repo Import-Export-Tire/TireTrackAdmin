@@ -6,25 +6,48 @@ import { internal } from "../_generated/api";
 export const sendDailyManifestEmail = internalAction({
   args: {},
   handler: async (ctx) => {
-    // Calculate previous day's date range (midnight-to-midnight EST)
-    // EST is UTC-5. We compute yesterday's midnight EST in UTC ms.
+    // Calculate previous day's date range (midnight-to-midnight Eastern)
+    // Uses Intl API to handle EST/EDT automatically
     const now = new Date();
-    const estOffset = -5 * 60 * 60 * 1000;
-    const nowEST = new Date(now.getTime() + estOffset);
-    const yesterdayEST = new Date(
-      nowEST.getFullYear(),
-      nowEST.getMonth(),
-      nowEST.getDate() - 1
-    );
-    // Convert back to UTC timestamps
-    const startDate = yesterdayEST.getTime() - estOffset; // yesterday midnight EST in UTC
-    const endDate = startDate + 24 * 60 * 60 * 1000; // today midnight EST in UTC
+    const eastern = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(now);
+    const etYear = Number(eastern.find(p => p.type === "year")!.value);
+    const etMonth = Number(eastern.find(p => p.type === "month")!.value) - 1;
+    const etDay = Number(eastern.find(p => p.type === "day")!.value);
 
-    const dateStr = yesterdayEST.toLocaleDateString("en-US", {
+    // Build today midnight and yesterday midnight in Eastern, then convert to UTC
+    // by finding the UTC time that corresponds to midnight Eastern
+    const todayMidnightET = new Date(
+      new Date(etYear, etMonth, etDay).toLocaleString("en-US", { timeZone: "America/New_York" })
+    );
+    // Use a reliable approach: compute offset by comparing formatted date parts
+    const utcMidnightGuess = new Date(Date.UTC(etYear, etMonth, etDay));
+    // Determine the actual UTC offset for Eastern at this date
+    const etOffsetMs = (() => {
+      const jan = new Date(etYear, 0, 1).getTimezoneOffset();
+      const jul = new Date(etYear, 6, 1).getTimezoneOffset();
+      // Use the formatted date to determine if we're in DST
+      const formatted = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        timeZoneName: "short",
+      }).format(now);
+      const isDST = formatted.includes("EDT");
+      return isDST ? 4 * 60 * 60 * 1000 : 5 * 60 * 60 * 1000;
+    })();
+
+    const todayMidnightUTC = Date.UTC(etYear, etMonth, etDay) + etOffsetMs;
+    const startDate = todayMidnightUTC - 24 * 60 * 60 * 1000; // yesterday midnight ET in UTC
+    const endDate = todayMidnightUTC; // today midnight ET in UTC
+
+    const yesterdayDate = new Date(startDate);
+    const dateStr = yesterdayDate.toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: "America/New_York",
     });
 
     // Fetch truck data
