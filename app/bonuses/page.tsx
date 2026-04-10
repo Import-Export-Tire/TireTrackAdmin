@@ -436,6 +436,40 @@ function localInputToTs(val: string): number | null {
   return isNaN(d.getTime()) ? null : d.getTime();
 }
 
+function parseDurationInput(val: string): number | null {
+  // Accept formats like "1:30", "1h30m", "1h 30m", "90m", "1.5h", "90"
+  val = val.trim().toLowerCase();
+  if (!val) return null;
+
+  // "1:30" format
+  const colonMatch = val.match(/^(\d+):(\d{1,2})$/);
+  if (colonMatch) return (parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2])) * 60000;
+
+  // "1h30m" or "1h 30m" format
+  const hmMatch = val.match(/^(\d+)\s*h\s*(\d+)\s*m?$/);
+  if (hmMatch) return (parseInt(hmMatch[1]) * 60 + parseInt(hmMatch[2])) * 60000;
+
+  // "1h" format
+  const hMatch = val.match(/^(\d+)\s*h$/);
+  if (hMatch) return parseInt(hMatch[1]) * 3600000;
+
+  // "1.5h" format
+  const decMatch = val.match(/^(\d+\.?\d*)\s*h$/);
+  if (decMatch) return Math.round(parseFloat(decMatch[1]) * 3600000);
+
+  // "90m" or "90" (minutes)
+  const mMatch = val.match(/^(\d+)\s*m?$/);
+  if (mMatch) return parseInt(mMatch[1]) * 60000;
+
+  return null;
+}
+
+function formatDurationInput(ms: number): string {
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  return `${hours}:${minutes.toString().padStart(2, "0")}`;
+}
+
 function EditEntryModal({
   entry,
   onClose,
@@ -446,11 +480,16 @@ function EditEntryModal({
   knownHelpers: { _id: any; name: string; locationId: string }[];
 }) {
   const editEntry = useMutation(api.mutations.adminEditBonusEntry);
+  const [truckNumber, setTruckNumber] = useState(entry.truckNumber ?? "");
   const [truckLength, setTruckLength] = useState(entry.truckLength ?? "");
   const [helpers, setHelpers] = useState<string[]>(entry.helpers ?? []);
   const [helperInput, setHelperInput] = useState("");
+  const [notes, setNotes] = useState(entry.notes ?? "");
   const [openedAtStr, setOpenedAtStr] = useState(tsToLocalInput(entry.openedAt));
   const [closedAtStr, setClosedAtStr] = useState(entry.closedAt ? tsToLocalInput(entry.closedAt) : "");
+  const [durationInput, setDurationInput] = useState(
+    entry.closedAt ? formatDurationInput(entry.closedAt - entry.openedAt) : ""
+  );
   const [submitting, setSubmitting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -472,6 +511,36 @@ function EditEntryModal({
     setHelperInput("");
     setShowSuggestions(false);
     inputRef.current?.focus();
+  };
+
+  // When duration input changes, update closedAt
+  const handleDurationChange = (val: string) => {
+    setDurationInput(val);
+    const ms = parseDurationInput(val);
+    const openTs = localInputToTs(openedAtStr);
+    if (ms !== null && openTs) {
+      setClosedAtStr(tsToLocalInput(openTs + ms));
+    }
+  };
+
+  // When closedAt changes directly, update duration display
+  const handleClosedAtChange = (val: string) => {
+    setClosedAtStr(val);
+    const openTs = localInputToTs(openedAtStr);
+    const closeTs = localInputToTs(val);
+    if (openTs && closeTs && closeTs > openTs) {
+      setDurationInput(formatDurationInput(closeTs - openTs));
+    }
+  };
+
+  // When openedAt changes, recalculate closedAt from duration
+  const handleOpenedAtChange = (val: string) => {
+    setOpenedAtStr(val);
+    const ms = parseDurationInput(durationInput);
+    const openTs = localInputToTs(val);
+    if (ms !== null && openTs) {
+      setClosedAtStr(tsToLocalInput(openTs + ms));
+    }
   };
 
   // Preview duration based on current input values
@@ -504,7 +573,9 @@ function EditEntryModal({
         entryId: entry._id,
         type: entry.type,
         helpers,
+        truckNumber: truckNumber !== entry.truckNumber ? truckNumber : undefined,
         truckLength: truckLength || undefined,
+        notes: notes !== (entry.notes ?? "") ? notes : undefined,
         openedAt: newOpenedAt !== entry.openedAt ? (newOpenedAt ?? undefined) : undefined,
         closedAt: newClosedAt !== (entry.closedAt ?? null) ? (newClosedAt ?? undefined) : undefined,
       });
@@ -522,12 +593,52 @@ function EditEntryModal({
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Edit Truck {entry.truckNumber}</h2>
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
+          <div>
+            <h2 className="text-lg font-bold">Edit Truck</h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                entry.type === "shipping"
+                  ? "bg-blue-500/20 text-blue-400"
+                  : entry.type === "outbound"
+                    ? "bg-amber-500/20 text-amber-400"
+                    : "bg-purple-500/20 text-purple-400"
+              }`}>
+                {entry.type === "shipping" ? "Shipping" : entry.type === "outbound" ? "Outbound" : "Receiving"}
+              </span>
+              <span className="text-xs text-slate-500">{getLocationName(entry.locationId)}</span>
+            </div>
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
         </div>
         <div className="px-6 py-5 space-y-4">
+          {/* Truck Number */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Truck Number</label>
+            <input
+              type="text"
+              value={truckNumber}
+              onChange={(e) => setTruckNumber(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            />
+          </div>
+
+          {/* Truck Length */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Truck Length</label>
+            <select
+              value={truckLength}
+              onChange={(e) => setTruckLength(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            >
+              <option value="">Not set</option>
+              {lengthOptions.map((len) => (
+                <option key={len} value={len}>{len}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Times */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -535,7 +646,7 @@ function EditEntryModal({
               <input
                 type="datetime-local"
                 value={openedAtStr}
-                onChange={(e) => setOpenedAtStr(e.target.value)}
+                onChange={(e) => handleOpenedAtChange(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
               />
             </div>
@@ -544,11 +655,24 @@ function EditEntryModal({
               <input
                 type="datetime-local"
                 value={closedAtStr}
-                onChange={(e) => setClosedAtStr(e.target.value)}
+                onChange={(e) => handleClosedAtChange(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
               />
             </div>
           </div>
+
+          {/* Duration input */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Duration (adjusts closed time)</label>
+            <input
+              type="text"
+              value={durationInput}
+              onChange={(e) => handleDurationChange(e.target.value)}
+              placeholder="e.g. 1:30, 90m, 1h30m, 1.5h"
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+            />
+          </div>
+
           {/* Duration preview */}
           {previewDuration && (
             <div className="flex items-center gap-3 px-3 py-2 bg-slate-900/50 rounded-lg text-sm">
@@ -564,19 +688,8 @@ function EditEntryModal({
               )}
             </div>
           )}
-          <div>
-            <label className="block text-xs text-slate-500 mb-1">Truck Length</label>
-            <select
-              value={truckLength}
-              onChange={(e) => setTruckLength(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
-            >
-              <option value="">Not set</option>
-              {lengthOptions.map((len) => (
-                <option key={len} value={len}>{len}</option>
-              ))}
-            </select>
-          </div>
+
+          {/* Helpers */}
           <div>
             <label className="block text-xs text-slate-500 mb-1">Helpers</label>
             {helpers.length > 0 && (
@@ -620,8 +733,22 @@ function EditEntryModal({
               )}
             </div>
           </div>
+
+          {/* Notes (receiving/outbound only) */}
+          {entry.type !== "shipping" && (
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Notes</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                placeholder="Optional notes..."
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 resize-none"
+              />
+            </div>
+          )}
         </div>
-        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3 sticky bottom-0 bg-slate-800">
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Cancel</button>
           <button
             onClick={handleSubmit}

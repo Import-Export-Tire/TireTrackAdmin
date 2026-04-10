@@ -1591,6 +1591,7 @@ export const adminEditBonusEntry = mutation({
     type: v.union(v.literal("shipping"), v.literal("receiving"), v.literal("outbound")),
     helpers: v.optional(v.array(v.string())),
     truckLength: v.optional(v.string()),
+    truckNumber: v.optional(v.string()),
     notes: v.optional(v.string()),
     openedAt: v.optional(v.number()),
     closedAt: v.optional(v.number()),
@@ -1600,6 +1601,7 @@ export const adminEditBonusEntry = mutation({
       const updates: Record<string, any> = {};
       if (args.helpers !== undefined) updates.helpers = args.helpers.map(toTitleCase);
       if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
+      if (args.truckNumber !== undefined) updates.truckNumber = args.truckNumber;
       if (args.openedAt !== undefined) updates.openedAt = args.openedAt;
       if (args.closedAt !== undefined) updates.closedAt = args.closedAt;
       await ctx.db.patch(args.entryId as any, updates);
@@ -1611,6 +1613,7 @@ export const adminEditBonusEntry = mutation({
       const updates: Record<string, any> = {};
       if (args.helpers !== undefined) updates.helpers = args.helpers.map(toTitleCase);
       if (args.truckLength !== undefined) updates.truckLength = args.truckLength;
+      if (args.truckNumber !== undefined) updates.truckNumber = args.truckNumber;
       if (args.notes !== undefined) updates.notes = args.notes;
       if (args.openedAt !== undefined) updates.openedAt = args.openedAt;
       if (args.closedAt !== undefined) updates.closedAt = args.closedAt;
