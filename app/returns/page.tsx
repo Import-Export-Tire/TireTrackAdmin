@@ -13,6 +13,8 @@ function ReturnsDashboard() {
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const [editingItem, setEditingItem] = useState<any>(null);
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState<string | null>(null);
+  const [renamingBatchId, setRenamingBatchId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,6 +40,19 @@ function ReturnsDashboard() {
   const updateItem = useMutation(api.mutations.updateReturnItem);
   const deleteItem = useMutation(api.mutations.deleteReturnItem);
   const deleteBatch = useMutation(api.mutations.deleteReturnBatch);
+  const renameReturnBatch = useMutation(api.mutations.renameReturnBatch);
+
+  const handleRenameBatch = async (batchId: string) => {
+    const trimmed = renameText.trim();
+    if (!trimmed) return;
+    try {
+      await renameReturnBatch({ batchId: batchId as any, name: trimmed });
+      setRenamingBatchId(null);
+      setRenameText("");
+    } catch (err: any) {
+      alert(err?.message || "Failed to rename batch");
+    }
+  };
 
   const filteredBatches = batches?.filter((batch) => {
     if (statusFilter === "all") return true;
@@ -404,8 +419,53 @@ function ReturnsDashboard() {
                       onClick={() => setSelectedBatch(batch._id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold">{batch.batchNumber || `Batch ${batch._id.slice(-6)}`}</div>
+                        <div className="flex-1 min-w-0">
+                          {renamingBatchId === batch._id ? (
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                autoFocus
+                                value={renameText}
+                                onChange={(e) => setRenameText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleRenameBatch(batch._id);
+                                  if (e.key === "Escape") { setRenamingBatchId(null); setRenameText(""); }
+                                }}
+                                placeholder="Batch name..."
+                                className="flex-1 bg-slate-900 border border-cyan-500/50 rounded px-2 py-1 text-sm font-semibold outline-none focus:border-cyan-400"
+                              />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRenameBatch(batch._id); }}
+                                className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 rounded text-xs font-medium"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setRenamingBatchId(null); setRenameText(""); }}
+                                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="font-semibold">{batch.batchNumber || `Batch ${batch._id.slice(-6)}`}</div>
+                              {canEdit && batch.status === "open" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRenamingBatchId(batch._id);
+                                    setRenameText(batch.batchNumber || "");
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-cyan-500/20 rounded transition-all"
+                                  title="Rename batch"
+                                >
+                                  <svg className="w-3.5 h-3.5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          )}
                           <div className="text-sm text-slate-300 mt-1 flex items-center gap-2">
                             <span>{batch.itemCount} items</span>
                             <span className="text-slate-500">•</span>
