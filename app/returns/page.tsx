@@ -331,6 +331,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Size</th>
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
+                        <th className="px-4 py-3 font-semibold text-center">Misship</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Location</th>
                         <th className="px-4 py-3 font-semibold">Date</th>
@@ -355,6 +356,11 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3 text-slate-300">{item.tireSize || "-"}</td>
                           <td className="px-4 py-3 font-mono text-sm text-slate-400">{item.tirePartNumber || "-"}</td>
                           <td className="px-4 py-3 text-center text-slate-300">{item.quantity || 1}</td>
+                          <td className="px-4 py-3 text-center">
+                            {item.isMisship && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-semibold text-xs">⚠ MISSHIP</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
                           <td className="px-4 py-3 text-slate-400 text-sm">{item.locationName}</td>
                           <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(item.scannedAt)}</td>
@@ -583,6 +589,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Tire</th>
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
+                        <th className="px-4 py-3 font-semibold text-center">Misship</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Scanned By</th>
                         {canEdit && <th className="px-4 py-3 font-semibold">Actions</th>}
@@ -590,7 +597,7 @@ function ReturnsDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-700/30">
                       {items.map((item) => (
-                        <tr key={item._id} className="hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => setViewingItem(item)}>
+                        <tr key={item._id} className={`transition-colors cursor-pointer ${item.isMisship ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500" : "hover:bg-slate-800/50"}`} onClick={() => setViewingItem(item)}>
                           <td className="px-4 py-3">
                             {item.imageUrl && item.imageUrl.startsWith("http") ? (
                               <button
@@ -653,6 +660,23 @@ function ReturnsDashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>
+                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            {item.isMisship ? (
+                              <button
+                                onClick={() => updateItem({ itemId: item._id as any, isMisship: false })}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 border border-amber-500/50 rounded-lg text-amber-400 font-semibold text-xs hover:bg-amber-500/30 transition-all"
+                              >
+                                <span>⚠</span> MISSHIP
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => updateItem({ itemId: item._id as any, isMisship: true })}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-700/30 border border-slate-600/30 rounded-lg text-slate-500 text-xs hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400 transition-all"
+                              >
+                                Mark
+                              </button>
+                            )}
+                          </td>
                           <td className="px-4 py-3">
                             <div>
                               {getStatusBadge(item.status)}

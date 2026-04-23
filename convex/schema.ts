@@ -158,6 +158,7 @@ export default defineSchema({
     tireSize: v.optional(v.string()),
     tirePartNumber: v.optional(v.string()), // Inventory/part number from tireUPCs
     quantity: v.optional(v.number()),
+    isMisship: v.optional(v.boolean()),
     scannedBy: v.id("users"),
     scannedAt: v.number(),
     status: v.string(),

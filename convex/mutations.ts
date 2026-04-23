@@ -806,6 +806,7 @@ export const updateReturnItem = mutation({
     tireSize: v.optional(v.string()),
     tirePartNumber: v.optional(v.string()),
     quantity: v.optional(v.number()),
+    isMisship: v.optional(v.boolean()),
     status: v.optional(v.union(v.literal("pending"), v.literal("processed"), v.literal("not_processed"))),
     notes: v.optional(v.string()),
   },
