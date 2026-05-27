@@ -1699,3 +1699,13 @@ export const adminEditBonusEntry = mutation({
     return { success: true };
   },
 });
+
+// Generate a one-time upload URL for damage photos.
+// Client POSTs the JPEG bytes to the returned URL, gets back {storageId},
+// then calls updateReturnItem with damageImageStorageId: storageId.
+export const generateDamageImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
