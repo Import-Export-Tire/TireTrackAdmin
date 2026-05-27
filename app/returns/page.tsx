@@ -606,7 +606,17 @@ function ReturnsDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-700/30">
                       {items.map((item) => (
-                        <tr key={item._id} className={`transition-colors cursor-pointer ${item.isMisship ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500" : "hover:bg-slate-800/50"}`} onClick={() => setViewingItem(item)}>
+                        <tr
+                          key={item._id}
+                          className={`transition-colors cursor-pointer ${
+                            item.isDamaged
+                              ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500"
+                              : item.isMisship
+                              ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500"
+                              : "hover:bg-slate-800/50"
+                          }`}
+                          onClick={() => setViewingItem(item)}
+                        >
                           <td className="px-4 py-3">
                             {item.imageUrl && item.imageUrl.startsWith("http") ? (
                               <button
