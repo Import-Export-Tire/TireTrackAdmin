@@ -349,7 +349,13 @@ function ReturnsDashboard() {
                       {searchResults.items.map((item: any) => (
                         <tr
                           key={item._id}
-                          className="hover:bg-slate-800/50 transition-colors cursor-pointer"
+                          className={`transition-colors cursor-pointer ${
+                            item.isDamaged
+                              ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500"
+                              : item.isMisship
+                              ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500"
+                              : "hover:bg-slate-800/50"
+                          }`}
                           onClick={() => {
                             setSelectedBatch(item.returnBatchId);
                             setIsSearching(false);
