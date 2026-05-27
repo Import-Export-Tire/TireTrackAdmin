@@ -36,6 +36,13 @@ function ReturnsDashboard() {
       : "skip"
   );
 
+  const damageImageUrl = useQuery(
+    api.queries.getDamageImageUrl,
+    viewingItem?.damageImageStorageId
+      ? { storageId: viewingItem.damageImageStorageId as any }
+      : "skip",
+  );
+
   const updateItemStatus = useMutation(api.mutations.updateReturnItemStatus);
   const updateItem = useMutation(api.mutations.updateReturnItem);
   const deleteItem = useMutation(api.mutations.deleteReturnItem);
@@ -875,6 +882,41 @@ function ReturnsDashboard() {
                   <span className="text-slate-400 text-sm">{viewingItem.notes}</span>
                 )}
               </div>
+
+              {/* Damage */}
+              {viewingItem.isDamaged && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                  <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span>⚠</span> Damaged
+                  </h3>
+                  {viewingItem.damageNotes && (
+                    <div className="mb-3">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Notes</div>
+                      <div className="text-white whitespace-pre-wrap">{viewingItem.damageNotes}</div>
+                    </div>
+                  )}
+                  {damageImageUrl && (
+                    <div className="mb-3">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Photo</div>
+                      <button onClick={() => setViewingImage(damageImageUrl)}>
+                        <img
+                          src={damageImageUrl}
+                          alt="Damage"
+                          className="w-32 h-32 rounded-lg object-cover border border-red-500/30 hover:border-red-500 transition-colors"
+                        />
+                      </button>
+                    </div>
+                  )}
+                  {viewingItem.damageMarkedAt && (
+                    <div className="text-xs text-slate-500">
+                      Marked at {new Date(viewingItem.damageMarkedAt).toLocaleString()}
+                      {viewingItem.damageMarkedBy && (
+                        <> by user <span className="font-mono">{String(viewingItem.damageMarkedBy).slice(0, 8)}…</span></>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Order Info */}
               <div>
