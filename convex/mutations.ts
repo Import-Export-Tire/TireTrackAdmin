@@ -809,31 +809,73 @@ export const updateReturnItem = mutation({
     isMisship: v.optional(v.boolean()),
     status: v.optional(v.union(v.literal("pending"), v.literal("processed"), v.literal("not_processed"))),
     notes: v.optional(v.string()),
+    // Damage fields
+    isDamaged: v.optional(v.boolean()),
+    damageNotes: v.optional(v.string()),
+    damageImageStorageId: v.optional(v.id("_storage")),
+    // Acting user — required when isDamaged is set to true so we can record damageMarkedBy
+    actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const { itemId, ...updates } = args;
-    const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
+    const { itemId, actingUserId, ...rest } = args;
+
+    const item = await ctx.db.get(itemId);
+    if (!item) throw new Error("Return item not found");
+
+    // Build the patch from non-undefined args
+    const patch: Record<string, unknown> = Object.fromEntries(
+      Object.entries(rest).filter(([_, v]) => v !== undefined)
     );
 
-    // Sync batch itemCount when quantity changes
+    // ----- Damage transition logic -----
+    const damageDetailProvided =
+      patch.damageNotes !== undefined || patch.damageImageStorageId !== undefined;
+    const willBeDamaged =
+      patch.isDamaged === true || (patch.isDamaged === undefined && item.isDamaged === true);
+
+    if (damageDetailProvided && !willBeDamaged) {
+      throw new Error(
+        "Cannot set damageNotes or damageImageStorageId without isDamaged: true"
+      );
+    }
+
+    if (patch.isDamaged === true) {
+      // off→on OR on→on with new data — refresh audit fields
+      if (!actingUserId) {
+        throw new Error("actingUserId is required when marking an item as damaged");
+      }
+      patch.damageMarkedBy = actingUserId;
+      patch.damageMarkedAt = Date.now();
+    } else if (patch.isDamaged === false) {
+      // on→off — clear all 4 damage detail/audit fields
+      patch.damageNotes = undefined;
+      patch.damageImageStorageId = undefined;
+      patch.damageMarkedBy = undefined;
+      patch.damageMarkedAt = undefined;
+    } else if (damageDetailProvided && willBeDamaged) {
+      // on→on (editing details on already-damaged item) — refresh audit
+      if (!actingUserId) {
+        throw new Error("actingUserId is required when editing damage details");
+      }
+      patch.damageMarkedBy = actingUserId;
+      patch.damageMarkedAt = Date.now();
+    }
+
+    // ----- Existing batch itemCount sync -----
     if (args.quantity !== undefined) {
-      const item = await ctx.db.get(itemId);
-      if (item) {
-        const oldQty = item.quantity || 1;
-        const diff = args.quantity - oldQty;
-        if (diff !== 0) {
-          const batch = await ctx.db.get(item.returnBatchId);
-          if (batch) {
-            await ctx.db.patch(item.returnBatchId, {
-              itemCount: Math.max(0, batch.itemCount + diff),
-            });
-          }
+      const oldQty = item.quantity || 1;
+      const diff = args.quantity - oldQty;
+      if (diff !== 0) {
+        const batch = await ctx.db.get(item.returnBatchId);
+        if (batch) {
+          await ctx.db.patch(item.returnBatchId, {
+            itemCount: Math.max(0, batch.itemCount + diff),
+          });
         }
       }
     }
 
-    await ctx.db.patch(itemId, filteredUpdates);
+    await ctx.db.patch(itemId, patch);
     return { success: true };
   },
 });
