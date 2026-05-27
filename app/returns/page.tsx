@@ -332,6 +332,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
                         <th className="px-4 py-3 font-semibold text-center">Misship</th>
+                        <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Location</th>
                         <th className="px-4 py-3 font-semibold">Date</th>
@@ -359,6 +360,13 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3 text-center">
                             {item.isMisship && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-semibold text-xs">⚠ MISSHIP</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {item.isDamaged && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-semibold text-xs">
+                                <span>⚠</span> DAMAGED
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
@@ -590,6 +598,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
                         <th className="px-4 py-3 font-semibold text-center">Misship</th>
+                        <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Scanned By</th>
                         {canEdit && <th className="px-4 py-3 font-semibold">Actions</th>}
@@ -675,6 +684,13 @@ function ReturnsDashboard() {
                               >
                                 Mark
                               </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {item.isDamaged && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-semibold text-xs">
+                                <span>⚠</span> DAMAGED
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3">
