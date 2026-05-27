@@ -159,6 +159,11 @@ export default defineSchema({
     tirePartNumber: v.optional(v.string()), // Inventory/part number from tireUPCs
     quantity: v.optional(v.number()),
     isMisship: v.optional(v.boolean()),
+    isDamaged: v.optional(v.boolean()),
+    damageNotes: v.optional(v.string()),
+    damageImageStorageId: v.optional(v.id("_storage")),
+    damageMarkedBy: v.optional(v.id("users")),
+    damageMarkedAt: v.optional(v.number()),
     scannedBy: v.id("users"),
     scannedAt: v.number(),
     status: v.string(),
