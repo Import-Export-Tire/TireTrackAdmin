@@ -211,4 +211,102 @@ export default defineSchema({
     .index("by_admin", ["adminId"])
     .index("by_action", ["action"])
     .index("by_resource", ["resourceType", "resourceId"]),
+
+  // ==========================================================================
+  // WMS — Warehouse Management System (Phase 1: W09 Chestnut Ridge pilot)
+  // Gated to warehouseCode === "W09" via wms_user_assignments. Additive only.
+  // ==========================================================================
+
+  wms_locations: defineTable({
+    warehouseCode: v.string(),          // e.g. "W09"
+    zone: v.string(),                   // "A", "B", "FRONT"
+    position: v.string(),               // "01", "02"
+    label: v.string(),                  // computed "A-01", unique per warehouse
+    x: v.number(),                      // grid X
+    y: v.number(),                      // grid Y
+    maxCapacity: v.number(),            // tires; drives heat map percentFull
+    isActive: v.boolean(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    createdBy: v.string(),
+  }).index("by_warehouse_label", ["warehouseCode", "label"])
+    .index("by_warehouse_zone", ["warehouseCode", "zone"])
+    .index("by_warehouse_active", ["warehouseCode", "isActive"]),
+
+  wms_inventory: defineTable({
+    locationId: v.id("wms_locations"),
+    warehouseCode: v.string(),
+    upc: v.string(),
+    quantity: v.number(),
+    description: v.string(),
+    brand: v.optional(v.string()),
+    size: v.optional(v.string()),
+    receivedAt: v.number(),
+    receivedBy: v.string(),
+    lastMovedAt: v.number(),
+    lastMovedBy: v.string(),
+  }).index("by_location", ["locationId"])
+    .index("by_warehouse_upc", ["warehouseCode", "upc"])
+    .index("by_warehouse_location", ["warehouseCode", "locationId"]),
+
+  wms_transactions: defineTable({
+    type: v.union(
+      v.literal("RECEIVE"),
+      v.literal("PUT_AWAY"),
+      v.literal("MOVE"),
+      v.literal("PICK"),
+      v.literal("ADJUST"),
+      v.literal("COUNT"),
+      v.literal("LABEL_CREATE"),
+    ),
+    warehouseCode: v.string(),
+    upc: v.string(),
+    fromLocationId: v.optional(v.id("wms_locations")),
+    toLocationId: v.optional(v.id("wms_locations")),
+    quantity: v.number(),
+    performedBy: v.string(),            // stringified Id<"users"> or Id<"adminUsers">
+    performedByName: v.string(),
+    timestamp: v.number(),
+    notes: v.optional(v.string()),
+    sessionId: v.optional(v.string()),  // groups a pick run
+  }).index("by_timestamp", ["timestamp"])
+    .index("by_warehouse_timestamp", ["warehouseCode", "timestamp"])
+    .index("by_upc", ["upc"])
+    .index("by_session", ["sessionId"]),
+
+  wms_floor_config: defineTable({
+    warehouseCode: v.string(),
+    gridWidth: v.number(),
+    gridHeight: v.number(),
+    dockX: v.number(),
+    dockY: v.number(),
+    feetPerCell: v.optional(v.number()),   // real-world scale; default 5 ft per cell in UI
+    aisles: v.array(v.object({
+      x1: v.number(),
+      y1: v.number(),
+      x2: v.number(),
+      y2: v.number(),
+    })),
+    floorPlanImageUrl: v.optional(v.string()),         // legacy, unused
+    floorPlanStorageId: v.optional(v.id("_storage")),  // uploaded floor plan backdrop
+    floorPlanOpacity: v.optional(v.number()),           // 0..1
+    floorPlanRotation: v.optional(v.number()),          // 0..360
+    floorPlanScale: v.optional(v.number()),             // 1.0 = fit warehouse box
+    floorPlanOffsetXFt: v.optional(v.number()),         // pan offset, feet
+    floorPlanOffsetYFt: v.optional(v.number()),
+    outline: v.optional(v.array(v.object({              // polygonal wall outline (grid coords)
+      x: v.number(),
+      y: v.number(),
+    }))),
+    updatedAt: v.number(),
+  }).index("by_warehouse", ["warehouseCode"]),
+
+  wms_user_assignments: defineTable({
+    userId: v.id("users"),              // scanner user (warehouse worker)
+    warehouseCode: v.string(),
+    assignedAt: v.number(),
+    assignedBy: v.string(),
+  }).index("by_user", ["userId"])
+    .index("by_warehouse", ["warehouseCode"])
+    .index("by_user_warehouse", ["userId", "warehouseCode"]),
 });
