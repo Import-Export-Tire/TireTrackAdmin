@@ -442,6 +442,12 @@ function Dashboard() {
                 Bonuses
               </Link>
               <Link
+                href="/wms"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
+              >
+                WMS
+              </Link>
+              <Link
                 href="/app-download"
                 className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all whitespace-nowrap"
               >
