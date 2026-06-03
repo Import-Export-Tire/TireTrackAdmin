@@ -21,6 +21,8 @@ import type * as http from "../http.js";
 import type * as mutations from "../mutations.js";
 import type * as queries from "../queries.js";
 import type * as scheduled from "../scheduled.js";
+import type * as wms from "../wms.js";
+import type * as wms_routing from "../wms_routing.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +44,8 @@ declare const fullApi: ApiFromModules<{
   mutations: typeof mutations;
   queries: typeof queries;
   scheduled: typeof scheduled;
+  wms: typeof wms;
+  wms_routing: typeof wms_routing;
 }>;
 
 /**

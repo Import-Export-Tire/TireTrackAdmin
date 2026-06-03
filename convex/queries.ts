@@ -1827,3 +1827,12 @@ export const getPayPeriodBonusSummary = query({
     };
   },
 });
+
+// Return a (signed, 1-hour) URL for a damage image given its storage ID.
+// Returns null if the ID is missing or no longer in storage.
+export const getDamageImageUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});

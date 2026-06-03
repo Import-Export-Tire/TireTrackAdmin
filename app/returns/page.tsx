@@ -36,6 +36,13 @@ function ReturnsDashboard() {
       : "skip"
   );
 
+  const damageImageUrl = useQuery(
+    api.queries.getDamageImageUrl,
+    viewingItem?.damageImageStorageId
+      ? { storageId: viewingItem.damageImageStorageId as any }
+      : "skip",
+  );
+
   const updateItemStatus = useMutation(api.mutations.updateReturnItemStatus);
   const updateItem = useMutation(api.mutations.updateReturnItem);
   const deleteItem = useMutation(api.mutations.deleteReturnItem);
@@ -82,6 +89,8 @@ function ReturnsDashboard() {
       tireModel: editingItem.tireModel,
       tireSize: editingItem.tireSize,
       tirePartNumber: editingItem.tirePartNumber,
+      trackingNumber: editingItem.trackingNumber,
+      noTrackingNumber: editingItem.noTrackingNumber,
       quantity: editingItem.quantity,
       status: editingItem.status,
       notes: editingItem.notes,
@@ -330,8 +339,10 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Model</th>
                         <th className="px-4 py-3 font-semibold">Size</th>
                         <th className="px-4 py-3 font-semibold">Part #</th>
+                        <th className="px-4 py-3 font-semibold">Tracking</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
                         <th className="px-4 py-3 font-semibold text-center">Misship</th>
+                        <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Location</th>
                         <th className="px-4 py-3 font-semibold">Date</th>
@@ -341,7 +352,13 @@ function ReturnsDashboard() {
                       {searchResults.items.map((item: any) => (
                         <tr
                           key={item._id}
-                          className="hover:bg-slate-800/50 transition-colors cursor-pointer"
+                          className={`transition-colors cursor-pointer ${
+                            item.isDamaged
+                              ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500"
+                              : item.isMisship
+                              ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500"
+                              : "hover:bg-slate-800/50"
+                          }`}
                           onClick={() => {
                             setSelectedBatch(item.returnBatchId);
                             setIsSearching(false);
@@ -355,10 +372,26 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3 text-slate-300">{item.tireModel || "-"}</td>
                           <td className="px-4 py-3 text-slate-300">{item.tireSize || "-"}</td>
                           <td className="px-4 py-3 font-mono text-sm text-slate-400">{item.tirePartNumber || "-"}</td>
+                          <td className="px-4 py-3 font-mono text-sm">
+                            {item.noTrackingNumber ? (
+                              <span className="text-slate-500">No Tracking</span>
+                            ) : item.trackingNumber ? (
+                              <span className="text-emerald-300">{item.trackingNumber}</span>
+                            ) : (
+                              <span className="text-slate-600">-</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-center text-slate-300">{item.quantity || 1}</td>
                           <td className="px-4 py-3 text-center">
                             {item.isMisship && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-semibold text-xs">⚠ MISSHIP</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {item.isDamaged && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-semibold text-xs">
+                                <span>⚠</span> DAMAGED
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
@@ -585,11 +618,12 @@ function ReturnsDashboard() {
                     <thead className="sticky top-0 bg-slate-900/80 backdrop-blur-sm">
                       <tr className="text-left text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
                         <th className="px-4 py-3 font-semibold w-16">Image</th>
-                        <th className="px-4 py-3 font-semibold">PO / INV</th>
+                        <th className="px-4 py-3 font-semibold">PO / INV / Tracking</th>
                         <th className="px-4 py-3 font-semibold">Tire</th>
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
                         <th className="px-4 py-3 font-semibold text-center">Misship</th>
+                        <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Scanned By</th>
                         {canEdit && <th className="px-4 py-3 font-semibold">Actions</th>}
@@ -597,7 +631,17 @@ function ReturnsDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-700/30">
                       {items.map((item) => (
-                        <tr key={item._id} className={`transition-colors cursor-pointer ${item.isMisship ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500" : "hover:bg-slate-800/50"}`} onClick={() => setViewingItem(item)}>
+                        <tr
+                          key={item._id}
+                          className={`transition-colors cursor-pointer ${
+                            item.isDamaged
+                              ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500"
+                              : item.isMisship
+                              ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500"
+                              : "hover:bg-slate-800/50"
+                          }`}
+                          onClick={() => setViewingItem(item)}
+                        >
                           <td className="px-4 py-3">
                             {item.imageUrl && item.imageUrl.startsWith("http") ? (
                               <button
@@ -633,7 +677,12 @@ function ReturnsDashboard() {
                             <div className="font-mono text-sm">
                               {item.poNumber && <div className="text-cyan-300">PO: {item.poNumber}</div>}
                               {item.invNumber && <div className="text-slate-400">INV: {item.invNumber}</div>}
-                              {!item.poNumber && !item.invNumber && <span className="text-slate-600">—</span>}
+                              {item.noTrackingNumber ? (
+                                <div className="text-slate-500">No Tracking</div>
+                              ) : item.trackingNumber ? (
+                                <div className="text-emerald-300">TRK: {item.trackingNumber}</div>
+                              ) : null}
+                              {!item.poNumber && !item.invNumber && !item.trackingNumber && !item.noTrackingNumber && <span className="text-slate-600">—</span>}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -675,6 +724,13 @@ function ReturnsDashboard() {
                               >
                                 Mark
                               </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {item.isDamaged && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-semibold text-xs">
+                                <span>⚠</span> DAMAGED
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -850,6 +906,41 @@ function ReturnsDashboard() {
                 )}
               </div>
 
+              {/* Damage */}
+              {viewingItem.isDamaged && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                  <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span>⚠</span> Damaged
+                  </h3>
+                  {viewingItem.damageNotes && (
+                    <div className="mb-3">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Notes</div>
+                      <div className="text-white whitespace-pre-wrap">{viewingItem.damageNotes}</div>
+                    </div>
+                  )}
+                  {damageImageUrl && (
+                    <div className="mb-3">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Photo</div>
+                      <button onClick={() => setViewingImage(damageImageUrl)}>
+                        <img
+                          src={damageImageUrl}
+                          alt="Damage"
+                          className="w-32 h-32 rounded-lg object-cover border border-red-500/30 hover:border-red-500 transition-colors"
+                        />
+                      </button>
+                    </div>
+                  )}
+                  {viewingItem.damageMarkedAt && (
+                    <div className="text-xs text-slate-500">
+                      Marked at {new Date(viewingItem.damageMarkedAt).toLocaleString()}
+                      {viewingItem.damageMarkedBy && (
+                        <> by user <span className="font-mono">{String(viewingItem.damageMarkedBy).slice(0, 8)}…</span></>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Order Info */}
               <div>
                 <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Order Information</label>
@@ -861,6 +952,18 @@ function ReturnsDashboard() {
                   <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
                     <p className="text-slate-500 text-xs mb-1">Invoice Number</p>
                     <p className="font-mono text-sm">{viewingItem.invNumber || <span className="text-slate-600">-</span>}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                    <p className="text-slate-500 text-xs mb-1">Tracking Number</p>
+                    <p className="font-mono text-sm">
+                      {viewingItem.noTrackingNumber ? (
+                        <span className="text-slate-500">No Tracking Number</span>
+                      ) : viewingItem.trackingNumber ? (
+                        <span className="text-emerald-300">{viewingItem.trackingNumber}</span>
+                      ) : (
+                        <span className="text-slate-600">-</span>
+                      )}
+                    </p>
                   </div>
                   <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
                     <p className="text-slate-500 text-xs mb-1">UPC Code</p>
@@ -1015,6 +1118,26 @@ function ReturnsDashboard() {
                     className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1">Tracking Number</label>
+                <input
+                  type="text"
+                  value={editingItem.noTrackingNumber ? "" : (editingItem.trackingNumber || "")}
+                  disabled={editingItem.noTrackingNumber}
+                  onChange={(e) => setEditingItem({ ...editingItem, trackingNumber: e.target.value, noTrackingNumber: false })}
+                  placeholder={editingItem.noTrackingNumber ? "No tracking number" : ""}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all disabled:opacity-50"
+                />
+                <label className="mt-2 inline-flex items-center gap-2 text-slate-400 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!editingItem.noTrackingNumber}
+                    onChange={(e) => setEditingItem({ ...editingItem, noTrackingNumber: e.target.checked, trackingNumber: e.target.checked ? "" : editingItem.trackingNumber })}
+                    className="rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/20"
+                  />
+                  No Tracking Number
+                </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
