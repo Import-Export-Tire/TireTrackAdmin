@@ -361,7 +361,7 @@ function UnmatchedScansModal({
               {data.scans?.some((s: any) => s.isMiscan) && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-ios-gray1 mb-3">Miscan Training Report</h3>
-                  <div className="bg-ios-orange text-white/10 rounded-xl p-4 border border-ios-orange/40">
+                  <div className="bg-ios-orange/10 rounded-xl p-4 border border-ios-orange/40">
                     <p className="text-ios-orange text-sm mb-3">
                       Employees with marked miscans - consider for training:
                     </p>
@@ -592,10 +592,10 @@ function DuplicateOffendersModal({
               ) : (
                 <div className="space-y-3">
                   {data.users.map((user: any) => (
-                    <div key={user.userId} className="bg-ios-orange text-white/10 border border-ios-orange/40 rounded-xl px-4 py-3">
+                    <div key={user.userId} className="bg-ios-orange/10 border border-ios-orange/40 rounded-xl px-4 py-3">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-ios-orange text-white/10 rounded-lg flex items-center justify-center">
+                          <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
                             <span className="text-lg font-bold text-ios-orange">{user.userName.charAt(0)}</span>
                           </div>
                           <div>
@@ -967,15 +967,15 @@ function ReturnsExportModal({
           {/* Summary Stats */}
           {data?.statusCounts && (
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-ios-green text-white/10 rounded-xl p-4 border border-ios-green/40">
+              <div className="bg-ios-green/10 rounded-xl p-4 border border-ios-green/40">
                 <p className="text-2xl font-bold text-ios-green">{data.statusCounts.processed}</p>
                 <p className="text-ios-gray1 text-xs">Processed</p>
               </div>
-              <div className="bg-ios-orange text-white/10 rounded-xl p-4 border border-ios-orange/40">
+              <div className="bg-ios-orange/10 rounded-xl p-4 border border-ios-orange/40">
                 <p className="text-2xl font-bold text-ios-orange">{data.statusCounts.pending}</p>
                 <p className="text-ios-gray1 text-xs">Pending</p>
               </div>
-              <div className="bg-ios-red text-white/10 rounded-xl p-4 border border-ios-red/40">
+              <div className="bg-ios-red/10 rounded-xl p-4 border border-ios-red/40">
                 <p className="text-2xl font-bold text-ios-red">{data.statusCounts.not_processed}</p>
                 <p className="text-ios-gray1 text-xs">Not Processed</p>
               </div>
@@ -1425,7 +1425,7 @@ function ReportsPage() {
 
               <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-orange/40 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-orange text-white/10 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1439,7 +1439,7 @@ function ReportsPage() {
 
               <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-green/40 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-green text-white/10 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-green/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1741,7 +1741,7 @@ function ReportsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
               <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-purple/30 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-purple text-white/10 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-purple/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
