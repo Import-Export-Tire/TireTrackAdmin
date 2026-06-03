@@ -62,6 +62,8 @@ export const getReturnItemsForExport = query({
         locationName: location?.name || batch?.locationId || "Unknown",
         poNumber: item.poNumber || "",
         invNumber: item.invNumber || "",
+        trackingNumber: item.trackingNumber || "",
+        noTrackingNumber: item.noTrackingNumber || false,
         fromAddress: item.fromAddress || "",
         upcCode: item.upcCode || "",
         tireBrand: item.tireBrand || "",
