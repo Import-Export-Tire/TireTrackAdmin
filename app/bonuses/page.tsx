@@ -970,7 +970,7 @@ function BonusesDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-ios-gray6 text-[#1c1c1e]">
+    <div className="min-h-screen bg-[#F7F8FA] text-[#1c1c1e]">
       {/* Modals */}
       {showOpenModal && (
         <OpenTruckModal

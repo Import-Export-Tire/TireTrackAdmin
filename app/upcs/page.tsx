@@ -267,7 +267,7 @@ function UPCDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-ios-gray6 p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Page Header */}
       <PageHeader
         title="Tire UPC Database"
