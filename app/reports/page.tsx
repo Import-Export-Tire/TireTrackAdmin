@@ -1303,7 +1303,7 @@ function ReportsPage() {
   const totalScans = trucks?.reduce((sum, t) => sum + t.scanCount, 0) || 0;
 
   return (
-    <main className="min-h-screen bg-ios-gray6 text-[#1c1c1e]">
+    <main className="min-h-screen bg-[#F7F8FA] text-[#1c1c1e]">
       {/* Header */}
       <header className="border-b border-ios-gray5 bg-white/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
