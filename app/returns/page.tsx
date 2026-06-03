@@ -116,14 +116,14 @@ function ReturnsDashboard() {
     switch (status) {
       case "processed":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-green/10 text-ios-green border border-ios-green/40 rounded-lg text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-green text-white/10 text-ios-green border border-ios-green/40 rounded-lg text-xs font-medium">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
             Processed
           </span>
         );
       case "not_processed":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-red/10 text-ios-red border border-ios-red/40 rounded-lg text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-red text-white/10 text-ios-red border border-ios-red/40 rounded-lg text-xs font-medium">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
             Not Processed
           </span>
@@ -185,7 +185,7 @@ function ReturnsDashboard() {
                     }
                   }}
                   onFocus={() => searchQuery.length >= 2 && setIsSearching(true)}
-                  placeholder="Search brand, size, part #..."
+                  placeholder="Search tracking #, PO, brand, size, part #..."
                   className="pl-10 pr-4 py-2 w-64 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] placeholder-ios-gray2 focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                 />
                 {searchQuery && (
@@ -235,7 +235,7 @@ function ReturnsDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-orange/40 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-ios-orange text-white/10 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
@@ -263,7 +263,7 @@ function ReturnsDashboard() {
 
           <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-green/40 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ios-green/10 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-ios-green text-white/10 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -277,7 +277,7 @@ function ReturnsDashboard() {
 
           <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 border-ios-red/40 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ios-red/10 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-ios-red text-white/10 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -384,12 +384,12 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3 text-center text-[#1c1c1e]">{item.quantity || 1}</td>
                           <td className="px-4 py-3 text-center">
                             {item.isMisship && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-orange/10 border border-ios-orange/40 rounded text-ios-orange font-semibold text-xs">⚠ MISSHIP</span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-orange text-white/10 border border-ios-orange/40 rounded text-ios-orange font-semibold text-xs">⚠ MISSHIP</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {item.isDamaged && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red text-white/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
                                 <span>⚠</span> DAMAGED
                               </span>
                             )}
@@ -530,7 +530,7 @@ function ReturnsDashboard() {
                                 e.stopPropagation();
                                 setBatchDeleteConfirm(batch._id);
                               }}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 bg-ios-red/10 rounded-lg transition-all"
+                              className="opacity-0 group-hover:opacity-100 p-1.5 bg-ios-red text-white/10 rounded-lg transition-all"
                               title="Delete Batch"
                             >
                               <svg className="w-4 h-4 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -549,7 +549,7 @@ function ReturnsDashboard() {
                               e.stopPropagation();
                               handleDeleteBatch(batch._id);
                             }}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium"
+                            className="px-3 py-1.5 bg-ios-red bg-ios-red text-white rounded-lg text-sm font-medium"
                           >
                             Yes
                           </button>
@@ -713,7 +713,7 @@ function ReturnsDashboard() {
                             {item.isMisship ? (
                               <button
                                 onClick={() => updateItem({ itemId: item._id as any, isMisship: false })}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-orange/10 border border-ios-orange/40 rounded-lg text-ios-orange font-semibold text-xs hover:bg-ios-orange/10 transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-orange text-white/10 border border-ios-orange/40 rounded-lg text-ios-orange font-semibold text-xs hover:bg-ios-orange/10 transition-all"
                               >
                                 <span>⚠</span> MISSHIP
                               </button>
@@ -728,7 +728,7 @@ function ReturnsDashboard() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             {item.isDamaged && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red text-white/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
                                 <span>⚠</span> DAMAGED
                               </span>
                             )}
@@ -812,7 +812,7 @@ function ReturnsDashboard() {
                                 </button>
                                 <button
                                   onClick={() => handleDeleteItem(item._id)}
-                                  className="p-1.5 bg-ios-red/10 rounded-lg transition-all text-ios-gray1 hover:text-ios-red"
+                                  className="p-1.5 bg-ios-red text-white/10 rounded-lg transition-all text-ios-gray1 hover:text-ios-red"
                                   title="Delete"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -908,7 +908,7 @@ function ReturnsDashboard() {
 
               {/* Damage */}
               {viewingItem.isDamaged && (
-                <div className="p-4 bg-ios-red/10 border border-ios-red/40 rounded-xl">
+                <div className="p-4 bg-ios-red text-white/10 border border-ios-red/40 rounded-xl">
                   <h3 className="text-ios-red font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
                     <span>⚠</span> Damaged
                   </h3>
@@ -925,7 +925,7 @@ function ReturnsDashboard() {
                         <img
                           src={damageImageUrl}
                           alt="Damage"
-                          className="w-32 h-32 rounded-lg object-cover border border-ios-red/40 hover:border-red-500 transition-colors"
+                          className="w-32 h-32 rounded-lg object-cover border border-ios-red/40 hover:border-ios-red transition-colors"
                         />
                       </button>
                     </div>
@@ -1213,7 +1213,7 @@ function ReturnsDashboard() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setEditingItem(null)} className="flex-1 px-4 py-2.5 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button>
-                <button onClick={handleUpdateItem} className="flex-1 px-4 py-2.5 bg-ios-blue hover: hover: rounded-xl font-medium shadow-ios transition-all">Save</button>
+                <button onClick={handleUpdateItem} className="flex-1 px-4 py-2.5 bg-ios-blue text-white hover:opacity-90 rounded-xl font-medium shadow-ios transition-all">Save</button>
               </div>
             </div>
           </div>

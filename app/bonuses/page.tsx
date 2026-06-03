@@ -414,7 +414,7 @@ function OpenTruckModal({
           <button
             onClick={handleSubmit}
             disabled={!truckNumber.trim() || helpers.length === 0 || submitting}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1c1c1e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-ios-green bg-ios-green text-[#1c1c1e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? "Opening..." : "Open Truck & Start Timer"}
           </button>
@@ -600,10 +600,10 @@ function EditEntryModal({
             <div className="flex items-center gap-2 mt-0.5">
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                 entry.type === "shipping"
-                  ? "bg-blue-500/20 text-blue-400"
+                  ? "bg-ios-blue/20 text-ios-blue"
                   : entry.type === "outbound"
                     ? "bg-ios-orange/10 text-ios-orange"
-                    : "bg-purple-500/20 text-purple-400"
+                    : "bg-ios-purple/20 text-ios-purple"
               }`}>
                 {entry.type === "shipping" ? "Shipping" : entry.type === "outbound" ? "Outbound" : "Receiving"}
               </span>
@@ -826,7 +826,7 @@ function HelperManagementModal({
               <button
                 onClick={handleAdd}
                 disabled={!newName.trim() || adding}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1c1c1e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-ios-green bg-ios-green text-[#1c1c1e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Add
               </button>
@@ -1018,7 +1018,7 @@ function BonusesDashboard() {
               </button>
               <button
                 onClick={() => setShowOpenModal(true)}
-                className="px-3 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1c1c1e] transition-colors"
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-ios-green bg-ios-green text-[#1c1c1e] transition-colors"
               >
                 + Open Truck
               </button>
@@ -1090,7 +1090,7 @@ function BonusesDashboard() {
         <div className={`grid grid-cols-2 ${showBonusColumns ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}>
           <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
             <p className="text-xs text-ios-gray1 uppercase tracking-wider">Shipping</p>
-            <p className="text-2xl font-bold text-blue-400 mt-1">{stats.shipping}</p>
+            <p className="text-2xl font-bold text-ios-blue mt-1">{stats.shipping}</p>
           </div>
           <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
             <p className="text-xs text-ios-gray1 uppercase tracking-wider">Outbound</p>
@@ -1098,7 +1098,7 @@ function BonusesDashboard() {
           </div>
           <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
             <p className="text-xs text-ios-gray1 uppercase tracking-wider">Receiving</p>
-            <p className="text-2xl font-bold text-purple-400 mt-1">{stats.receiving}</p>
+            <p className="text-2xl font-bold text-ios-purple mt-1">{stats.receiving}</p>
           </div>
           {showBonusColumns && (
             <>
@@ -1167,10 +1167,10 @@ function BonusesDashboard() {
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         truck.type === "shipping"
-                          ? "bg-blue-500/20 text-blue-400 border border-blue-500/20"
+                          ? "bg-ios-blue/20 text-ios-blue border border-ios-purple/20"
                           : truck.type === "outbound"
                             ? "bg-ios-orange/10 text-ios-orange border border-ios-orange/40"
-                            : "bg-purple-500/20 text-purple-400 border border-purple-500/20"
+                            : "bg-ios-purple/20 text-ios-purple border border-ios-purple/20"
                       }`}>
                         {truck.type === "shipping" ? "Shipping" : truck.type === "outbound" ? "Outbound" : "Receiving"}
                       </span>

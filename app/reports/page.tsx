@@ -74,7 +74,7 @@ function NoVendorKnownModal({
           <div className="flex items-center gap-3">
             <button
               onClick={generateCSV}
-              className="px-4 py-2 bg-ios-purple hover: hover: rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-ios-purple text-white hover:opacity-90 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -96,14 +96,14 @@ function NoVendorKnownModal({
         <div className="flex-1 overflow-auto p-6">
           {!data ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-ios-purple border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
               {/* Summary Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 <div className="bg-white rounded-xl p-4 border border-ios-gray5">
-                  <p className="text-2xl font-bold text-purple-400">{data.totalNoVendorKnown}</p>
+                  <p className="text-2xl font-bold text-ios-purple">{data.totalNoVendorKnown}</p>
                   <p className="text-ios-gray1 text-xs">Total No Vendor</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 border border-ios-gray5">
@@ -275,7 +275,7 @@ function UnmatchedScansModal({
           <div className="flex items-center gap-3">
             <button
               onClick={generateCSV}
-              className="px-4 py-2 bg-ios-blue hover: hover: rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-ios-blue text-white hover:opacity-90 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -320,7 +320,7 @@ function UnmatchedScansModal({
                           >
                             <div
                               className={`w-full rounded-t transition-all cursor-pointer ${
-                                day.unmatched > 0 ? "bg-red-500 hover:bg-red-400" : "bg-ios-green/10"
+                                day.unmatched > 0 ? "bg-ios-red bg-ios-red" : "bg-ios-green/10"
                               }`}
                               style={{ height: `${height}%`, minHeight: day.total > 0 ? '4px' : '2px' }}
                             />
@@ -345,7 +345,7 @@ function UnmatchedScansModal({
                     </div>
                     <div className="flex items-center justify-center gap-4 mt-3 text-xs">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-red-500" />
+                        <div className="w-3 h-3 rounded bg-ios-red" />
                         <span className="text-ios-gray1">Has unmatched</span>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -361,7 +361,7 @@ function UnmatchedScansModal({
               {data.scans?.some((s: any) => s.isMiscan) && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-ios-gray1 mb-3">Miscan Training Report</h3>
-                  <div className="bg-ios-orange/10 rounded-xl p-4 border border-ios-orange/40">
+                  <div className="bg-ios-orange text-white/10 rounded-xl p-4 border border-ios-orange/40">
                     <p className="text-ios-orange text-sm mb-3">
                       Employees with marked miscans - consider for training:
                     </p>
@@ -469,7 +469,7 @@ function UnmatchedScansModal({
                               disabled={marking === scan._id}
                               className={`px-3 py-1 rounded text-xs font-medium transition-all ${
                                 scan.isMiscan
-                                  ? "bg-amber-500 text-[#1c1c1e] hover:bg-amber-600"
+                                  ? "bg-ios-orange text-[#1c1c1e] bg-ios-orange"
                                   : "bg-ios-gray5 text-ios-gray1 hover:bg-ios-gray4 hover:text-[#1c1c1e]"
                               }`}
                             >
@@ -534,7 +534,7 @@ function DuplicateOffendersModal({
           <div className="flex items-center gap-3">
             <button
               onClick={generateCSV}
-              className="px-4 py-2 bg-ios-orange hover: hover: rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-ios-orange text-white hover:opacity-90 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -556,7 +556,7 @@ function DuplicateOffendersModal({
         <div className="flex-1 overflow-auto p-6">
           {!data ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-ios-orange border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
@@ -592,10 +592,10 @@ function DuplicateOffendersModal({
               ) : (
                 <div className="space-y-3">
                   {data.users.map((user: any) => (
-                    <div key={user.userId} className="bg-ios-orange/10 border border-ios-orange/40 rounded-xl px-4 py-3">
+                    <div key={user.userId} className="bg-ios-orange text-white/10 border border-ios-orange/40 rounded-xl px-4 py-3">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
+                          <div className="w-10 h-10 bg-ios-orange text-white/10 rounded-lg flex items-center justify-center">
                             <span className="text-lg font-bold text-ios-orange">{user.userName.charAt(0)}</span>
                           </div>
                           <div>
@@ -667,7 +667,7 @@ function UserAccuracyModal({
         <div className="flex-1 overflow-auto p-6">
           {!data ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-ios-green border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
@@ -867,7 +867,7 @@ function ReturnsExportModal({
             <button
               onClick={generateCSV}
               disabled={!data?.items?.length}
-              className="px-4 py-2 bg-ios-green hover: hover: rounded-lg text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-ios-green text-white hover:opacity-90 rounded-lg text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -967,15 +967,15 @@ function ReturnsExportModal({
           {/* Summary Stats */}
           {data?.statusCounts && (
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-ios-green/10 rounded-xl p-4 border border-ios-green/40">
+              <div className="bg-ios-green text-white/10 rounded-xl p-4 border border-ios-green/40">
                 <p className="text-2xl font-bold text-ios-green">{data.statusCounts.processed}</p>
                 <p className="text-ios-gray1 text-xs">Processed</p>
               </div>
-              <div className="bg-ios-orange/10 rounded-xl p-4 border border-ios-orange/40">
+              <div className="bg-ios-orange text-white/10 rounded-xl p-4 border border-ios-orange/40">
                 <p className="text-2xl font-bold text-ios-orange">{data.statusCounts.pending}</p>
                 <p className="text-ios-gray1 text-xs">Pending</p>
               </div>
-              <div className="bg-ios-red/10 rounded-xl p-4 border border-ios-red/40">
+              <div className="bg-ios-red text-white/10 rounded-xl p-4 border border-ios-red/40">
                 <p className="text-2xl font-bold text-ios-red">{data.statusCounts.not_processed}</p>
                 <p className="text-ios-gray1 text-xs">Not Processed</p>
               </div>
@@ -985,7 +985,7 @@ function ReturnsExportModal({
           {/* Items Preview Table */}
           {!data ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-ios-green border-t-transparent rounded-full animate-spin" />
             </div>
           ) : data.items?.length === 0 ? (
             <div className="text-center py-10 text-ios-gray1">
@@ -1329,7 +1329,7 @@ function ReportsPage() {
               {/* Export Returns Button */}
               <button
                 onClick={() => setShowReturnsExportModal(true)}
-                className="px-4 py-2 bg-ios-green hover: hover: rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 flex items-center gap-2"
+                className="px-4 py-2 bg-ios-green text-white hover:opacity-90 rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1393,7 +1393,7 @@ function ReportsPage() {
                 <button
                   onClick={handleCloseAll}
                   disabled={closingAll}
-                  className="px-4 py-2.5 bg-ios-orange hover: hover: rounded-xl text-sm font-medium shadow-lg shadow-amber-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2"
+                  className="px-4 py-2.5 bg-ios-orange text-white hover:opacity-90 rounded-xl text-sm font-medium shadow-lg shadow-amber-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2"
                 >
                   {closingAll ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1425,7 +1425,7 @@ function ReportsPage() {
 
               <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-orange/40 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-orange text-white/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1439,7 +1439,7 @@ function ReportsPage() {
 
               <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-green/40 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-green/10 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-green text-white/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1500,7 +1500,7 @@ function ReportsPage() {
                 {noVendorKnownCount !== undefined && noVendorKnownCount > 0 && (
                   <button
                     onClick={() => setShowNoVendorKnownModal(true)}
-                    className="text-purple-500/70 hover:text-purple-400 transition-colors underline decoration-dotted underline-offset-2"
+                    className="text-ios-purple/70 hover:text-ios-purple transition-colors underline decoration-dotted underline-offset-2"
                   >
                     | No Vendor Known: {noVendorKnownCount}
                   </button>
@@ -1569,7 +1569,7 @@ function ReportsPage() {
                           <tr className="hover:bg-white transition-colors group">
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${truck.status === "open" ? "bg-yellow-400 animate-pulse" : "bg-emerald-400"}`} />
+                                <div className={`w-2 h-2 rounded-full ${truck.status === "open" ? "bg-ios-orange animate-pulse" : "bg-ios-green"}`} />
                                 <div>
                                   <p className="font-semibold text-[#1c1c1e]">{truck.truckNumber}</p>
                                   <p className="text-ios-gray1 text-xs mt-0.5">
@@ -1621,10 +1621,10 @@ function ReportsPage() {
                                   <button
                                     onClick={() => handleCloseTruck(truck._id)}
                                     disabled={closing === truck._id}
-                                    className="px-3 py-1.5 bg-yellow-600/20 hover:bg-yellow-600 text-ios-orange hover:text-[#1c1c1e] rounded-lg text-xs font-medium transition-all border border-yellow-600/30 hover:border-yellow-600 disabled:opacity-50"
+                                    className="px-3 py-1.5 bg-ios-orange/20 bg-ios-orange text-white text-ios-orange hover:text-[#1c1c1e] rounded-lg text-xs font-medium transition-all border border-ios-orange/30 hover:border-ios-orange disabled:opacity-50"
                                   >
                                     {closing === truck._id ? (
-                                      <div className="w-3 h-3 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                                      <div className="w-3 h-3 border-2 border-ios-orange/30 border-t-yellow-400 rounded-full animate-spin" />
                                     ) : (
                                       "Close"
                                     )}
@@ -1632,7 +1632,7 @@ function ReportsPage() {
                                 )}
                                 <button
                                   onClick={() => generateAllCSVsForTruck(truck)}
-                                  className="px-3 py-1.5 bg-ios-blue hover: hover: rounded-lg text-xs font-medium transition-all shadow-ios hover:shadow-ios hover:scale-105 flex items-center gap-1.5"
+                                  className="px-3 py-1.5 bg-ios-blue text-white hover:opacity-90 rounded-lg text-xs font-medium transition-all shadow-ios hover:shadow-ios hover:scale-105 flex items-center gap-1.5"
                                 >
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1692,7 +1692,7 @@ function ReportsPage() {
                     type="date"
                     value={rangeStartDate}
                     onChange={(e) => setRangeStartDate(e.target.value)}
-                    className="pl-10 pr-3 py-2.5 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:border-ios-gray4"
+                    className="pl-10 pr-3 py-2.5 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-ios-purple/50 focus:ring-2 -ios-purple transition-all cursor-pointer hover:border-ios-gray4"
                   />
                 </div>
                 <span className="text-ios-gray1">to</span>
@@ -1700,7 +1700,7 @@ function ReportsPage() {
                   type="date"
                   value={rangeEndDate}
                   onChange={(e) => setRangeEndDate(e.target.value)}
-                  className="px-3 py-2.5 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:border-ios-gray4"
+                  className="px-3 py-2.5 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-ios-purple/50 focus:ring-2 -ios-purple transition-all cursor-pointer hover:border-ios-gray4"
                 />
               </div>
 
@@ -1709,7 +1709,7 @@ function ReportsPage() {
                 <select
                   value={selectedVendor}
                   onChange={(e) => setSelectedVendor(e.target.value)}
-                  className="px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:border-ios-gray4 appearance-none pr-10"
+                  className="px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-ios-purple/50 focus:ring-2 -ios-purple transition-all cursor-pointer hover:border-ios-gray4 appearance-none pr-10"
                 >
                   <option value="all">All Vendors</option>
                   {allVendors?.map((v: string) => (
@@ -1727,7 +1727,7 @@ function ReportsPage() {
               {vendorReport && vendorReport.totalScans > 0 && (
                 <button
                   onClick={generateAllVendorsRangeCSV}
-                  className="ml-auto px-4 py-2.5 bg-ios-purple hover: hover: rounded-xl text-sm font-medium shadow-lg shadow-purple-500/20 transition-all hover:scale-105 flex items-center gap-2"
+                  className="ml-auto px-4 py-2.5 bg-ios-purple text-white hover:opacity-90 rounded-xl text-sm font-medium shadow-lg shadow-purple-500/20 transition-all hover:scale-105 flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1739,15 +1739,15 @@ function ReportsPage() {
 
             {/* Stats Row */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-purple-500/30 transition-all">
+              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-purple/30 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-ios-purple text-white/10 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-ios-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-purple-300">{formatDateRange()}</p>
+                    <p className="text-sm font-medium text-ios-purple">{formatDateRange()}</p>
                     <p className="text-ios-gray1 text-xs">Date Range</p>
                   </div>
                 </div>
@@ -1787,7 +1787,7 @@ function ReportsPage() {
               {vendorReport === undefined ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-10 h-10 border-2 border-ios-purple border-t-transparent rounded-full animate-spin" />
                     <p className="text-ios-gray1 text-sm">Loading vendor report...</p>
                   </div>
                 </div>
@@ -1811,7 +1811,7 @@ function ReportsPage() {
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 /20 /20 rounded-xl flex items-center justify-center">
-                              <span className="text-lg font-bold text-purple-300">{v.vendor.charAt(0)}</span>
+                              <span className="text-lg font-bold text-ios-purple">{v.vendor.charAt(0)}</span>
                             </div>
                             <div>
                               <p className="font-semibold text-[#1c1c1e]">{v.vendor}</p>
@@ -1824,7 +1824,7 @@ function ReportsPage() {
                                 e.stopPropagation();
                                 generateVendorRangeCSV(v.vendor);
                               }}
-                              className="px-3 py-1.5 bg-ios-purple hover: hover: rounded-lg text-xs font-medium transition-all hover:scale-105 flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
+                              className="px-3 py-1.5 bg-ios-purple text-white hover:opacity-90 rounded-lg text-xs font-medium transition-all hover:scale-105 flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

@@ -125,6 +125,7 @@ export const searchReturnItems = query({
       const poNumber = (item.poNumber || "").toLowerCase();
       const invNumber = (item.invNumber || "").toLowerCase();
       const fromAddress = (item.fromAddress || "").toLowerCase();
+      const trackingNumber = (item.trackingNumber || "").toLowerCase();
 
       return (
         brand.includes(searchLower) ||
@@ -134,7 +135,8 @@ export const searchReturnItems = query({
         upc.includes(searchLower) ||
         poNumber.includes(searchLower) ||
         invNumber.includes(searchLower) ||
-        fromAddress.includes(searchLower)
+        fromAddress.includes(searchLower) ||
+        trackingNumber.includes(searchLower)
       );
     });
 
