@@ -297,31 +297,31 @@ function OpenTruckModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-ios-gray5 flex items-center justify-between">
           <h2 className="text-lg font-bold">Open Truck</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
+          <button onClick={onClose} className="text-ios-gray1 hover:text-[#1c1c1e] transition-colors text-xl">&times;</button>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Truck #</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Truck #</label>
               <input
                 type="text"
                 value={truckNumber}
                 onChange={(e) => setTruckNumber(e.target.value)}
                 placeholder="e.g. 12345"
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
                 autoFocus
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Type</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as any)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               >
                 <option value="receiving">Receiving</option>
                 <option value="outbound">Outbound</option>
@@ -330,11 +330,11 @@ function OpenTruckModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Truck Length</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Truck Length</label>
               <select
                 value={truckLength}
                 onChange={(e) => setTruckLength(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               >
                 <option value="Pup">Pup</option>
                 <option value="40ft">40ft</option>
@@ -342,11 +342,11 @@ function OpenTruckModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Location</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Location</label>
               <select
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               >
                 {LOCATION_OPTIONS.map((loc) => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
@@ -356,13 +356,13 @@ function OpenTruckModal({
           </div>
           {/* Helpers */}
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Helpers</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Helpers</label>
             {helpers.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {helpers.map((h, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/20">
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ring-ios-blue/20 text-ios-blue border ring-ios-blue/20">
                     {h}
-                    <button onClick={() => setHelpers(helpers.filter((_, idx) => idx !== i))} className="text-cyan-400 hover:text-red-400 ml-0.5">&times;</button>
+                    <button onClick={() => setHelpers(helpers.filter((_, idx) => idx !== i))} className="text-ios-blue hover:text-ios-red ml-0.5">&times;</button>
                   </span>
                 ))}
               </div>
@@ -381,15 +381,15 @@ function OpenTruckModal({
                   }
                 }}
                 placeholder="Type name and press Enter..."
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               />
               {showSuggestions && helperInput && filteredSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-ios-gray5 border border-ios-gray4 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
                   {filteredSuggestions.map((h) => (
                     <button
                       key={h._id}
                       onClick={() => addHelper(h.name)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-600 transition-colors text-white"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-ios-gray4 transition-colors text-[#1c1c1e]"
                     >
                       {h.name}
                     </button>
@@ -399,22 +399,22 @@ function OpenTruckModal({
             </div>
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Notes (optional)</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Notes (optional)</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes..."
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             />
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Cancel</button>
+        <div className="px-6 py-4 border-t border-ios-gray5 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-ios-gray5 hover:bg-ios-gray4 text-[#1c1c1e] transition-colors">Cancel</button>
           <button
             onClick={handleSubmit}
             disabled={!truckNumber.trim() || helpers.length === 0 || submitting}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1c1c1e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? "Opening..." : "Open Truck & Start Timer"}
           </button>
@@ -592,9 +592,9 @@ function EditEntryModal({
     : ["Pup", "40ft", "53ft"];
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-ios-gray5 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-bold">Edit Truck</h2>
             <div className="flex items-center gap-2 mt-0.5">
@@ -602,35 +602,35 @@ function EditEntryModal({
                 entry.type === "shipping"
                   ? "bg-blue-500/20 text-blue-400"
                   : entry.type === "outbound"
-                    ? "bg-amber-500/20 text-amber-400"
+                    ? "bg-ios-orange/10 text-ios-orange"
                     : "bg-purple-500/20 text-purple-400"
               }`}>
                 {entry.type === "shipping" ? "Shipping" : entry.type === "outbound" ? "Outbound" : "Receiving"}
               </span>
-              <span className="text-xs text-slate-500">{getLocationName(entry.locationId)}</span>
+              <span className="text-xs text-ios-gray1">{getLocationName(entry.locationId)}</span>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
+          <button onClick={onClose} className="text-ios-gray1 hover:text-[#1c1c1e] transition-colors text-xl">&times;</button>
         </div>
         <div className="px-6 py-5 space-y-4">
           {/* Truck Number */}
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Truck Number</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Truck Number</label>
             <input
               type="text"
               value={truckNumber}
               onChange={(e) => setTruckNumber(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             />
           </div>
 
           {/* Truck Length */}
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Truck Length</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Truck Length</label>
             <select
               value={truckLength}
               onChange={(e) => setTruckLength(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             >
               <option value="">Not set</option>
               {lengthOptions.map((len) => (
@@ -642,46 +642,46 @@ function EditEntryModal({
           {/* Times */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Opened At</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Opened At</label>
               <input
                 type="datetime-local"
                 value={openedAtStr}
                 onChange={(e) => handleOpenedAtChange(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Closed At</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Closed At</label>
               <input
                 type="datetime-local"
                 value={closedAtStr}
                 onChange={(e) => handleClosedAtChange(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               />
             </div>
           </div>
 
           {/* Duration input */}
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Duration (adjusts closed time)</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Duration (adjusts closed time)</label>
             <input
               type="text"
               value={durationInput}
               onChange={(e) => handleDurationChange(e.target.value)}
               placeholder="e.g. 1:30, 90m, 1h30m, 1.5h"
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             />
           </div>
 
           {/* Duration preview */}
           {previewDuration && (
-            <div className="flex items-center gap-3 px-3 py-2 bg-slate-900/50 rounded-lg text-sm">
-              <span className="text-slate-500">Duration:</span>
-              <span className="text-white font-medium">{previewDuration}</span>
+            <div className="flex items-center gap-3 px-3 py-2 bg-white/80 rounded-lg text-sm">
+              <span className="text-ios-gray1">Duration:</span>
+              <span className="text-[#1c1c1e] font-medium">{previewDuration}</span>
               {previewBonusEligible !== null && (
                 <>
-                  <span className="text-slate-600">|</span>
-                  <span className={previewBonusEligible ? "text-emerald-400" : "text-red-400"}>
+                  <span className="text-ios-gray2">|</span>
+                  <span className={previewBonusEligible ? "text-ios-green" : "text-ios-red"}>
                     {previewBonusEligible ? "Within 2hr window" : "Exceeds 2hr window"}
                   </span>
                 </>
@@ -691,13 +691,13 @@ function EditEntryModal({
 
           {/* Helpers */}
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Helpers</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Helpers</label>
             {helpers.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {helpers.map((h, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/20">
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ring-ios-blue/20 text-ios-blue border ring-ios-blue/20">
                     {h}
-                    <button onClick={() => setHelpers(helpers.filter((_, idx) => idx !== i))} className="text-cyan-400 hover:text-red-400 ml-0.5">&times;</button>
+                    <button onClick={() => setHelpers(helpers.filter((_, idx) => idx !== i))} className="text-ios-blue hover:text-ios-red ml-0.5">&times;</button>
                   </span>
                 ))}
               </div>
@@ -716,15 +716,15 @@ function EditEntryModal({
                   }
                 }}
                 placeholder="Type name and press Enter..."
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               />
               {showSuggestions && helperInput && filteredSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-ios-gray5 border border-ios-gray4 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
                   {filteredSuggestions.map((h) => (
                     <button
                       key={h._id}
                       onClick={() => addHelper(h.name)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-600 transition-colors text-white"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-ios-gray4 transition-colors text-[#1c1c1e]"
                     >
                       {h.name}
                     </button>
@@ -737,23 +737,23 @@ function EditEntryModal({
           {/* Notes (receiving/outbound only) */}
           {entry.type !== "shipping" && (
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Notes</label>
+              <label className="block text-xs text-ios-gray1 mb-1">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="Optional notes..."
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 resize-none"
+                className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue resize-none"
               />
             </div>
           )}
         </div>
-        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3 sticky bottom-0 bg-slate-800">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Cancel</button>
+        <div className="px-6 py-4 border-t border-ios-gray5 flex justify-end gap-3 sticky bottom-0 bg-white">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-ios-gray5 hover:bg-ios-gray4 text-[#1c1c1e] transition-colors">Cancel</button>
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-ios-blue hover:bg-ios-blue text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? "Saving..." : "Save Changes"}
           </button>
@@ -793,19 +793,19 @@ function HelperManagementModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-ios-gray5 flex items-center justify-between">
           <h2 className="text-lg font-bold">Manage Helper Names</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-xl">&times;</button>
+          <button onClick={onClose} className="text-ios-gray1 hover:text-[#1c1c1e] transition-colors text-xl">&times;</button>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Location</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Location</label>
             <select
               value={locationId}
               onChange={(e) => setLocationId(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="w-full bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             >
               {LOCATION_OPTIONS.map((loc) => (
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
@@ -813,7 +813,7 @@ function HelperManagementModal({
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Add New Helper</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Add New Helper</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -821,41 +821,41 @@ function HelperManagementModal({
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
                 placeholder="Helper name..."
-                className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                className="flex-1 bg-white border border-ios-gray4 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
               />
               <button
                 onClick={handleAdd}
                 disabled={!newName.trim() || adding}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1c1c1e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Add
               </button>
             </div>
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-2">Current Helpers ({knownHelpers?.length ?? 0})</label>
+            <label className="block text-xs text-ios-gray1 mb-2">Current Helpers ({knownHelpers?.length ?? 0})</label>
             <div className="max-h-60 overflow-y-auto space-y-1">
               {knownHelpers?.map((h) => (
-                <div key={h._id} className="flex items-center justify-between px-3 py-2 bg-slate-900/50 rounded-lg">
-                  <span className="text-sm text-white">{h.name}</span>
+                <div key={h._id} className="flex items-center justify-between px-3 py-2 bg-white/80 rounded-lg">
+                  <span className="text-sm text-[#1c1c1e]">{h.name}</span>
                   <button
                     onClick={() => {
                       if (confirm(`Remove ${h.name}?`)) removeHelper({ helperId: h._id });
                     }}
-                    className="text-slate-500 hover:text-red-400 transition-colors text-xs"
+                    className="text-ios-gray1 hover:text-ios-red transition-colors text-xs"
                   >
                     Remove
                   </button>
                 </div>
               ))}
               {knownHelpers?.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-4">No helpers for this location</p>
+                <p className="text-sm text-ios-gray1 text-center py-4">No helpers for this location</p>
               )}
             </div>
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-slate-700 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">Done</button>
+        <div className="px-6 py-4 border-t border-ios-gray5 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg bg-ios-gray5 hover:bg-ios-gray4 text-[#1c1c1e] transition-colors">Done</button>
         </div>
       </div>
     </div>
@@ -874,7 +874,7 @@ function LiveTimer({ openedAt }: { openedAt: number }) {
   const TWO_HOURS = 2 * 60 * 60 * 1000;
   const isOverTime = elapsed > TWO_HOURS;
   return (
-    <span className={`font-mono text-sm ${isOverTime ? "text-red-400" : "text-cyan-400"}`}>
+    <span className={`font-mono text-sm ${isOverTime ? "text-ios-red" : "text-ios-blue"}`}>
       {hours > 0 && `${hours}h `}{minutes}m {seconds}s
     </span>
   );
@@ -970,7 +970,7 @@ function BonusesDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-ios-gray6 text-[#1c1c1e]">
       {/* Modals */}
       {showOpenModal && (
         <OpenTruckModal
@@ -991,34 +991,34 @@ function BonusesDashboard() {
       )}
 
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800">
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-ios-gray5">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link
                 href="/"
-                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-slate-800/80 hover:bg-slate-700 border border-slate-700/50 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-slate-600"
+                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-white hover:bg-ios-gray5 border border-ios-gray5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-ios-gray4"
                 aria-label="Back to dashboard"
               >
-                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
               <div>
                 <h1 className="text-xl font-bold">Bonus Tracker</h1>
-                <p className="text-xs text-slate-500">Shipping, Outbound &amp; Receiving Bonus Reports</p>
+                <p className="text-xs text-ios-gray1">Shipping, Outbound &amp; Receiving Bonus Reports</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowHelperMgmt(true)}
-                className="px-3 py-2 text-sm font-medium rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors border border-slate-600"
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-ios-gray5 hover:bg-ios-gray4 text-[#1c1c1e] transition-colors border border-ios-gray4"
               >
                 Manage Helpers
               </button>
               <button
                 onClick={() => setShowOpenModal(true)}
-                className="px-3 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1c1c1e] transition-colors"
               >
                 + Open Truck
               </button>
@@ -1028,7 +1028,7 @@ function BonusesDashboard() {
                   printBonusReport(filteredData, dateRange, locLabel, stats);
                 }}
                 disabled={!filteredData || filteredData.length === 0}
-                className="px-3 py-2 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-ios-blue hover:bg-ios-blue text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Print Report
               </button>
@@ -1041,29 +1041,29 @@ function BonusesDashboard() {
         {/* Filters */}
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Start Date</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Start Date</label>
             <input
               type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange((d) => ({ ...d, start: e.target.value }))}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="bg-white border border-ios-gray5 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">End Date</label>
+            <label className="block text-xs text-ios-gray1 mb-1">End Date</label>
             <input
               type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange((d) => ({ ...d, end: e.target.value }))}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="bg-white border border-ios-gray5 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Location</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Location</label>
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="bg-white border border-ios-gray5 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             >
               <option value="all">All Locations</option>
               {LOCATION_OPTIONS.map((loc) => (
@@ -1072,11 +1072,11 @@ function BonusesDashboard() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Helper</label>
+            <label className="block text-xs text-ios-gray1 mb-1">Helper</label>
             <select
               value={helperFilter}
               onChange={(e) => setHelperFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="bg-white border border-ios-gray5 rounded-lg px-3 py-2 text-sm text-[#1c1c1e] focus:ring-2 focus:ring-ios-blue/20 focus:border-ios-blue"
             >
               <option value="all">All Helpers</option>
               {uniqueHelperNames.map((name) => (
@@ -1088,30 +1088,30 @@ function BonusesDashboard() {
 
         {/* Stats Cards */}
         <div className={`grid grid-cols-2 ${showBonusColumns ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}>
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Shipping</p>
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+            <p className="text-xs text-ios-gray1 uppercase tracking-wider">Shipping</p>
             <p className="text-2xl font-bold text-blue-400 mt-1">{stats.shipping}</p>
           </div>
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Outbound</p>
-            <p className="text-2xl font-bold text-amber-400 mt-1">{stats.outbound}</p>
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+            <p className="text-xs text-ios-gray1 uppercase tracking-wider">Outbound</p>
+            <p className="text-2xl font-bold text-ios-orange mt-1">{stats.outbound}</p>
           </div>
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Receiving</p>
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+            <p className="text-xs text-ios-gray1 uppercase tracking-wider">Receiving</p>
             <p className="text-2xl font-bold text-purple-400 mt-1">{stats.receiving}</p>
           </div>
           {showBonusColumns && (
             <>
-              <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Earned</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.earned}</p>
+              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+                <p className="text-xs text-ios-gray1 uppercase tracking-wider">Earned</p>
+                <p className="text-2xl font-bold text-ios-green mt-1">{stats.earned}</p>
               </div>
-              <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Missed</p>
-                <p className="text-2xl font-bold text-red-400 mt-1">{stats.missed}</p>
+              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+                <p className="text-xs text-ios-gray1 uppercase tracking-wider">Missed</p>
+                <p className="text-2xl font-bold text-ios-red mt-1">{stats.missed}</p>
               </div>
-              <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Total Bonus $</p>
+              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+                <p className="text-xs text-ios-gray1 uppercase tracking-wider">Total Bonus $</p>
                 <p className="text-2xl font-bold text-teal-400 mt-1">${stats.totalBonus}</p>
               </div>
             </>
@@ -1119,49 +1119,49 @@ function BonusesDashboard() {
         </div>
 
         {/* Table */}
-        <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden">
+        <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-700/50">
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Date</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Truck #</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Type</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Length</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Helpers</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Duration</th>
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Location</th>
+                <tr className="border-b border-ios-gray5">
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Date</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Truck #</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Type</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Length</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Helpers</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Duration</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Location</th>
                   {showBonusColumns && (
                     <>
-                      <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus</th>
-                      <th className="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Bonus $</th>
+                      <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Bonus</th>
+                      <th className="text-right px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Bonus $</th>
                     </>
                   )}
-                  <th className="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Status</th>
+                  <th className="text-left px-4 py-3 text-xs text-ios-gray1 uppercase tracking-wider font-medium">Status</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {!bonusData && (
                   <tr>
-                    <td colSpan={showBonusColumns ? 11 : 9} className="text-center py-12 text-slate-500">
+                    <td colSpan={showBonusColumns ? 11 : 9} className="text-center py-12 text-ios-gray1">
                       Loading...
                     </td>
                   </tr>
                 )}
                 {filteredData?.length === 0 && (
                   <tr>
-                    <td colSpan={showBonusColumns ? 11 : 9} className="text-center py-12 text-slate-500">
+                    <td colSpan={showBonusColumns ? 11 : 9} className="text-center py-12 text-ios-gray1">
                       No data for the selected date range
                     </td>
                   </tr>
                 )}
                 {filteredData?.map((truck) => (
-                  <tr key={truck._id} className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors">
-                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
+                  <tr key={truck._id} className="border-b border-ios-gray5 hover:bg-ios-gray6 transition-colors">
+                    <td className="px-4 py-3 text-[#1c1c1e] whitespace-nowrap">
                       {formatDate(truck.openedAt)}
                     </td>
-                    <td className="px-4 py-3 font-medium text-white">
+                    <td className="px-4 py-3 font-medium text-[#1c1c1e]">
                       {truck.truckNumber}
                     </td>
                     <td className="px-4 py-3">
@@ -1169,44 +1169,44 @@ function BonusesDashboard() {
                         truck.type === "shipping"
                           ? "bg-blue-500/20 text-blue-400 border border-blue-500/20"
                           : truck.type === "outbound"
-                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/20"
+                            ? "bg-ios-orange/10 text-ios-orange border border-ios-orange/40"
                             : "bg-purple-500/20 text-purple-400 border border-purple-500/20"
                       }`}>
                         {truck.type === "shipping" ? "Shipping" : truck.type === "outbound" ? "Outbound" : "Receiving"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-300">
+                    <td className="px-4 py-3 text-[#1c1c1e]">
                       {truck.truckLength ?? "-"}
                     </td>
                     <td className="px-4 py-3">
                       {truck.helpers.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {truck.helpers.map((name: string, i: number) => (
-                            <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-700 text-slate-300">
+                            <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-ios-gray5 text-[#1c1c1e]">
                               {name}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-slate-600">-</span>
+                        <span className="text-ios-gray2">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
+                    <td className="px-4 py-3 text-[#1c1c1e] whitespace-nowrap">
                       {truck.duration ? formatDuration(truck.duration) : (
                         <LiveTimer openedAt={truck.openedAt} />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-400">
+                    <td className="px-4 py-3 text-ios-gray1">
                       {getLocationName(truck.locationId)}
                     </td>
                     {showBonusColumns && (
                       <>
                         <td className="px-4 py-3">
                           {!locationHasBonus(truck.locationId) ? (
-                            <span className="text-slate-600">-</span>
+                            <span className="text-ios-gray2">-</span>
                           ) : truck.bonusEarned === true ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-emerald-400 text-lg" title="Bonus earned">&#x2705;</span>
+                              <span className="text-ios-green text-lg" title="Bonus earned">&#x2705;</span>
                               {(truck.type === "receiving" || truck.type === "outbound") && (
                                 <button
                                   onClick={() => {
@@ -1214,7 +1214,7 @@ function BonusesDashboard() {
                                       overrideBonus({ receivingTruckId: truck._id as any, bonusEarned: false });
                                     }
                                   }}
-                                  className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                                  className="text-xs text-ios-gray1 hover:text-ios-red transition-colors"
                                   title="Revoke override"
                                 >
                                   undo
@@ -1223,7 +1223,7 @@ function BonusesDashboard() {
                             </div>
                           ) : truck.bonusEarned === false ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-red-400 text-lg" title="No bonus">&#x274C;</span>
+                              <span className="text-ios-red text-lg" title="No bonus">&#x274C;</span>
                               {(truck.type === "receiving" || truck.type === "outbound") && (
                                 <button
                                   onClick={() => {
@@ -1231,23 +1231,23 @@ function BonusesDashboard() {
                                       overrideBonus({ receivingTruckId: truck._id as any, bonusEarned: true });
                                     }
                                   }}
-                                  className="px-2 py-0.5 text-xs font-medium rounded bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:bg-amber-500/30 transition-colors"
+                                  className="px-2 py-0.5 text-xs font-medium rounded bg-ios-orange/10 text-ios-orange border border-ios-orange/40 hover:bg-ios-orange/10 transition-colors"
                                 >
                                   Override
                                 </button>
                               )}
                             </div>
                           ) : (
-                            <span className="text-slate-600">-</span>
+                            <span className="text-ios-gray2">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {!locationHasBonus(truck.locationId) ? (
-                            <span className="text-slate-600">-</span>
+                            <span className="text-ios-gray2">-</span>
                           ) : (truck.bonusAmount ?? 0) > 0 ? (
-                            <span className="text-emerald-400 font-medium">${truck.bonusAmount}</span>
+                            <span className="text-ios-green font-medium">${truck.bonusAmount}</span>
                           ) : (
-                            <span className="text-slate-600">$0</span>
+                            <span className="text-ios-gray2">$0</span>
                           )}
                         </td>
                       </>
@@ -1255,8 +1255,8 @@ function BonusesDashboard() {
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         truck.status === "open"
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
-                          : "bg-slate-600/20 text-slate-400 border border-slate-600/20"
+                          ? "bg-ios-green/10 text-ios-green border border-ios-green/40"
+                          : "bg-ios-gray4 text-ios-gray1 border border-ios-gray4"
                       }`}>
                         {truck.status}
                       </span>
@@ -1267,7 +1267,7 @@ function BonusesDashboard() {
                         {truck.status === "open" && truck.type !== "shipping" && (
                           <button
                             onClick={() => handleCloseTruck(truck._id)}
-                            className="px-2 py-1 text-xs font-medium rounded bg-red-500/20 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition-colors"
+                            className="px-2 py-1 text-xs font-medium rounded bg-ios-red/10 text-ios-red border border-ios-red/40 bg-ios-red/10 transition-colors"
                             title="Close truck & stop timer"
                           >
                             Close
@@ -1276,7 +1276,7 @@ function BonusesDashboard() {
                         {/* Edit button */}
                         <button
                           onClick={() => setEditingEntry(truck)}
-                          className="px-2 py-1 text-xs font-medium rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/30 transition-colors"
+                          className="px-2 py-1 text-xs font-medium rounded ring-ios-blue/20 text-ios-blue border ring-ios-blue/20 hover:ring-ios-blue/20 transition-colors"
                           title="Edit entry"
                         >
                           Edit
@@ -1288,7 +1288,7 @@ function BonusesDashboard() {
                               deleteBonusEntry({ entryId: truck._id, type: truck.type as any });
                             }
                           }}
-                          className="text-slate-600 hover:text-red-400 transition-colors"
+                          className="text-ios-gray2 hover:text-ios-red transition-colors"
                           title="Delete entry"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Protected } from "../protected";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/PageHeader";
+import { GroupedList, GroupedListItem } from "@/components/GroupedList";
+import { Download, RefreshCw } from "lucide-react";
 
 interface ExpoBuild {
   id: string;
@@ -126,7 +132,7 @@ export default function AppDownloadPage() {
   // Initial fetch
   useEffect(() => {
     fetchBuilds();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -150,362 +156,234 @@ export default function AppDownloadPage() {
 
   return (
     <Protected>
-      <div className="min-h-screen bg-slate-950 text-white">
-        {/* Header */}
-        <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/"
-                  className="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition-colors min-h-[44px] min-w-[44px]"
-                  aria-label="Back to dashboard"
-                >
-                  <svg
-                    className="w-5 h-5 text-slate-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                    />
-                  </svg>
-                </Link>
-                <div>
-                  <h1 className="text-xl font-bold">TireTrack Lite App</h1>
-                  <p className="text-slate-500 text-sm">
-                    Download the latest Android APK
-                    {lastFetched && (
-                      <span className="ml-2 text-slate-600">
-                        • Updated {lastFetched.toLocaleTimeString()}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {retryCount > 0 && retryCount <= MAX_RETRIES && (
-                  <span className="text-amber-400 text-xs flex items-center gap-1">
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Retrying ({retryCount}/{MAX_RETRIES})...
-                  </span>
-                )}
-                <button
-                  onClick={() => fetchBuilds()}
-                  disabled={loading}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 min-h-[44px]"
-                  aria-label="Refresh builds"
-                >
-                  <svg
-                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  {loading ? "Refreshing..." : "Refresh"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {loading && !builds ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-              <p className="text-red-400 font-medium">Error loading builds</p>
-              <p className="text-slate-500 text-sm mt-1">{error}</p>
-              <button
+      <div className="min-h-screen p-4 sm:p-6 max-w-3xl mx-auto">
+        <PageHeader
+          title="TireTrack Lite App"
+          subtitle="Download the latest Android APK"
+          backHref="/"
+          right={
+            <div className="flex items-center gap-2">
+              {retryCount > 0 && retryCount <= MAX_RETRIES && (
+                <span className="text-ios-orange text-xs flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Retrying ({retryCount}/{MAX_RETRIES})...
+                </span>
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => fetchBuilds()}
-                className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-sm transition-colors min-h-[44px]"
+                disabled={loading}
               >
-                Try Again
-              </button>
+                <RefreshCw className={loading ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
+                {loading ? "Refreshing…" : "Refresh"}
+              </Button>
             </div>
-          ) : builds?.latestBuild ? (
-            <>
-              {/* Latest Build Card */}
-              <div className="bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/30 rounded-2xl p-6 mb-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-purple-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">
-                      Latest APK Build
-                    </h2>
-                    <p className="text-purple-300 text-sm">
-                      Version {builds.latestBuild.appVersion || "1.0.0"}
-                    </p>
-                  </div>
-                </div>
+          }
+        />
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                  <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-wider">
-                      Profile
-                    </p>
-                    <p className="text-white font-medium capitalize">
-                      {builds.latestBuild.buildProfile}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-wider">
-                      Status
-                    </p>
-                    <p className="text-emerald-400 font-medium">
-                      {builds.latestBuild.status}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-wider">
-                      Built
-                    </p>
-                    <p className="text-white font-medium">
-                      {formatDate(builds.latestBuild.completedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-wider">
-                      Commit
-                    </p>
-                    <p className="text-slate-400 font-mono text-sm">
-                      {builds.latestBuild.gitCommitHash?.slice(0, 7) || "N/A"}
-                    </p>
-                  </div>
-                </div>
+        {/* Loading state */}
+        {loading && !builds && (
+          <Card>
+            <CardContent className="py-8 flex items-center justify-center">
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
+        )}
 
-                {builds.latestBuild.artifacts?.buildUrl ? (
-                  <button
-                    onClick={() => {
-                      const url = builds.latestBuild?.artifacts?.buildUrl;
-                      if (url) {
-                        // Use window.location for direct download - avoids popup blockers
-                        window.location.href = url;
-                      }
-                    }}
-                    className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all shadow-lg shadow-purple-500/20 cursor-pointer"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                      />
-                    </svg>
-                    Download APK
-                  </button>
-                ) : (
-                  <p className="text-slate-500">
-                    No download available for this build
-                  </p>
-                )}
+        {/* Error state */}
+        {error && (
+          <Card>
+            <CardContent className="py-6 text-center space-y-3">
+              <p className="text-ios-red font-medium">Error loading builds</p>
+              <p className="text-sm text-ios-gray1">{error}</p>
+              <Button onClick={() => fetchBuilds()}>Try Again</Button>
+            </CardContent>
+          </Card>
+        )}
 
-                {/* Version Notes for Current Build */}
-                {builds.latestBuild.appVersion && VERSION_NOTES[builds.latestBuild.appVersion] && (
-                  <div className="mt-6 pt-6 border-t border-purple-500/20">
-                    <h3 className="text-sm font-semibold text-purple-300 mb-3">What&apos;s New in v{builds.latestBuild.appVersion}</h3>
-                    <ul className="space-y-2">
-                      {VERSION_NOTES[builds.latestBuild.appVersion].features.map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-slate-300 text-sm">
-                          <span className="text-emerald-400 mt-0.5">+</span>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+        {/* Latest build */}
+        {builds?.latestBuild && (
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Latest APK Build</CardTitle>
+                <Badge variant="success">{builds.latestBuild.status}</Badge>
               </div>
-
-              {/* Full Version History */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold mb-4 text-slate-300">Version History</h3>
-                <div className="space-y-4">
-                  {Object.entries(VERSION_NOTES).map(([version, info]) => (
-                    <div
-                      key={version}
-                      className={`bg-slate-900/50 border rounded-xl p-4 ${
-                        version === builds.latestBuild?.appVersion
-                          ? "border-purple-500/30 bg-purple-900/10"
-                          : "border-slate-800"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-semibold">v{version}</span>
-                          {version === builds.latestBuild?.appVersion && (
-                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs rounded-full">
-                              Current
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-slate-500 text-sm">{info.date}</span>
-                      </div>
-                      <ul className="space-y-1">
-                        {info.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-slate-400 text-sm">
-                            <span className="text-slate-600">-</span>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* All Builds */}
-              {builds.allBuilds.length > 1 && (
+              <p className="text-sm text-ios-gray1">
+                Version {builds.latestBuild.appVersion || "1.0.0"}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4 pb-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4 text-slate-300">
-                    Recent Builds
-                  </h3>
-                  <div className="space-y-3">
-                    {builds.allBuilds.slice(1).map((build) => (
-                      <div
-                        key={build.id}
-                        className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center">
-                            <svg
-                              className="w-5 h-5 text-slate-500"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                              />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">
-                              {build.buildProfile} - v
-                              {build.appVersion || "1.0.0"}
-                            </p>
-                            <p className="text-slate-500 text-sm">
-                              {formatDate(build.completedAt)}
-                            </p>
-                          </div>
-                        </div>
-                        {build.artifacts?.buildUrl && (
-                          <button
-                            onClick={() => {
-                              if (build.artifacts?.buildUrl) {
-                                window.location.href = build.artifacts.buildUrl;
-                              }
-                            }}
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                              />
-                            </svg>
-                            Download
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                  <div className="text-xs uppercase tracking-wider text-ios-gray1">Profile</div>
+                  <div className="font-medium mt-0.5 capitalize">{builds.latestBuild.buildProfile}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-ios-gray1">Built</div>
+                  <div className="font-medium mt-0.5">{formatDate(builds.latestBuild.completedAt)}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-ios-gray1">Commit</div>
+                  <div className="font-mono text-xs mt-0.5">
+                    {builds.latestBuild.gitCommitHash?.slice(0, 7) || "—"}
                   </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-ios-gray1">Version</div>
+                  <div className="font-medium mt-0.5">{builds.latestBuild.appVersion}</div>
+                </div>
+              </div>
+
+              {builds.latestBuild.artifacts?.buildUrl ? (
+                <Button
+                  onClick={() => {
+                    const url = builds.latestBuild?.artifacts?.buildUrl;
+                    if (url) window.location.href = url;
+                  }}
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  <Download className="w-4 h-4" />
+                  Download APK
+                </Button>
+              ) : (
+                <p className="text-sm text-ios-gray1">No download available for this build.</p>
+              )}
+
+              {/* What's New for current build */}
+              {builds.latestBuild.appVersion && VERSION_NOTES[builds.latestBuild.appVersion] && (
+                <div className="pt-4 border-t border-ios-gray5">
+                  <p className="text-xs uppercase tracking-wider font-semibold text-ios-gray1 mb-2">
+                    What&apos;s New in v{builds.latestBuild.appVersion}
+                  </p>
+                  <ul className="space-y-1">
+                    {VERSION_NOTES[builds.latestBuild.appVersion].features.map((feature, idx) => (
+                      <li key={idx} className="text-[13px] text-black flex items-start gap-1.5">
+                        <span className="text-ios-green mt-0.5">+</span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
-            </>
-          ) : (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center">
-              <div className="w-16 h-16 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-8 h-8 text-slate-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <p className="text-slate-400 font-medium">No builds found</p>
-              <p className="text-slate-600 text-sm mt-1">
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No builds state */}
+        {!loading && !error && builds && !builds.latestBuild && (
+          <Card className="mb-6">
+            <CardContent className="py-8 text-center">
+              <p className="font-medium text-black">No builds found</p>
+              <p className="text-sm text-ios-gray1 mt-1">
                 Run &quot;eas build --platform android&quot; to create a build
               </p>
-            </div>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Instructions */}
-          <div className="mt-8 bg-slate-900/30 border border-slate-800/50 rounded-xl p-6">
-            <h3 className="text-lg font-semibold mb-4 text-slate-300">
-              Installation Instructions
-            </h3>
-            <ol className="list-decimal list-inside space-y-2 text-slate-400">
-              <li>Download the APK file to your Android device</li>
-              <li>
-                Open the file (you may need to allow &quot;Install from unknown
-                sources&quot;)
-              </li>
-              <li>Follow the installation prompts</li>
-              <li>Open TireTrack Lite and sign in with your credentials</li>
-            </ol>
-            <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <p className="text-amber-400 text-sm">
-                <strong>Note:</strong> If you see a &quot;Play Protect&quot;
-                warning, tap &quot;Install anyway&quot; - this is normal for
-                apps not from the Play Store.
-              </p>
-            </div>
+        {/* Version history */}
+        {Object.keys(VERSION_NOTES).length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm uppercase tracking-wider font-semibold text-ios-gray1 mb-2 px-1">
+              Version History
+            </h2>
+            <GroupedList>
+              {Object.entries(VERSION_NOTES).map(([version, info]) => (
+                <GroupedListItem
+                  key={version}
+                  label={
+                    <span>
+                      v{version}
+                      {version === builds?.latestBuild?.appVersion && (
+                        <Badge variant="default" className="ml-2">Current</Badge>
+                      )}
+                    </span>
+                  }
+                  value={
+                    <>
+                      <span>{info.date}</span>
+                      <ul className="mt-1 space-y-0.5 list-none">
+                        {info.features.map((f: string, i: number) => (
+                          <li key={i} className="text-[13px] text-ios-gray1">• {f}</li>
+                        ))}
+                      </ul>
+                    </>
+                  }
+                />
+              ))}
+            </GroupedList>
           </div>
+        )}
+
+        {/* Recent builds */}
+        {builds && builds.allBuilds && builds.allBuilds.length > 1 && (
+          <div className="mb-6">
+            <h2 className="text-sm uppercase tracking-wider font-semibold text-ios-gray1 mb-2 px-1">
+              Recent Builds
+            </h2>
+            <GroupedList>
+              {builds.allBuilds.slice(1).map((b) => (
+                <GroupedListItem
+                  key={b.id}
+                  label={`${b.buildProfile} — v${b.appVersion || "1.0.0"}`}
+                  value={formatDate(b.completedAt)}
+                  trailing={
+                    b.artifacts?.buildUrl ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (b.artifacts?.buildUrl) window.location.href = b.artifacts.buildUrl;
+                        }}
+                      >
+                        <Download className="w-3 h-3" />
+                        Download
+                      </Button>
+                    ) : null
+                  }
+                />
+              ))}
+            </GroupedList>
+          </div>
+        )}
+
+        {/* Installation instructions */}
+        <div className="mb-6">
+          <h2 className="text-sm uppercase tracking-wider font-semibold text-ios-gray1 mb-2 px-1">
+            Installation
+          </h2>
+          <GroupedList>
+            <GroupedListItem
+              label="Step 1"
+              value="Download the APK file to your Android device"
+            />
+            <GroupedListItem
+              label="Step 2"
+              value='Open the file (you may need to allow "Install from unknown sources")'
+            />
+            <GroupedListItem
+              label="Step 3"
+              value="Follow the installation prompts"
+            />
+            <GroupedListItem
+              label="Step 4"
+              value="Open TireTrack Lite and sign in with your credentials"
+            />
+          </GroupedList>
+          <p className="text-xs text-ios-gray1 mt-2 px-1">
+            If you see a &quot;Play Protect&quot; warning, tap &quot;Install anyway&quot; — this is normal for apps not distributed via the Play Store.
+          </p>
         </div>
+
+        {lastFetched && (
+          <p className="text-xs text-ios-gray2 mt-2 text-center">
+            Updated {lastFetched.toLocaleTimeString()}
+          </p>
+        )}
       </div>
     </Protected>
   );

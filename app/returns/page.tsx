@@ -116,21 +116,21 @@ function ReturnsDashboard() {
     switch (status) {
       case "processed":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-green/10 text-ios-green border border-ios-green/40 rounded-lg text-xs font-medium">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
             Processed
           </span>
         );
       case "not_processed":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-red/10 text-ios-red border border-ios-red/40 rounded-lg text-xs font-medium">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
             Not Processed
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 text-slate-400 border border-slate-600/30 rounded-lg text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ios-gray5 text-ios-gray1 border border-ios-gray4 rounded-lg text-xs font-medium">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>
             Pending
           </span>
@@ -146,33 +146,33 @@ function ReturnsDashboard() {
   } : null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+    <main className="min-h-screen bg-ios-gray6 text-[#1c1c1e]">
       {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-20">
+      <header className="border-b border-ios-gray5 bg-white/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-slate-800/80 hover:bg-slate-700 border border-slate-700/50 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-slate-600"
+                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-white hover:bg-ios-gray5 border border-ios-gray5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-ios-gray4"
                 aria-label="Back to dashboard"
               >
-                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold  ">
                   Returns Management
                 </h1>
-                <p className="text-slate-500 text-xs">Process and track tire returns</p>
+                <p className="text-ios-gray1 text-xs">Process and track tire returns</p>
               </div>
             </div>
 
             {/* Search Bar */}
             <div className="flex items-center gap-3">
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -186,7 +186,7 @@ function ReturnsDashboard() {
                   }}
                   onFocus={() => searchQuery.length >= 2 && setIsSearching(true)}
                   placeholder="Search brand, size, part #..."
-                  className="pl-10 pr-4 py-2 w-64 bg-slate-800/80 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  className="pl-10 pr-4 py-2 w-64 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] placeholder-ios-gray2 focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -194,7 +194,7 @@ function ReturnsDashboard() {
                       setSearchQuery("");
                       setIsSearching(false);
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ios-gray1 hover:text-[#1c1c1e]"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -206,7 +206,7 @@ function ReturnsDashboard() {
                 <select
                   value={searchStatusFilter}
                   onChange={(e) => setSearchStatusFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-800/80 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500/50"
+                  className="px-3 py-2 bg-white border border-ios-gray5 rounded-xl text-sm text-[#1c1c1e] focus:outline-none focus:border-ios-blue"
                 >
                   <option value="all">All Status</option>
                   <option value="processed">Processed</option>
@@ -220,7 +220,7 @@ function ReturnsDashboard() {
                     setSearchQuery("");
                     setIsSearching(false);
                   }}
-                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-medium transition-all"
+                  className="px-3 py-2 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl text-sm font-medium transition-all"
                 >
                   Back to Batches
                 </button>
@@ -233,58 +233,58 @@ function ReturnsDashboard() {
       <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4 hover:border-amber-500/30 transition-all">
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-orange/40 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-amber-400">{stats?.openBatches || 0}</p>
-                <p className="text-slate-500 text-xs">Open Batches</p>
+                <p className="text-2xl font-bold text-ios-orange">{stats?.openBatches || 0}</p>
+                <p className="text-ios-gray1 text-xs">Open Batches</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4 hover:border-slate-600/50 transition-all">
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-gray4 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-ios-gray5 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats?.itemsToday || 0}</p>
-                <p className="text-slate-500 text-xs">Items Today</p>
+                <p className="text-ios-gray1 text-xs">Items Today</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4 hover:border-emerald-500/30 transition-all">
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-green/40 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-ios-green/10 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-emerald-400">{stats?.processed || 0}</p>
-                <p className="text-slate-500 text-xs">Processed</p>
+                <p className="text-2xl font-bold text-ios-green">{stats?.processed || 0}</p>
+                <p className="text-ios-gray1 text-xs">Processed</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-800/40 backdrop-blur border border-slate-700/30 rounded-xl p-4 hover:border-red-500/30 transition-all">
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 border-ios-red/40 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-ios-red/10 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-400">{stats?.notProcessed || 0}</p>
-                <p className="text-slate-500 text-xs">Not Processed</p>
+                <p className="text-2xl font-bold text-ios-red">{stats?.notProcessed || 0}</p>
+                <p className="text-ios-gray1 text-xs">Not Processed</p>
               </div>
             </div>
           </div>
@@ -292,18 +292,18 @@ function ReturnsDashboard() {
 
         {/* Search Results View */}
         {isSearching ? (
-          <div className="bg-slate-800/30 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-700/30 flex items-center justify-between">
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-ios-gray5 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">
                   Search Results
                   {searchResults && (
-                    <span className="text-cyan-400 ml-2">
+                    <span className="text-ios-blue ml-2">
                       ({searchResults.totalMatches} matches)
                     </span>
                   )}
                 </h2>
-                <p className="text-slate-500 text-sm mt-1">
+                <p className="text-ios-gray1 text-sm mt-1">
                   Searching for "{searchQuery}" {searchStatusFilter !== "all" && `in ${searchStatusFilter}`}
                 </p>
               </div>
@@ -311,19 +311,19 @@ function ReturnsDashboard() {
 
             <div className="p-4">
               {searchQuery.length < 2 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center py-12 text-ios-gray1">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-[#1c1c1e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <p>Type at least 2 characters to search</p>
                 </div>
               ) : searchResults === undefined ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-ios-blue border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : searchResults.items.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center py-12 text-ios-gray1">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-[#1c1c1e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="text-lg font-medium mb-1">No results found</p>
@@ -332,8 +332,8 @@ function ReturnsDashboard() {
               ) : (
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full">
-                    <thead className="sticky top-0 bg-slate-900/80 backdrop-blur-sm">
-                      <tr className="text-left text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
+                    <thead className="sticky top-0 bg-white/80 backdrop-blur-sm">
+                      <tr className="text-left text-ios-gray1 text-xs uppercase tracking-wider border-b border-ios-gray5">
                         <th className="px-4 py-3 font-semibold">Batch</th>
                         <th className="px-4 py-3 font-semibold">Brand</th>
                         <th className="px-4 py-3 font-semibold">Model</th>
@@ -348,16 +348,16 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/30">
+                    <tbody className="divide-y divide-ios-gray5">
                       {searchResults.items.map((item: any) => (
                         <tr
                           key={item._id}
                           className={`transition-colors cursor-pointer ${
                             item.isDamaged
-                              ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500"
+                              ? "bg-ios-red/10 bg-ios-red/10 border-l-2 border-l-red-500"
                               : item.isMisship
-                              ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500"
-                              : "hover:bg-slate-800/50"
+                              ? "bg-ios-orange/10 hover:bg-ios-orange/10 border-l-2 border-l-amber-500"
+                              : "hover:bg-white"
                           }`}
                           onClick={() => {
                             setSelectedBatch(item.returnBatchId);
@@ -366,43 +366,43 @@ function ReturnsDashboard() {
                           }}
                         >
                           <td className="px-4 py-3">
-                            <span className="text-cyan-400 font-medium">{item.batchNumber}</span>
+                            <span className="text-ios-blue font-medium">{item.batchNumber}</span>
                           </td>
-                          <td className="px-4 py-3 font-medium text-white">{item.tireBrand || "-"}</td>
-                          <td className="px-4 py-3 text-slate-300">{item.tireModel || "-"}</td>
-                          <td className="px-4 py-3 text-slate-300">{item.tireSize || "-"}</td>
-                          <td className="px-4 py-3 font-mono text-sm text-slate-400">{item.tirePartNumber || "-"}</td>
+                          <td className="px-4 py-3 font-medium text-[#1c1c1e]">{item.tireBrand || "-"}</td>
+                          <td className="px-4 py-3 text-[#1c1c1e]">{item.tireModel || "-"}</td>
+                          <td className="px-4 py-3 text-[#1c1c1e]">{item.tireSize || "-"}</td>
+                          <td className="px-4 py-3 font-mono text-sm text-ios-gray1">{item.tirePartNumber || "-"}</td>
                           <td className="px-4 py-3 font-mono text-sm">
                             {item.noTrackingNumber ? (
-                              <span className="text-slate-500">No Tracking</span>
+                              <span className="text-ios-gray1">No Tracking</span>
                             ) : item.trackingNumber ? (
-                              <span className="text-emerald-300">{item.trackingNumber}</span>
+                              <span className="text-ios-green">{item.trackingNumber}</span>
                             ) : (
-                              <span className="text-slate-600">-</span>
+                              <span className="text-ios-gray2">-</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center text-slate-300">{item.quantity || 1}</td>
+                          <td className="px-4 py-3 text-center text-[#1c1c1e]">{item.quantity || 1}</td>
                           <td className="px-4 py-3 text-center">
                             {item.isMisship && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-semibold text-xs">⚠ MISSHIP</span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-orange/10 border border-ios-orange/40 rounded text-ios-orange font-semibold text-xs">⚠ MISSHIP</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {item.isDamaged && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-semibold text-xs">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
                                 <span>⚠</span> DAMAGED
                               </span>
                             )}
                           </td>
                           <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">{item.locationName}</td>
-                          <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(item.scannedAt)}</td>
+                          <td className="px-4 py-3 text-ios-gray1 text-sm">{item.locationName}</td>
+                          <td className="px-4 py-3 text-ios-gray1 text-xs">{formatDate(item.scannedAt)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                   {searchResults.totalMatches > searchResults.items.length && (
-                    <p className="text-center text-slate-500 text-xs py-3">
+                    <p className="text-center text-ios-gray1 text-xs py-3">
                       Showing {searchResults.items.length} of {searchResults.totalMatches} results
                     </p>
                   )}
@@ -413,18 +413,18 @@ function ReturnsDashboard() {
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Batches List */}
-          <div className="bg-slate-800/30 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-700/30 flex items-center justify-between">
+          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-ios-gray5 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Batches</h2>
-              <div className="flex gap-1 bg-slate-900/50 rounded-lg p-1">
+              <div className="flex gap-1 bg-white/80 rounded-lg p-1">
                 {(["all", "open", "closed"] as const).map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                       statusFilter === status
-                        ? "bg-cyan-600 text-white shadow-lg shadow-cyan-500/25"
-                        : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        ? "bg-ios-blue text-white shadow-ios"
+                        : "text-ios-gray1 hover:text-[#1c1c1e] hover:bg-ios-gray5"
                     }`}
                   >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -436,11 +436,11 @@ function ReturnsDashboard() {
             <div className="p-4">
               {batches === undefined ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-ios-blue border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredBatches?.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center py-12 text-ios-gray1">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-[#1c1c1e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                   <p>No return batches found</p>
@@ -452,8 +452,8 @@ function ReturnsDashboard() {
                       key={batch._id}
                       className={`relative group p-4 rounded-xl cursor-pointer transition-all ${
                         selectedBatch === batch._id
-                          ? "bg-gradient-to-r from-cyan-600 to-blue-600 shadow-lg shadow-cyan-500/20"
-                          : "bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/30 hover:border-slate-600/50"
+                          ? "bg-ios-blue shadow-ios"
+                          : "bg-white hover:bg-ios-gray5 border border-ios-gray5 hover:border-ios-gray4"
                       }`}
                       onClick={() => setSelectedBatch(batch._id)}
                     >
@@ -470,17 +470,17 @@ function ReturnsDashboard() {
                                   if (e.key === "Escape") { setRenamingBatchId(null); setRenameText(""); }
                                 }}
                                 placeholder="Batch name..."
-                                className="flex-1 bg-slate-900 border border-cyan-500/50 rounded px-2 py-1 text-sm font-semibold outline-none focus:border-cyan-400"
+                                className="flex-1 bg-white border ring-ios-blue/20 rounded px-2 py-1 text-sm font-semibold outline-none focus:border-ios-blue"
                               />
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleRenameBatch(batch._id); }}
-                                className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 rounded text-xs font-medium"
+                                className="px-2 py-1 bg-ios-blue hover:bg-ios-blue rounded text-xs font-medium"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setRenamingBatchId(null); setRenameText(""); }}
-                                className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs"
+                                className="px-2 py-1 bg-ios-gray5 hover:bg-ios-gray4 rounded text-xs"
                               >
                                 Cancel
                               </button>
@@ -495,32 +495,32 @@ function ReturnsDashboard() {
                                     setRenamingBatchId(batch._id);
                                     setRenameText(batch.batchNumber || "");
                                   }}
-                                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-cyan-500/20 rounded transition-all"
+                                  className="opacity-0 group-hover:opacity-100 p-1 hover:ring-ios-blue/20 rounded transition-all"
                                   title="Rename batch"
                                 >
-                                  <svg className="w-3.5 h-3.5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-3.5 h-3.5 text-ios-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                   </svg>
                                 </button>
                               )}
                             </div>
                           )}
-                          <div className="text-sm text-slate-300 mt-1 flex items-center gap-2">
+                          <div className="text-sm text-[#1c1c1e] mt-1 flex items-center gap-2">
                             <span>{batch.itemCount} items</span>
-                            <span className="text-slate-500">•</span>
-                            <span className="text-slate-400">{batch.openedByName}</span>
-                            <span className="text-slate-500">•</span>
-                            <span className="text-cyan-400">{batch.locationName}</span>
+                            <span className="text-ios-gray1">•</span>
+                            <span className="text-ios-gray1">{batch.openedByName}</span>
+                            <span className="text-ios-gray1">•</span>
+                            <span className="text-ios-blue">{batch.locationName}</span>
                           </div>
-                          <div className="text-xs text-slate-500 mt-1">
+                          <div className="text-xs text-ios-gray1 mt-1">
                             {formatDate(batch.openedAt)}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
                             batch.status === "open"
-                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                              : "bg-slate-600/50 text-slate-300 border border-slate-500/30"
+                              ? "bg-ios-orange/10 text-ios-orange border border-ios-orange/40"
+                              : "bg-ios-gray4 text-[#1c1c1e] border border-ios-gray4"
                           }`}>
                             {batch.status}
                           </span>
@@ -530,10 +530,10 @@ function ReturnsDashboard() {
                                 e.stopPropagation();
                                 setBatchDeleteConfirm(batch._id);
                               }}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/20 rounded-lg transition-all"
+                              className="opacity-0 group-hover:opacity-100 p-1.5 bg-ios-red/10 rounded-lg transition-all"
                               title="Delete Batch"
                             >
-                              <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
@@ -542,7 +542,7 @@ function ReturnsDashboard() {
                       </div>
 
                       {batchDeleteConfirm === batch._id && (
-                        <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 z-10">
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 z-10">
                           <span className="text-sm">Delete batch & {batch.itemCount} items?</span>
                           <button
                             onClick={(e) => {
@@ -558,7 +558,7 @@ function ReturnsDashboard() {
                               e.stopPropagation();
                               setBatchDeleteConfirm(null);
                             }}
-                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium"
+                            className="px-3 py-1.5 bg-ios-gray5 hover:bg-ios-gray4 rounded-lg text-sm font-medium"
                           >
                             No
                           </button>
@@ -572,23 +572,23 @@ function ReturnsDashboard() {
           </div>
 
           {/* Items Table */}
-          <div className="lg:col-span-2 bg-slate-800/30 backdrop-blur border border-slate-700/30 rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-700/30 flex justify-between items-center">
+          <div className="lg:col-span-2 bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-ios-gray5 flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-semibold">
-                  Return Items {selectedBatch && <span className="text-cyan-400">({items?.length || 0})</span>}
+                  Return Items {selectedBatch && <span className="text-ios-blue">({items?.length || 0})</span>}
                 </h2>
                 {itemStats && (
                   <div className="flex gap-4 mt-1.5 text-sm">
-                    <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="flex items-center gap-1 text-ios-green">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                       {itemStats.processed}
                     </span>
-                    <span className="flex items-center gap-1 text-red-400">
+                    <span className="flex items-center gap-1 text-ios-red">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                       {itemStats.notProcessed}
                     </span>
-                    <span className="flex items-center gap-1 text-slate-400">
+                    <span className="flex items-center gap-1 text-ios-gray1">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>
                       {itemStats.pending}
                     </span>
@@ -599,8 +599,8 @@ function ReturnsDashboard() {
 
             <div className="p-4">
               {!selectedBatch ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                  <svg className="w-16 h-16 mb-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex flex-col items-center justify-center py-16 text-ios-gray1">
+                  <svg className="w-16 h-16 mb-4 text-[#1c1c1e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <p className="text-lg font-medium mb-1">No batch selected</p>
@@ -608,15 +608,15 @@ function ReturnsDashboard() {
                 </div>
               ) : items === undefined ? (
                 <div className="flex items-center justify-center py-16">
-                  <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-ios-blue border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : items.length === 0 ? (
-                <p className="text-slate-400 text-center py-8">No items in this batch</p>
+                <p className="text-ios-gray1 text-center py-8">No items in this batch</p>
               ) : (
                 <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                   <table className="w-full">
-                    <thead className="sticky top-0 bg-slate-900/80 backdrop-blur-sm">
-                      <tr className="text-left text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/50">
+                    <thead className="sticky top-0 bg-white/80 backdrop-blur-sm">
+                      <tr className="text-left text-ios-gray1 text-xs uppercase tracking-wider border-b border-ios-gray5">
                         <th className="px-4 py-3 font-semibold w-16">Image</th>
                         <th className="px-4 py-3 font-semibold">PO / INV / Tracking</th>
                         <th className="px-4 py-3 font-semibold">Tire</th>
@@ -629,16 +629,16 @@ function ReturnsDashboard() {
                         {canEdit && <th className="px-4 py-3 font-semibold">Actions</th>}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/30">
+                    <tbody className="divide-y divide-ios-gray5">
                       {items.map((item) => (
                         <tr
                           key={item._id}
                           className={`transition-colors cursor-pointer ${
                             item.isDamaged
-                              ? "bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500"
+                              ? "bg-ios-red/10 bg-ios-red/10 border-l-2 border-l-red-500"
                               : item.isMisship
-                              ? "bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-l-amber-500"
-                              : "hover:bg-slate-800/50"
+                              ? "bg-ios-orange/10 hover:bg-ios-orange/10 border-l-2 border-l-amber-500"
+                              : "hover:bg-white"
                           }`}
                           onClick={() => setViewingItem(item)}
                         >
@@ -646,28 +646,28 @@ function ReturnsDashboard() {
                             {item.imageUrl && item.imageUrl.startsWith("http") ? (
                               <button
                                 onClick={() => setViewingImage(item.imageUrl!)}
-                                className="w-12 h-12 rounded-lg overflow-hidden border border-slate-600 hover:border-cyan-500 transition-colors relative group"
+                                className="w-12 h-12 rounded-lg overflow-hidden border border-ios-gray4 hover:border-ios-blue transition-colors relative group"
                               >
                                 <img
                                   src={item.imageUrl}
                                   alt="Return label"
                                   className="w-full h-full object-cover"
                                 />
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-[#1c1c1e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                                   </svg>
                                 </div>
                               </button>
                             ) : item.imageUrl ? (
-                              <div className="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center" title="Image on device only - not uploaded">
-                                <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <div className="w-12 h-12 rounded-lg bg-ios-orange/10 border border-ios-orange/40 flex items-center justify-center" title="Image on device only - not uploaded">
+                                <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
                               </div>
                             ) : (
-                              <div className="w-12 h-12 rounded-lg bg-slate-700/50 flex items-center justify-center" title="No image">
-                                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <div className="w-12 h-12 rounded-lg bg-ios-gray5 flex items-center justify-center" title="No image">
+                                <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                               </div>
@@ -675,14 +675,14 @@ function ReturnsDashboard() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="font-mono text-sm">
-                              {item.poNumber && <div className="text-cyan-300">PO: {item.poNumber}</div>}
-                              {item.invNumber && <div className="text-slate-400">INV: {item.invNumber}</div>}
+                              {item.poNumber && <div className="text-ios-blue">PO: {item.poNumber}</div>}
+                              {item.invNumber && <div className="text-ios-gray1">INV: {item.invNumber}</div>}
                               {item.noTrackingNumber ? (
-                                <div className="text-slate-500">No Tracking</div>
+                                <div className="text-ios-gray1">No Tracking</div>
                               ) : item.trackingNumber ? (
-                                <div className="text-emerald-300">TRK: {item.trackingNumber}</div>
+                                <div className="text-ios-green">TRK: {item.trackingNumber}</div>
                               ) : null}
-                              {!item.poNumber && !item.invNumber && !item.trackingNumber && !item.noTrackingNumber && <span className="text-slate-600">—</span>}
+                              {!item.poNumber && !item.invNumber && !item.trackingNumber && !item.noTrackingNumber && <span className="text-ios-gray2">—</span>}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -691,21 +691,21 @@ function ReturnsDashboard() {
                                 <div className="font-medium">{item.tireBrand}</div>
                               )}
                               {item.tireModel && item.tireModel !== item.tireBrand && (
-                                <div className="text-cyan-300">{item.tireModel}</div>
+                                <div className="text-ios-blue">{item.tireModel}</div>
                               )}
                               {item.tireSize && (
-                                <span className="inline-block px-2 py-0.5 bg-slate-700/50 border border-slate-600/30 rounded text-xs">{item.tireSize}</span>
+                                <span className="inline-block px-2 py-0.5 bg-ios-gray5 border border-ios-gray4 rounded text-xs">{item.tireSize}</span>
                               )}
                               {!item.tireBrand && !item.tireModel && !item.tireSize && (
-                                <span className="text-slate-600">No tire info</span>
+                                <span className="text-ios-gray2">No tire info</span>
                               )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
                             {item.tirePartNumber ? (
-                              <span className="font-mono text-sm text-cyan-300">{item.tirePartNumber}</span>
+                              <span className="font-mono text-sm text-ios-blue">{item.tirePartNumber}</span>
                             ) : (
-                              <span className="text-slate-600">—</span>
+                              <span className="text-ios-gray2">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>
@@ -713,14 +713,14 @@ function ReturnsDashboard() {
                             {item.isMisship ? (
                               <button
                                 onClick={() => updateItem({ itemId: item._id as any, isMisship: false })}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 border border-amber-500/50 rounded-lg text-amber-400 font-semibold text-xs hover:bg-amber-500/30 transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-orange/10 border border-ios-orange/40 rounded-lg text-ios-orange font-semibold text-xs hover:bg-ios-orange/10 transition-all"
                               >
                                 <span>⚠</span> MISSHIP
                               </button>
                             ) : (
                               <button
                                 onClick={() => updateItem({ itemId: item._id as any, isMisship: true })}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-700/30 border border-slate-600/30 rounded-lg text-slate-500 text-xs hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400 transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-gray5 border border-ios-gray4 rounded-lg text-ios-gray1 text-xs hover:bg-ios-orange/10 hover:border-ios-orange/40 hover:text-ios-orange transition-all"
                               >
                                 Mark
                               </button>
@@ -728,7 +728,7 @@ function ReturnsDashboard() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             {item.isDamaged && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 font-semibold text-xs">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
                                 <span>⚠</span> DAMAGED
                               </span>
                             )}
@@ -737,13 +737,13 @@ function ReturnsDashboard() {
                             <div>
                               {getStatusBadge(item.status)}
                               {item.notes && (
-                                <div className="text-xs text-slate-500 mt-1 max-w-[150px] truncate" title={item.notes}>
+                                <div className="text-xs text-ios-gray1 mt-1 max-w-[150px] truncate" title={item.notes}>
                                   {item.notes}
                                 </div>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">{item.scannedByName}</td>
+                          <td className="px-4 py-3 text-ios-gray1 text-sm">{item.scannedByName}</td>
                           {canEdit && (
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-1">
@@ -751,8 +751,8 @@ function ReturnsDashboard() {
                                   onClick={() => handleStatusChange(item._id, "processed")}
                                   className={`p-1.5 rounded-lg transition-all ${
                                     item.status === "processed"
-                                      ? "bg-emerald-500/30 text-emerald-400"
-                                      : "hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400"
+                                      ? "bg-ios-green/10 text-ios-green"
+                                      : "hover:bg-ios-green/10 text-ios-gray1 hover:text-ios-green"
                                   }`}
                                   title="Mark Processed"
                                 >
@@ -769,8 +769,8 @@ function ReturnsDashboard() {
                                   }}
                                   className={`p-1.5 rounded-lg transition-all ${
                                     item.status === "not_processed"
-                                      ? "bg-red-500/30 text-red-400"
-                                      : "hover:bg-red-500/20 text-slate-500 hover:text-red-400"
+                                      ? "bg-ios-red/10 text-ios-red"
+                                      : "bg-ios-red/10 text-ios-gray1 hover:text-ios-red"
                                   }`}
                                   title="Mark Not Processed"
                                 >
@@ -782,8 +782,8 @@ function ReturnsDashboard() {
                                   onClick={() => handleStatusChange(item._id, "pending")}
                                   className={`p-1.5 rounded-lg transition-all ${
                                     item.status === "pending"
-                                      ? "bg-slate-600 text-slate-300"
-                                      : "hover:bg-slate-700 text-slate-500"
+                                      ? "bg-ios-gray4 text-[#1c1c1e]"
+                                      : "hover:bg-ios-gray5 text-ios-gray1"
                                   }`}
                                   title="Reset to Pending"
                                 >
@@ -793,7 +793,7 @@ function ReturnsDashboard() {
                                 </button>
                                 <button
                                   onClick={() => setViewingItem(item)}
-                                  className="p-1.5 hover:bg-cyan-500/20 rounded-lg transition-all text-slate-500 hover:text-cyan-400"
+                                  className="p-1.5 hover:ring-ios-blue/20 rounded-lg transition-all text-ios-gray1 hover:text-ios-blue"
                                   title="View Details"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -803,7 +803,7 @@ function ReturnsDashboard() {
                                 </button>
                                 <button
                                   onClick={() => setEditingItem(item)}
-                                  className="p-1.5 hover:bg-slate-700 rounded-lg transition-all text-slate-500 hover:text-white"
+                                  className="p-1.5 hover:bg-ios-gray5 rounded-lg transition-all text-ios-gray1 hover:text-[#1c1c1e]"
                                   title="Edit"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -812,7 +812,7 @@ function ReturnsDashboard() {
                                 </button>
                                 <button
                                   onClick={() => handleDeleteItem(item._id)}
-                                  className="p-1.5 hover:bg-red-500/20 rounded-lg transition-all text-slate-500 hover:text-red-400"
+                                  className="p-1.5 bg-ios-red/10 rounded-lg transition-all text-ios-gray1 hover:text-ios-red"
                                   title="Delete"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -837,18 +837,18 @@ function ReturnsDashboard() {
       {/* Detail View Modal */}
       {viewingItem && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setViewingItem(null)}
         >
           <div
-            className="bg-slate-800 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            className="bg-white border border-ios-gray5 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+            <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold">Return Item Details</h3>
-                <p className="text-slate-500 text-xs mt-0.5">
+                <p className="text-ios-gray1 text-xs mt-0.5">
                   Scanned by {viewingItem.scannedByName} on {formatDate(viewingItem.scannedAt)}
                 </p>
               </div>
@@ -856,7 +856,7 @@ function ReturnsDashboard() {
                 {canEdit && (
                   <button
                     onClick={() => { setEditingItem(viewingItem); setViewingItem(null); }}
-                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-ios-gray5 hover:bg-ios-gray4 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -864,7 +864,7 @@ function ReturnsDashboard() {
                     Edit
                   </button>
                 )}
-                <button onClick={() => setViewingItem(null)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                <button onClick={() => setViewingItem(null)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -876,25 +876,25 @@ function ReturnsDashboard() {
               {/* Image */}
               {viewingItem.imageUrl && viewingItem.imageUrl.startsWith("http") ? (
                 <div>
-                  <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Captured Image</label>
+                  <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Captured Image</label>
                   <button
                     onClick={() => setViewingImage(viewingItem.imageUrl)}
-                    className="w-full max-h-80 rounded-xl overflow-hidden border border-slate-700 hover:border-cyan-500 transition-colors"
+                    className="w-full max-h-80 rounded-xl overflow-hidden border border-ios-gray5 hover:border-ios-blue transition-colors"
                   >
                     <img
                       src={viewingItem.imageUrl}
                       alt="Return item"
-                      className="w-full h-full object-contain bg-slate-900"
+                      className="w-full h-full object-contain bg-white"
                     />
                   </button>
-                  <p className="text-slate-600 text-xs mt-1">Click image to view full size</p>
+                  <p className="text-ios-gray2 text-xs mt-1">Click image to view full size</p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 py-4 px-4 bg-slate-900/50 rounded-xl border border-slate-700/30">
-                  <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-3 py-4 px-4 bg-white/80 rounded-xl border border-ios-gray5">
+                  <svg className="w-8 h-8 text-ios-gray2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-slate-500 text-sm">No image captured for this item</span>
+                  <span className="text-ios-gray1 text-sm">No image captured for this item</span>
                 </div>
               )}
 
@@ -902,36 +902,36 @@ function ReturnsDashboard() {
               <div className="flex items-center gap-3">
                 {getStatusBadge(viewingItem.status)}
                 {viewingItem.notes && (
-                  <span className="text-slate-400 text-sm">{viewingItem.notes}</span>
+                  <span className="text-ios-gray1 text-sm">{viewingItem.notes}</span>
                 )}
               </div>
 
               {/* Damage */}
               {viewingItem.isDamaged && (
-                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-                  <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+                <div className="p-4 bg-ios-red/10 border border-ios-red/40 rounded-xl">
+                  <h3 className="text-ios-red font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
                     <span>⚠</span> Damaged
                   </h3>
                   {viewingItem.damageNotes && (
                     <div className="mb-3">
-                      <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Notes</div>
-                      <div className="text-white whitespace-pre-wrap">{viewingItem.damageNotes}</div>
+                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-1">Notes</div>
+                      <div className="text-[#1c1c1e] whitespace-pre-wrap">{viewingItem.damageNotes}</div>
                     </div>
                   )}
                   {damageImageUrl && (
                     <div className="mb-3">
-                      <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Photo</div>
+                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-1">Photo</div>
                       <button onClick={() => setViewingImage(damageImageUrl)}>
                         <img
                           src={damageImageUrl}
                           alt="Damage"
-                          className="w-32 h-32 rounded-lg object-cover border border-red-500/30 hover:border-red-500 transition-colors"
+                          className="w-32 h-32 rounded-lg object-cover border border-ios-red/40 hover:border-red-500 transition-colors"
                         />
                       </button>
                     </div>
                   )}
                   {viewingItem.damageMarkedAt && (
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-ios-gray1">
                       Marked at {new Date(viewingItem.damageMarkedAt).toLocaleString()}
                       {viewingItem.damageMarkedBy && (
                         <> by user <span className="font-mono">{String(viewingItem.damageMarkedBy).slice(0, 8)}…</span></>
@@ -943,34 +943,34 @@ function ReturnsDashboard() {
 
               {/* Order Info */}
               <div>
-                <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Order Information</label>
+                <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Order Information</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">PO Number</p>
-                    <p className="font-mono text-sm">{viewingItem.poNumber || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">PO Number</p>
+                    <p className="font-mono text-sm">{viewingItem.poNumber || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Invoice Number</p>
-                    <p className="font-mono text-sm">{viewingItem.invNumber || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Invoice Number</p>
+                    <p className="font-mono text-sm">{viewingItem.invNumber || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Tracking Number</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Tracking Number</p>
                     <p className="font-mono text-sm">
                       {viewingItem.noTrackingNumber ? (
-                        <span className="text-slate-500">No Tracking Number</span>
+                        <span className="text-ios-gray1">No Tracking Number</span>
                       ) : viewingItem.trackingNumber ? (
-                        <span className="text-emerald-300">{viewingItem.trackingNumber}</span>
+                        <span className="text-ios-green">{viewingItem.trackingNumber}</span>
                       ) : (
-                        <span className="text-slate-600">-</span>
+                        <span className="text-ios-gray2">-</span>
                       )}
                     </p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">UPC Code</p>
-                    <p className="font-mono text-sm">{viewingItem.upcCode || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">UPC Code</p>
+                    <p className="font-mono text-sm">{viewingItem.upcCode || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Quantity</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Quantity</p>
                     <p className="text-sm font-medium">{viewingItem.quantity || 1}</p>
                   </div>
                 </div>
@@ -978,23 +978,23 @@ function ReturnsDashboard() {
 
               {/* Tire Info */}
               <div>
-                <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">Tire Information</label>
+                <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Tire Information</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Brand</p>
-                    <p className="text-sm font-medium">{viewingItem.tireBrand || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Brand</p>
+                    <p className="text-sm font-medium">{viewingItem.tireBrand || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Model</p>
-                    <p className="text-sm">{viewingItem.tireModel || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Model</p>
+                    <p className="text-sm">{viewingItem.tireModel || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Size</p>
-                    <p className="text-sm">{viewingItem.tireSize || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Size</p>
+                    <p className="text-sm">{viewingItem.tireSize || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
-                    <p className="text-slate-500 text-xs mb-1">Part Number</p>
-                    <p className="font-mono text-sm">{viewingItem.tirePartNumber || <span className="text-slate-600">-</span>}</p>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                    <p className="text-ios-gray1 text-xs mb-1">Part Number</p>
+                    <p className="font-mono text-sm">{viewingItem.tirePartNumber || <span className="text-ios-gray2">-</span>}</p>
                   </div>
                 </div>
               </div>
@@ -1002,8 +1002,8 @@ function ReturnsDashboard() {
               {/* From Address */}
               {viewingItem.fromAddress && (
                 <div>
-                  <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">From Address</label>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30">
+                  <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">From Address</label>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
                     <p className="text-sm whitespace-pre-line">{viewingItem.fromAddress}</p>
                   </div>
                 </div>
@@ -1012,20 +1012,20 @@ function ReturnsDashboard() {
               {/* Raw OCR Text */}
               {viewingItem.rawText && (
                 <div>
-                  <label className="block text-slate-400 text-xs uppercase tracking-wider font-medium mb-2">
+                  <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">
                     Raw Scan Text
                     {viewingItem.aiConfidence && (
                       <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                        viewingItem.aiConfidence === "high" ? "bg-emerald-500/20 text-emerald-400" :
-                        viewingItem.aiConfidence === "medium" ? "bg-amber-500/20 text-amber-400" :
-                        "bg-red-500/20 text-red-400"
+                        viewingItem.aiConfidence === "high" ? "bg-ios-green/10 text-ios-green" :
+                        viewingItem.aiConfidence === "medium" ? "bg-ios-orange/10 text-ios-orange" :
+                        "bg-ios-red/10 text-ios-red"
                       }`}>
                         {viewingItem.aiConfidence} confidence
                       </span>
                     )}
                   </label>
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-700/30 max-h-40 overflow-y-auto">
-                    <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap">{viewingItem.rawText}</pre>
+                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5 max-h-40 overflow-y-auto">
+                    <pre className="text-xs text-ios-gray1 font-mono whitespace-pre-wrap">{viewingItem.rawText}</pre>
                   </div>
                 </div>
               )}
@@ -1037,13 +1037,13 @@ function ReturnsDashboard() {
       {/* Image Viewer Modal */}
       {viewingImage && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setViewingImage(null)}
         >
           <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setViewingImage(null)}
-              className="absolute -top-12 right-0 p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              className="absolute -top-12 right-0 p-2 bg-white hover:bg-ios-gray5 rounded-lg transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1059,7 +1059,7 @@ function ReturnsDashboard() {
                 href={viewingImage}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-white hover:bg-ios-gray5 backdrop-blur rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -1073,11 +1073,11 @@ function ReturnsDashboard() {
 
       {/* Edit Item Modal */}
       {editingItem && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingItem(null)}>
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingItem(null)}>
+          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Edit Return Item</h3>
-              <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1086,115 +1086,115 @@ function ReturnsDashboard() {
             <div className="p-6 space-y-4">
               {editingItem.imageUrl && (
                 <div>
-                  <label className="block text-slate-400 text-sm mb-2">Label Image</label>
+                  <label className="block text-ios-gray1 text-sm mb-2">Label Image</label>
                   <button
                     onClick={() => setViewingImage(editingItem.imageUrl)}
-                    className="w-full h-32 rounded-xl overflow-hidden border border-slate-700 hover:border-cyan-500 transition-colors"
+                    className="w-full h-32 rounded-xl overflow-hidden border border-ios-gray5 hover:border-ios-blue transition-colors"
                   >
                     <img
                       src={editingItem.imageUrl}
                       alt="Return label"
-                      className="w-full h-full object-contain bg-slate-900"
+                      className="w-full h-full object-contain bg-white"
                     />
                   </button>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">PO Number</label>
+                  <label className="block text-ios-gray1 text-sm mb-1">PO Number</label>
                   <input
                     type="text"
                     value={editingItem.poNumber || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, poNumber: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 font-mono transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">INV Number</label>
+                  <label className="block text-ios-gray1 text-sm mb-1">INV Number</label>
                   <input
                     type="text"
                     value={editingItem.invNumber || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, invNumber: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 font-mono transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-slate-400 text-sm mb-1">Tracking Number</label>
+                <label className="block text-ios-gray1 text-sm mb-1">Tracking Number</label>
                 <input
                   type="text"
                   value={editingItem.noTrackingNumber ? "" : (editingItem.trackingNumber || "")}
                   disabled={editingItem.noTrackingNumber}
                   onChange={(e) => setEditingItem({ ...editingItem, trackingNumber: e.target.value, noTrackingNumber: false })}
                   placeholder={editingItem.noTrackingNumber ? "No tracking number" : ""}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all disabled:opacity-50"
+                  className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 font-mono transition-all disabled:opacity-50"
                 />
-                <label className="mt-2 inline-flex items-center gap-2 text-slate-400 text-sm cursor-pointer">
+                <label className="mt-2 inline-flex items-center gap-2 text-ios-gray1 text-sm cursor-pointer">
                   <input
                     type="checkbox"
                     checked={!!editingItem.noTrackingNumber}
                     onChange={(e) => setEditingItem({ ...editingItem, noTrackingNumber: e.target.checked, trackingNumber: e.target.checked ? "" : editingItem.trackingNumber })}
-                    className="rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/20"
+                    className="rounded border-ios-gray4 bg-white text-ios-blue focus:ring-ios-blue/20"
                   />
                   No Tracking Number
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">Tire Brand</label>
+                  <label className="block text-ios-gray1 text-sm mb-1">Tire Brand</label>
                   <input
                     type="text"
                     value={editingItem.tireBrand || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, tireBrand: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">Tire Model</label>
+                  <label className="block text-ios-gray1 text-sm mb-1">Tire Model</label>
                   <input
                     type="text"
                     value={editingItem.tireModel || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, tireModel: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">Tire Size</label>
+                  <label className="block text-ios-gray1 text-sm mb-1">Tire Size</label>
                   <input
                     type="text"
                     value={editingItem.tireSize || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, tireSize: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">Part Number</label>
+                  <label className="block text-ios-gray1 text-sm mb-1">Part Number</label>
                   <input
                     type="text"
                     value={editingItem.tirePartNumber || ""}
                     onChange={(e) => setEditingItem({ ...editingItem, tirePartNumber: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono transition-all"
+                    className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 font-mono transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-slate-400 text-sm mb-1">Quantity</label>
+                <label className="block text-ios-gray1 text-sm mb-1">Quantity</label>
                 <input
                   type="number"
                   value={editingItem.quantity || 1}
                   onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 1 })}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                   min="1"
                 />
               </div>
               <div>
-                <label className="block text-slate-400 text-sm mb-1">Status</label>
+                <label className="block text-ios-gray1 text-sm mb-1">Status</label>
                 <select
                   value={editingItem.status}
                   onChange={(e) => setEditingItem({ ...editingItem, status: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"
                 >
                   <option value="pending">Pending</option>
                   <option value="processed">Processed</option>
@@ -1202,18 +1202,18 @@ function ReturnsDashboard() {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 text-sm mb-1">Notes</label>
+                <label className="block text-ios-gray1 text-sm mb-1">Notes</label>
                 <textarea
                   value={editingItem.notes || ""}
                   onChange={(e) => setEditingItem({ ...editingItem, notes: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 resize-none transition-all"
+                  className="w-full px-4 py-2.5 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 resize-none transition-all"
                   rows={3}
                   placeholder="Add notes about this return..."
                 />
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditingItem(null)} className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition-colors">Cancel</button>
-                <button onClick={handleUpdateItem} className="flex-1 px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl font-medium shadow-lg shadow-cyan-500/25 transition-all">Save</button>
+                <button onClick={() => setEditingItem(null)} className="flex-1 px-4 py-2.5 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button>
+                <button onClick={handleUpdateItem} className="flex-1 px-4 py-2.5 bg-ios-blue hover: hover: rounded-xl font-medium shadow-ios transition-all">Save</button>
               </div>
             </div>
           </div>
