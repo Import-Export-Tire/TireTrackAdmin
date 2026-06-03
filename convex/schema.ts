@@ -157,6 +157,8 @@ export default defineSchema({
     tireModel: v.optional(v.string()),
     tireSize: v.optional(v.string()),
     tirePartNumber: v.optional(v.string()), // Inventory/part number from tireUPCs
+    trackingNumber: v.optional(v.string()), // Shipping label tracking number
+    noTrackingNumber: v.optional(v.boolean()), // Explicitly no tracking number
     quantity: v.optional(v.number()),
     isMisship: v.optional(v.boolean()),
     isDamaged: v.optional(v.boolean()),
