@@ -604,7 +604,7 @@ function Dashboard() {
                 </div>
                 <button
                   onClick={() => setShowNewAdmin(true)}
-                  className="px-4 py-2.5 bg-ios-blue text-white hover:opacity-90 rounded-xl text-sm font-medium shadow-ios transition-all hover:scale-105 flex items-center gap-2"
+                  className="px-4 py-2.5 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl text-sm font-medium shadow-ios transition-all hover:scale-105 flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -855,7 +855,7 @@ function Dashboard() {
                 {canEdit && (
                   <button
                     onClick={() => setShowNewUser(true)}
-                    className="px-4 py-2.5 bg-ios-blue text-white hover:opacity-90 rounded-xl text-sm font-medium shadow-ios transition-all hover:scale-105 flex items-center gap-2"
+                    className="px-4 py-2.5 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl text-sm font-medium shadow-ios transition-all hover:scale-105 flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1126,7 +1126,7 @@ function Dashboard() {
                       <div className="relative">
                         <button
                           onClick={() => setVendorExportTruck(vendorExportTruck ? null : selectedTruck)}
-                          className="px-4 py-2 bg-ios-blue text-white hover:opacity-90 rounded-xl text-sm font-medium shadow-ios transition-all hover:scale-105 flex items-center gap-2"
+                          className="px-4 py-2 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl text-sm font-medium shadow-ios transition-all hover:scale-105 flex items-center gap-2"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1359,7 +1359,7 @@ function Dashboard() {
               <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select name="role" defaultValue={editingUser.role || ""} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="">Standard</option><option value="supervisor">Supervisor</option></select><p className="text-xs text-ios-gray1 mt-1">Supervisors can access the Bonus Tracker</p></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Location</label><select name="locationId" defaultValue={editingUser.locationId} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all">{LOCATION_OPTIONS.map(loc => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}</select></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">New PIN (4 digits)</label><input type="text" name="pin" placeholder="Leave blank to keep current" maxLength={4} pattern="\d{4}" className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" /><p className="text-xs text-ios-gray1 mt-1">Enter 4 digits to change PIN</p></div>
-              <div className="flex gap-3 pt-2"><button type="button" onClick={() => setEditingUser(null)} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button type="submit" className="flex-1 px-4 py-3 bg-ios-blue text-white hover:opacity-90 rounded-xl font-medium shadow-ios transition-all">Save</button></div>
+              <div className="flex gap-3 pt-2"><button type="button" onClick={() => setEditingUser(null)} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button type="submit" className="flex-1 px-4 py-3 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl font-medium shadow-ios transition-all">Save</button></div>
             </form>
           </div>
         </div>
@@ -1412,7 +1412,7 @@ function Dashboard() {
                 } else {
                   setEditAdminError(result.error || "Failed to update admin");
                 }
-              }} className="flex-1 px-4 py-3 bg-ios-blue text-white hover:opacity-90 rounded-xl font-medium shadow-ios transition-all">Save</button></div>
+              }} className="flex-1 px-4 py-3 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl font-medium shadow-ios transition-all">Save</button></div>
             </div>
           </div>
         </div>
@@ -1465,7 +1465,7 @@ function Dashboard() {
               <div><label className="block text-ios-gray1 text-sm mb-2">Temp Password</label><input type="password" value={newAdmin.password} onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all" /><p className="text-xs text-ios-gray1 mt-2">User will be required to change on first login</p></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select value={newAdmin.role} onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value as "admin" | "viewer" })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="admin">Admin</option><option value="viewer">Viewer</option></select></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Locations</label><select value={newAdmin.locations[0]} onChange={(e) => setNewAdmin({ ...newAdmin, locations: [e.target.value] })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="all">All Locations</option><option value="latrobe">Latrobe</option><option value="everson">Everson</option><option value="chestnut">Chestnut</option></select></div>
-              <div className="flex gap-3 pt-2"><button onClick={() => setShowNewAdmin(false)} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button onClick={handleCreateAdmin} className="flex-1 px-4 py-3 bg-ios-blue text-white hover:opacity-90 rounded-xl font-medium shadow-ios transition-all">Create</button></div>
+              <div className="flex gap-3 pt-2"><button onClick={() => setShowNewAdmin(false)} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button onClick={handleCreateAdmin} className="flex-1 px-4 py-3 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl font-medium shadow-ios transition-all">Create</button></div>
             </div>
           </div>
         </div>
@@ -1489,7 +1489,7 @@ function Dashboard() {
               <div><label className="block text-ios-gray1 text-sm mb-2">PIN (4 digits) *</label><input type="text" value={newUser.pin} onChange={(e) => setNewUser({ ...newUser, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })} maxLength={4} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" placeholder="1234" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Location *</label><select value={newUser.locationId} onChange={(e) => { const loc = LOCATION_OPTIONS.find(l => l.id === e.target.value); setNewUser({ ...newUser, locationId: e.target.value, locationName: loc?.name || "" }); }} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="">Select location...</option>{LOCATION_OPTIONS.map((loc) => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}</select></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="user">User</option><option value="supervisor">Supervisor</option></select></div>
-              <div className="flex gap-3 pt-2"><button onClick={() => { setShowNewUser(false); setNewUserError(""); }} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button onClick={handleCreateUser} className="flex-1 px-4 py-3 bg-ios-blue text-white hover:opacity-90 rounded-xl font-medium shadow-ios transition-all">Create</button></div>
+              <div className="flex gap-3 pt-2"><button onClick={() => { setShowNewUser(false); setNewUserError(""); }} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button onClick={handleCreateUser} className="flex-1 px-4 py-3 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl font-medium shadow-ios transition-all">Create</button></div>
             </div>
           </div>
         </div>
