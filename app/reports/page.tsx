@@ -792,6 +792,7 @@ function ReturnsExportModal({
       "Location",
       "PO Number",
       "INV Number",
+      "Tracking Number",
       "From Address",
       "UPC Code",
       "Brand",
@@ -810,6 +811,7 @@ function ReturnsExportModal({
       item.locationName,
       item.poNumber,
       item.invNumber,
+      item.noTrackingNumber ? "No Tracking Number" : (item.trackingNumber || ""),
       item.fromAddress,
       item.upcCode,
       item.tireBrand,
@@ -1003,6 +1005,7 @@ function ReturnsExportModal({
                       <th className="text-left py-3 px-4">Brand/Model</th>
                       <th className="text-left py-3 px-4">Size</th>
                       <th className="text-left py-3 px-4">Part #</th>
+                      <th className="text-left py-3 px-4">Tracking</th>
                       <th className="text-center py-3 px-4">Qty</th>
                       <th className="text-center py-3 px-4">Status</th>
                       <th className="text-left py-3 px-4">Scanned</th>
@@ -1018,6 +1021,15 @@ function ReturnsExportModal({
                         </td>
                         <td className="py-3 px-4 text-slate-400 text-xs">{item.tireSize || "-"}</td>
                         <td className="py-3 px-4 font-mono text-xs text-slate-400">{item.tirePartNumber || "-"}</td>
+                        <td className="py-3 px-4 font-mono text-xs">
+                          {item.noTrackingNumber ? (
+                            <span className="text-slate-500">No Tracking</span>
+                          ) : item.trackingNumber ? (
+                            <span className="text-emerald-300">{item.trackingNumber}</span>
+                          ) : (
+                            <span className="text-slate-600">-</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-center text-slate-300">{item.quantity}</td>
                         <td className="py-3 px-4 text-center">
                           <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusBadge(item.status)}`}>
