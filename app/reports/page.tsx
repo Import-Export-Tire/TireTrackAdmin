@@ -64,7 +64,7 @@ function NoVendorKnownModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ios-gray5">
           <div>
@@ -102,19 +102,19 @@ function NoVendorKnownModal({
             <>
               {/* Summary Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-ios-purple">{data.totalNoVendorKnown}</p>
                   <p className="text-ios-gray1 text-xs">Total No Vendor</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-pink-400">{data.potentialNewVendors?.length || 0}</p>
                   <p className="text-ios-gray1 text-xs">Potential New Vendors (7+)</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-ios-gray1">{data.oneOffVendors || 0}</p>
                   <p className="text-ios-gray1 text-xs">One-Off Vendors</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-ios-gray1">{data.noAccountNumber || 0}</p>
                   <p className="text-ios-gray1 text-xs">No Account Number</p>
                 </div>
@@ -132,7 +132,7 @@ function NoVendorKnownModal({
                   <div className="bg-pink-500/10 rounded-xl p-4 border border-pink-500/30">
                     <div className="flex flex-wrap gap-3">
                       {data.potentialNewVendors.map((g: any) => (
-                        <div key={g.accountNumber} className="bg-white rounded-lg px-4 py-3 border border-ios-gray5">
+                        <div key={g.accountNumber} className="bg-white rounded-lg px-4 py-3 shadow-ios">
                           <div className="flex items-center gap-3">
                             <span className="text-pink-400 font-bold text-xl">{g.count}</span>
                             <div>
@@ -151,7 +151,7 @@ function NoVendorKnownModal({
               )}
 
               {/* Grouped by Account Table */}
-              <div className="bg-white rounded-xl border border-ios-gray5 overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
                 <div className="max-h-96 overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-white">
@@ -265,7 +265,7 @@ function UnmatchedScansModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ios-gray5">
           <div>
@@ -305,7 +305,7 @@ function UnmatchedScansModal({
               {data.dailyData && data.dailyData.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-ios-gray1 mb-3">Unmatched Scans - Last 30 Days</h3>
-                  <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                  <div className="bg-white rounded-2xl p-4 shadow-ios">
                     <div className="flex items-end gap-1 h-32">
                       {data.dailyData.map((day: any, i: number) => {
                         // Use percentage of unmatched relative to total for that day
@@ -325,7 +325,7 @@ function UnmatchedScansModal({
                               style={{ height: `${height}%`, minHeight: day.total > 0 ? '4px' : '2px' }}
                             />
                             {/* Tooltip - positioned below bar if near top, above otherwise */}
-                            <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block bg-white border border-ios-gray5 rounded-lg px-3 py-2 text-xs z-10 whitespace-nowrap shadow-xl ${
+                            <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block bg-white shadow-ios rounded-lg px-3 py-2 text-xs z-10 whitespace-nowrap shadow-xl ${
                               height > 60 ? "top-full mt-2" : "bottom-full mb-2"
                             }`}>
                               <p className="text-[#1c1c1e] font-medium">{new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
@@ -379,7 +379,7 @@ function UnmatchedScansModal({
                         return Object.values(byEmployee)
                           .sort((a, b) => b.count - a.count)
                           .map((emp) => (
-                            <div key={emp.empId} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-ios-gray5">
+                            <div key={emp.empId} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-ios">
                               <span className="text-ios-orange font-bold text-lg">{emp.count}</span>
                               <div>
                                 <p className="text-[#1c1c1e] text-sm font-medium">{emp.name}</p>
@@ -420,7 +420,7 @@ function UnmatchedScansModal({
               </div>
 
               {/* Scans Table */}
-              <div className="bg-white rounded-xl border border-ios-gray5 overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
                 <div className="max-h-96 overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-white">
@@ -524,7 +524,7 @@ function DuplicateOffendersModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ios-gray5">
           <div>
@@ -562,19 +562,19 @@ function DuplicateOffendersModal({
             <>
               {/* Summary Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-ios-orange">{data.overall?.totalDuplicates || 0}</p>
                   <p className="text-ios-gray1 text-xs">Total Duplicates</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-ios-gray1">{data.overall?.totalScans?.toLocaleString() || 0}</p>
                   <p className="text-ios-gray1 text-xs">Total Scans</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-ios-red">{data.overall?.duplicateRate?.toFixed(2) || 0}%</p>
                   <p className="text-ios-gray1 text-xs">Duplicate Rate</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-ios-gray5">
+                <div className="bg-white rounded-2xl p-4 shadow-ios">
                   <p className="text-2xl font-bold text-orange-400">{data.monthly?.totalDuplicates || 0}</p>
                   <p className="text-ios-gray1 text-xs">{data.monthly?.monthName || "This Month"}</p>
                 </div>
@@ -646,7 +646,7 @@ function UserAccuracyModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ios-gray5">
           <div>
@@ -856,7 +856,7 @@ function ReturnsExportModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ios-gray5">
           <div>
@@ -996,7 +996,7 @@ function ReturnsExportModal({
               <p className="text-sm mt-1">No return items match the selected filter</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-ios-gray5 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-white">
@@ -1311,7 +1311,7 @@ function ReportsPage() {
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="w-10 h-10 bg-white hover:bg-ios-gray5 border border-ios-gray5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-ios-gray4"
+                className="w-10 h-10 bg-white hover:bg-ios-gray5 shadow-ios rounded-2xl flex items-center justify-center transition-all hover:scale-105 hover:shadow-ios-lg"
               >
                 <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -1338,7 +1338,7 @@ function ReportsPage() {
               </button>
 
               {/* Report Type Toggle */}
-              <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-ios-gray5">
+              <div className="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-ios">
                 <button
                   onClick={() => setReportType("daily")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -1409,7 +1409,7 @@ function ReportsPage() {
 
             {/* Stats Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-gray4 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:shadow-ios-lg transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-ios-gray5 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1423,7 +1423,7 @@ function ReportsPage() {
                 </div>
               </div>
 
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-orange/40 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:border-ios-orange/40 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1437,7 +1437,7 @@ function ReportsPage() {
                 </div>
               </div>
 
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-green/40 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:border-ios-green/40 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-ios-green/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1451,7 +1451,7 @@ function ReportsPage() {
                 </div>
               </div>
 
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:ring-ios-blue/20 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:ring-ios-blue/20 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 ring-ios-blue/20 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1533,7 +1533,7 @@ function ReportsPage() {
             )}
 
             {/* Trucks Table */}
-            <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
               {trucks === undefined ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="flex flex-col items-center gap-3">
@@ -1654,7 +1654,7 @@ function ReportsPage() {
                                       <button
                                         key={vendor}
                                         onClick={() => generateCSV(truck, vendor)}
-                                        className="group/btn flex items-center gap-2 px-4 py-2 bg-white hover:bg-ios-gray5 border border-ios-gray5 hover:border-ios-gray4 rounded-xl transition-all hover:scale-105"
+                                        className="group/btn flex items-center gap-2 px-4 py-2 bg-white hover:bg-ios-gray5 shadow-ios hover:shadow-ios-lg rounded-2xl transition-all hover:scale-105"
                                       >
                                         <span className="text-sm font-medium text-[#1c1c1e] group-hover/btn:text-[#1c1c1e]">{vendor}</span>
                                         <span className="text-xs text-ios-gray1 bg-white/80 px-2 py-0.5 rounded-md">{count}</span>
@@ -1739,7 +1739,7 @@ function ReportsPage() {
 
             {/* Stats Row */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-purple/30 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:border-ios-purple/30 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-ios-purple/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1753,7 +1753,7 @@ function ReportsPage() {
                 </div>
               </div>
 
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-pink-500/30 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:border-pink-500/30 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-pink-500/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1767,7 +1767,7 @@ function ReportsPage() {
                 </div>
               </div>
 
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:ring-ios-blue/20 transition-all">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:ring-ios-blue/20 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 ring-ios-blue/20 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1783,7 +1783,7 @@ function ReportsPage() {
             </div>
 
             {/* Vendor List */}
-            <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
               {vendorReport === undefined ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="flex flex-col items-center gap-3">

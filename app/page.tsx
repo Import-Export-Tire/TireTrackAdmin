@@ -393,7 +393,7 @@ function Dashboard() {
               </div>
               <button
                 onClick={logout}
-                className="p-2 sm:p-2.5 bg-ios-gray6 hover:bg-ios-red/10 border border-ios-gray5 hover:border-ios-red/40 rounded-xl transition-all active:scale-95"
+                className="p-2 sm:p-2.5 bg-ios-gray6 hover:bg-ios-red/10 shadow-ios hover:border-ios-red/40 rounded-2xl transition-all active:scale-95"
                 title="Logout"
               >
                 <svg className="w-5 h-5 text-ios-gray1 hover:text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,7 +406,7 @@ function Dashboard() {
           {/* Navigation and controls */}
           <div className="flex flex-col gap-3">
             {/* Navigation tabs */}
-            <div className="flex flex-wrap gap-1.5 bg-white border border-ios-gray5 rounded-xl p-1.5">
+            <div className="flex flex-wrap gap-1.5 bg-white shadow-ios rounded-2xl p-1.5">
               <button
                 onClick={() => { setShowUsers(false); setShowAdmins(false); setShowErrorLogs(false); }}
                 className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
@@ -529,7 +529,7 @@ function Dashboard() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:border-ios-gray4 transition-all group">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl sm:rounded-2xl p-4 sm:p-5 hover:shadow-ios-lg transition-all group">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-ios-gray1 text-xs sm:text-sm font-medium">Trucks Today</p>
@@ -543,7 +543,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:border-ios-green/40 transition-all group">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl sm:rounded-2xl p-4 sm:p-5 hover:border-ios-green/40 transition-all group">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-ios-gray1 text-xs sm:text-sm font-medium">Open Trucks</p>
@@ -557,7 +557,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:border-ios-gray4 transition-all group">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl sm:rounded-2xl p-4 sm:p-5 hover:shadow-ios-lg transition-all group">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-ios-gray1 text-xs sm:text-sm font-medium">Closed Today</p>
@@ -571,7 +571,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:ring-ios-blue/20 transition-all group">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl sm:rounded-2xl p-4 sm:p-5 hover:ring-ios-blue/20 transition-all group">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-ios-gray1 text-xs sm:text-sm font-medium">Scans Today</p>
@@ -588,7 +588,7 @@ function Dashboard() {
 
         {showAdmins ? (
           /* Admin Management */
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
             <div className="p-5 sm:p-6 border-b border-ios-gray5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -711,7 +711,7 @@ function Dashboard() {
           </div>
         ) : showErrorLogs ? (
           /* Error Logs */
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
             <div className="p-5 sm:p-6 border-b border-ios-gray5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -838,7 +838,7 @@ function Dashboard() {
           </div>
         ) : showUsers ? (
           /* App Users Management */
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
             <div className="p-5 sm:p-6 border-b border-ios-gray5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -991,7 +991,7 @@ function Dashboard() {
           /* Trucks & Scans */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Trucks Panel */}
-            <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
               <div className="p-5 border-b border-ios-gray5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -1092,7 +1092,7 @@ function Dashboard() {
             </div>
 
             {/* Scans Panel */}
-            <div className="lg:col-span-2 bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden shadow-xl">
+            <div className="lg:col-span-2 bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden shadow-xl">
               <div className="p-5 border-b border-ios-gray5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -1137,7 +1137,7 @@ function Dashboard() {
                           </svg>
                         </button>
                         {vendorExportTruck === selectedTruck && (
-                          <div className="absolute right-0 mt-2 w-56 bg-white border border-ios-gray5 rounded-xl shadow-2xl z-30 overflow-hidden">
+                          <div className="absolute right-0 mt-2 w-56 bg-white shadow-ios rounded-2xl shadow-2xl z-30 overflow-hidden">
                             <div className="p-2">
                               <button onClick={() => { downloadAllManifest(); setVendorExportTruck(null); }} className="w-full text-left px-3 py-2.5 hover:bg-ios-gray5 rounded-lg text-sm transition-colors flex items-center justify-between">
                                 <span className="flex items-center gap-2">
@@ -1310,7 +1310,7 @@ function Dashboard() {
       {/* Modals */}
       {selectedScan && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedScan(null)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Scan Details</h3>
               <button onClick={() => setSelectedScan(null)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
@@ -1336,7 +1336,7 @@ function Dashboard() {
               )}
               <div>
                 <p className="text-ios-gray1 text-sm mb-2">Raw Barcode</p>
-                <pre className="bg-white p-4 rounded-xl text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all border border-ios-gray5">{selectedScan.rawBarcode}</pre>
+                <pre className="bg-white p-4 rounded-2xl text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all shadow-ios">{selectedScan.rawBarcode}</pre>
               </div>
             </div>
           </div>
@@ -1345,7 +1345,7 @@ function Dashboard() {
 
       {editingUser && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingUser(null)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Edit User</h3>
               <button onClick={() => setEditingUser(null)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
@@ -1367,7 +1367,7 @@ function Dashboard() {
 
       {userDeleteConfirm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setUserDeleteConfirm(null)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="text-center">
               <div className="w-16 h-16 bg-ios-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1384,7 +1384,7 @@ function Dashboard() {
 
       {editingAdmin && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setEditingAdmin(null); setEditAdminError(""); }}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Edit Admin</h3>
               <button onClick={() => { setEditingAdmin(null); setEditAdminError(""); }} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
@@ -1420,7 +1420,7 @@ function Dashboard() {
 
       {markingMiscan && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setMarkingMiscan(null)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="text-center">
               <div className="w-16 h-16 bg-ios-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1450,7 +1450,7 @@ function Dashboard() {
 
       {showNewAdmin && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNewAdmin(false)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Add Admin</h3>
               <button onClick={() => setShowNewAdmin(false)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
@@ -1473,7 +1473,7 @@ function Dashboard() {
 
       {showNewUser && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNewUser(false)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Add App User</h3>
               <button onClick={() => setShowNewUser(false)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
