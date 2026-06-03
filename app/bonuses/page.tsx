@@ -298,7 +298,7 @@ function OpenTruckModal({
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-ios-gray5 flex items-center justify-between">
           <h2 className="text-lg font-bold">Open Truck</h2>
           <button onClick={onClose} className="text-ios-gray1 hover:text-[#1c1c1e] transition-colors text-xl">&times;</button>
@@ -593,7 +593,7 @@ function EditEntryModal({
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-ios-gray5 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-bold">Edit Truck</h2>
@@ -794,7 +794,7 @@ function HelperManagementModal({
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white border border-ios-gray5 rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white shadow-ios rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-ios-gray5 flex items-center justify-between">
           <h2 className="text-lg font-bold">Manage Helper Names</h2>
           <button onClick={onClose} className="text-ios-gray1 hover:text-[#1c1c1e] transition-colors text-xl">&times;</button>
@@ -997,7 +997,7 @@ function BonusesDashboard() {
             <div className="flex items-center gap-3">
               <Link
                 href="/"
-                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-white hover:bg-ios-gray5 border border-ios-gray5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-ios-gray4"
+                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-white hover:bg-ios-gray5 shadow-ios rounded-2xl flex items-center justify-center transition-all hover:scale-105 hover:shadow-ios-lg"
                 aria-label="Back to dashboard"
               >
                 <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1088,29 +1088,29 @@ function BonusesDashboard() {
 
         {/* Stats Cards */}
         <div className={`grid grid-cols-2 ${showBonusColumns ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}>
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4">
             <p className="text-xs text-ios-gray1 uppercase tracking-wider">Shipping</p>
             <p className="text-2xl font-bold text-ios-blue mt-1">{stats.shipping}</p>
           </div>
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4">
             <p className="text-xs text-ios-gray1 uppercase tracking-wider">Outbound</p>
             <p className="text-2xl font-bold text-ios-orange mt-1">{stats.outbound}</p>
           </div>
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4">
             <p className="text-xs text-ios-gray1 uppercase tracking-wider">Receiving</p>
             <p className="text-2xl font-bold text-ios-purple mt-1">{stats.receiving}</p>
           </div>
           {showBonusColumns && (
             <>
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4">
                 <p className="text-xs text-ios-gray1 uppercase tracking-wider">Earned</p>
                 <p className="text-2xl font-bold text-ios-green mt-1">{stats.earned}</p>
               </div>
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4">
                 <p className="text-xs text-ios-gray1 uppercase tracking-wider">Missed</p>
                 <p className="text-2xl font-bold text-ios-red mt-1">{stats.missed}</p>
               </div>
-              <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4">
+              <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4">
                 <p className="text-xs text-ios-gray1 uppercase tracking-wider">Total Bonus $</p>
                 <p className="text-2xl font-bold text-teal-400 mt-1">${stats.totalBonus}</p>
               </div>
@@ -1119,7 +1119,7 @@ function BonusesDashboard() {
         </div>
 
         {/* Table */}
-        <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+        <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

@@ -154,7 +154,7 @@ function ReturnsDashboard() {
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-white hover:bg-ios-gray5 border border-ios-gray5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:border-ios-gray4"
+                className="w-10 h-10 min-h-[44px] min-w-[44px] bg-white hover:bg-ios-gray5 shadow-ios rounded-2xl flex items-center justify-center transition-all hover:scale-105 hover:shadow-ios-lg"
                 aria-label="Back to dashboard"
               >
                 <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,7 +233,7 @@ function ReturnsDashboard() {
       <div className="max-w-[1600px] mx-auto p-4 sm:p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-orange/40 transition-all">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:border-ios-orange/40 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-ios-orange/10 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,7 +247,7 @@ function ReturnsDashboard() {
             </div>
           </div>
 
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-gray4 transition-all">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:shadow-ios-lg transition-all">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-ios-gray5 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-gray1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -261,7 +261,7 @@ function ReturnsDashboard() {
             </div>
           </div>
 
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 hover:border-ios-green/40 transition-all">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 hover:border-ios-green/40 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-ios-green/10 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,7 +275,7 @@ function ReturnsDashboard() {
             </div>
           </div>
 
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-xl p-4 border-ios-red/40 transition-all">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl p-4 border-ios-red/40 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-ios-red/10 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,7 +292,7 @@ function ReturnsDashboard() {
 
         {/* Search Results View */}
         {isSearching ? (
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden">
             <div className="p-5 border-b border-ios-gray5 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">
@@ -341,7 +341,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold">Tracking</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
-                        <th className="px-4 py-3 font-semibold text-center">Misship</th>
+                        <th className="px-4 py-3 font-semibold text-center">Mis-Ship</th>
                         <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Location</th>
@@ -384,7 +384,7 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3 text-center text-[#1c1c1e]">{item.quantity || 1}</td>
                           <td className="px-4 py-3 text-center">
                             {item.isMisship && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-orange/10 border border-ios-orange/40 rounded text-ios-orange font-semibold text-xs">⚠ MISSHIP</span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-orange/10 border border-ios-orange/40 rounded text-ios-orange font-semibold text-xs">⚠ MIS-SHIP</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -413,7 +413,7 @@ function ReturnsDashboard() {
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Batches List */}
-          <div className="bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+          <div className="bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden">
             <div className="p-5 border-b border-ios-gray5 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Batches</h2>
               <div className="flex gap-1 bg-white/80 rounded-lg p-1">
@@ -572,7 +572,7 @@ function ReturnsDashboard() {
           </div>
 
           {/* Items Table */}
-          <div className="lg:col-span-2 bg-white backdrop-blur border border-ios-gray5 rounded-2xl overflow-hidden">
+          <div className="lg:col-span-2 bg-white backdrop-blur shadow-ios rounded-2xl overflow-hidden">
             <div className="p-5 border-b border-ios-gray5 flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-semibold">
@@ -622,7 +622,7 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Tire</th>
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
-                        <th className="px-4 py-3 font-semibold text-center">Misship</th>
+                        <th className="px-4 py-3 font-semibold text-center">Mis-Ship</th>
                         <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Scanned By</th>
@@ -715,7 +715,7 @@ function ReturnsDashboard() {
                                 onClick={() => updateItem({ itemId: item._id as any, isMisship: false })}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-orange/10 border border-ios-orange/40 rounded-lg text-ios-orange font-semibold text-xs hover:bg-ios-orange/10 transition-all"
                               >
-                                <span>⚠</span> MISSHIP
+                                <span>⚠</span> MIS-SHIP
                               </button>
                             ) : (
                               <button
@@ -841,7 +841,7 @@ function ReturnsDashboard() {
           onClick={() => setViewingItem(null)}
         >
           <div
-            className="bg-white border border-ios-gray5 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            className="bg-white shadow-ios rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -879,7 +879,7 @@ function ReturnsDashboard() {
                   <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Captured Image</label>
                   <button
                     onClick={() => setViewingImage(viewingItem.imageUrl)}
-                    className="block w-full rounded-xl overflow-hidden border border-ios-gray5 hover:border-ios-blue transition-colors bg-white"
+                    className="block w-full rounded-2xl overflow-hidden shadow-ios hover:border-ios-blue transition-colors bg-white"
                   >
                     <img
                       src={viewingItem.imageUrl}
@@ -890,7 +890,7 @@ function ReturnsDashboard() {
                   <p className="text-ios-gray2 text-xs mt-1">Click image to view full size</p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 py-4 px-4 bg-white/80 rounded-xl border border-ios-gray5">
+                <div className="flex items-center gap-3 py-4 px-4 bg-white/80 rounded-2xl shadow-ios">
                   <svg className="w-8 h-8 text-ios-gray2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -945,15 +945,15 @@ function ReturnsDashboard() {
               <div>
                 <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Order Information</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">PO Number</p>
                     <p className="font-mono text-sm">{viewingItem.poNumber || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Invoice Number</p>
                     <p className="font-mono text-sm">{viewingItem.invNumber || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Tracking Number</p>
                     <p className="font-mono text-sm">
                       {viewingItem.noTrackingNumber ? (
@@ -965,11 +965,11 @@ function ReturnsDashboard() {
                       )}
                     </p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">UPC Code</p>
                     <p className="font-mono text-sm">{viewingItem.upcCode || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Quantity</p>
                     <p className="text-sm font-medium">{viewingItem.quantity || 1}</p>
                   </div>
@@ -980,19 +980,19 @@ function ReturnsDashboard() {
               <div>
                 <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Tire Information</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Brand</p>
                     <p className="text-sm font-medium">{viewingItem.tireBrand || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Model</p>
                     <p className="text-sm">{viewingItem.tireModel || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Size</p>
                     <p className="text-sm">{viewingItem.tireSize || <span className="text-ios-gray2">-</span>}</p>
                   </div>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-ios-gray1 text-xs mb-1">Part Number</p>
                     <p className="font-mono text-sm">{viewingItem.tirePartNumber || <span className="text-ios-gray2">-</span>}</p>
                   </div>
@@ -1003,7 +1003,7 @@ function ReturnsDashboard() {
               {viewingItem.fromAddress && (
                 <div>
                   <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">From Address</label>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios">
                     <p className="text-sm whitespace-pre-line">{viewingItem.fromAddress}</p>
                   </div>
                 </div>
@@ -1024,7 +1024,7 @@ function ReturnsDashboard() {
                       </span>
                     )}
                   </label>
-                  <div className="bg-white/80 rounded-xl p-3 border border-ios-gray5 max-h-40 overflow-y-auto">
+                  <div className="bg-white/80 rounded-2xl p-3 shadow-ios max-h-40 overflow-y-auto">
                     <pre className="text-xs text-ios-gray1 font-mono whitespace-pre-wrap">{viewingItem.rawText}</pre>
                   </div>
                 </div>
@@ -1074,7 +1074,7 @@ function ReturnsDashboard() {
       {/* Edit Item Modal */}
       {editingItem && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingItem(null)}>
-          <div className="bg-white border border-ios-gray5 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white shadow-ios rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-ios-gray5 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Edit Return Item</h3>
               <button onClick={() => setEditingItem(null)} className="p-2 hover:bg-ios-gray5 rounded-lg transition-colors">
@@ -1089,7 +1089,7 @@ function ReturnsDashboard() {
                   <label className="block text-ios-gray1 text-sm mb-2">Label Image</label>
                   <button
                     onClick={() => setViewingImage(editingItem.imageUrl)}
-                    className="w-full h-32 rounded-xl overflow-hidden border border-ios-gray5 hover:border-ios-blue transition-colors"
+                    className="w-full h-32 rounded-2xl overflow-hidden shadow-ios hover:border-ios-blue transition-colors"
                   >
                     <img
                       src={editingItem.imageUrl}
