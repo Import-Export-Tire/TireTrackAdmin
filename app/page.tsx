@@ -393,7 +393,7 @@ function Dashboard() {
               </div>
               <button
                 onClick={logout}
-                className="p-2 sm:p-2.5 bg-ios-gray6 hover:bg-ios-red text-white/10 border border-ios-gray5 hover:border-ios-red/40 rounded-xl transition-all active:scale-95"
+                className="p-2 sm:p-2.5 bg-ios-gray6 hover:bg-ios-red/10 border border-ios-gray5 hover:border-ios-red/40 rounded-xl transition-all active:scale-95"
                 title="Logout"
               >
                 <svg className="w-5 h-5 text-ios-gray1 hover:text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -549,7 +549,7 @@ function Dashboard() {
                 <p className="text-ios-gray1 text-xs sm:text-sm font-medium">Open Trucks</p>
                 <p className="text-2xl sm:text-3xl font-bold mt-1 text-ios-green">{openTrucks}</p>
               </div>
-              <div className="w-11 h-11 sm:w-14 sm:h-14 bg-ios-green/10 group-hover:bg-ios-green text-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-colors">
+              <div className="w-11 h-11 sm:w-14 sm:h-14 bg-ios-green/10 group-hover:bg-ios-green/10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-colors">
                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-ios-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                 </svg>
@@ -592,7 +592,7 @@ function Dashboard() {
             <div className="p-5 sm:p-6 border-b border-ios-gray5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-purple text-white/10 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-purple/10 rounded-xl flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
@@ -692,7 +692,7 @@ function Dashboard() {
                             {a.id !== admin?.id && (
                               <button
                                 onClick={() => admin?.id && deleteAdmin({ callerAdminId: admin.id as any, adminId: a.id as any })}
-                                className="p-2 bg-ios-red text-white/10 rounded-lg transition-colors"
+                                className="p-2 bg-ios-red/10 rounded-lg transition-colors"
                                 title="Delete"
                               >
                                 <svg className="w-4 h-4 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -715,7 +715,7 @@ function Dashboard() {
             <div className="p-5 sm:p-6 border-b border-ios-gray5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-ios-red text-white/10 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-ios-red/10 rounded-xl flex items-center justify-center">
                     <svg className="w-5 h-5 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
@@ -778,7 +778,7 @@ function Dashboard() {
                               {error.userName && <span className="text-xs text-[#1c1c1e] font-medium">{error.userName}</span>}
                               <div className="flex gap-1.5 flex-wrap">
                                 {error.userLocation && <span className="text-xs bg-ios-blue/10 text-ios-blue px-1.5 py-0.5 rounded">{error.userLocation}</span>}
-                                {error.truckNumber && <span className="text-xs bg-ios-orange text-white/10 text-ios-orange px-1.5 py-0.5 rounded">Truck {error.truckNumber}</span>}
+                                {error.truckNumber && <span className="text-xs bg-ios-orange/10 text-ios-orange px-1.5 py-0.5 rounded">Truck {error.truckNumber}</span>}
                               </div>
                               {!error.userName && !error.truckNumber && <span className="text-xs text-ios-gray1">—</span>}
                             </div>
@@ -786,7 +786,7 @@ function Dashboard() {
                           <td className="p-3 sm:p-4">
                             <div className="flex flex-col gap-1">
                               <span className="text-xs font-mono bg-ios-gray5 px-2 py-1 rounded text-ios-blue">{error.source}</span>
-                              <span className="text-xs font-mono bg-ios-red text-white/10 px-2 py-1 rounded text-ios-red">{error.errorType}</span>
+                              <span className="text-xs font-mono bg-ios-red/10 px-2 py-1 rounded text-ios-red">{error.errorType}</span>
                             </div>
                           </td>
                           <td className="p-3 sm:p-4 text-xs sm:text-sm text-[#1c1c1e] max-w-xs">{error.message}</td>
@@ -796,7 +796,7 @@ function Dashboard() {
                             ) : canEdit ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); resolveError({ errorId: error._id as any }); }}
-                                className="text-xs px-3 py-1.5 bg-ios-green/20 bg-ios-green text-white/40 text-ios-green rounded-lg transition-colors font-medium"
+                                className="text-xs px-3 py-1.5 bg-ios-green/20 bg-ios-green/40 text-ios-green rounded-lg transition-colors font-medium"
                               >
                                 Resolve
                               </button>
@@ -969,7 +969,7 @@ function Dashboard() {
                               </button>
                               <button
                                 onClick={() => setUserDeleteConfirm(user._id)}
-                                className="p-2 bg-ios-red text-white/10 rounded-lg transition-colors"
+                                className="p-2 bg-ios-red/10 rounded-lg transition-colors"
                                 title="Delete"
                               >
                                 <svg className="w-4 h-4 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1069,7 +1069,7 @@ function Dashboard() {
                           {canEdit && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setDeleteConfirm(truck._id); }}
-                              className="opacity-0 group-hover:opacity-100 p-2 bg-ios-red text-white/10 rounded-lg transition-all"
+                              className="opacity-0 group-hover:opacity-100 p-2 bg-ios-red/10 rounded-lg transition-all"
                             >
                               <svg className="w-4 h-4 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1189,7 +1189,7 @@ function Dashboard() {
                 </div>
               ) : showUnknownReport ? (
                 <div className="p-5">
-                  <div className="mb-4 p-4 bg-ios-orange text-white/10 border border-ios-orange/40 rounded-xl">
+                  <div className="mb-4 p-4 bg-ios-orange/10 border border-ios-orange/40 rounded-xl">
                     <div className="flex items-center gap-3">
                       <svg className="w-5 h-5 text-ios-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -1232,7 +1232,7 @@ function Dashboard() {
                               {!scan.isMiscan && canEdit && (
                                 <button
                                   onClick={() => setMarkingMiscan({ scanId: scan._id, trackingNumber: scan.trackingNumber, scannedByName: scan.scannedByName || "Unknown" })}
-                                  className="px-3 py-1.5 bg-ios-red/10 bg-ios-red text-white/10 text-ios-red text-xs rounded-lg border border-ios-red/40 transition-colors"
+                                  className="px-3 py-1.5 bg-ios-red/10 bg-ios-red/10 text-ios-red text-xs rounded-lg border border-ios-red/40 transition-colors"
                                   title="Mark as bad scan"
                                 >
                                   Mark Bad
@@ -1369,7 +1369,7 @@ function Dashboard() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setUserDeleteConfirm(null)}>
           <div className="bg-white border border-ios-gray5 rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="text-center">
-              <div className="w-16 h-16 bg-ios-red text-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-ios-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -1394,7 +1394,7 @@ function Dashboard() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {editAdminError && (<div className="p-4 bg-ios-red text-white/10 border border-ios-red/40 rounded-xl text-ios-red text-sm">{editAdminError}</div>)}
+              {editAdminError && (<div className="p-4 bg-ios-red/10 border border-ios-red/40 rounded-xl text-ios-red text-sm">{editAdminError}</div>)}
               <div><label className="block text-ios-gray1 text-sm mb-2">Name</label><input type="text" value={editingAdmin.name} onChange={(e) => setEditingAdmin({ ...editingAdmin, name: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Email</label><input type="email" value={editingAdmin.email} onChange={(e) => setEditingAdmin({ ...editingAdmin, email: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select value={editingAdmin.role} onChange={(e) => setEditingAdmin({ ...editingAdmin, role: e.target.value as "superadmin" | "admin" | "viewer" })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="superadmin">Superadmin</option><option value="admin">Admin</option><option value="viewer">Viewer</option></select></div>
@@ -1422,7 +1422,7 @@ function Dashboard() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setMarkingMiscan(null)}>
           <div className="bg-white border border-ios-gray5 rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="text-center">
-              <div className="w-16 h-16 bg-ios-red text-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-ios-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-ios-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -1483,7 +1483,7 @@ function Dashboard() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {newUserError && (<div className="p-4 bg-ios-red text-white/10 border border-ios-red/40 rounded-xl text-ios-red text-sm">{newUserError}</div>)}
+              {newUserError && (<div className="p-4 bg-ios-red/10 border border-ios-red/40 rounded-xl text-ios-red text-sm">{newUserError}</div>)}
               <div><label className="block text-ios-gray1 text-sm mb-2">Name *</label><input type="text" value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all" placeholder="John Smith" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Employee ID *</label><input type="text" value={newUser.empId} onChange={(e) => setNewUser({ ...newUser, empId: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" placeholder="EMP001" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">PIN (4 digits) *</label><input type="text" value={newUser.pin} onChange={(e) => setNewUser({ ...newUser, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })} maxLength={4} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" placeholder="1234" /></div>
