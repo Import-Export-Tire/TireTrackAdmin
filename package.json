@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx convex dev --once && next dev",
+    "dev": "next dev",
+    "dev:backend": "echo 'WARNING: deploys backend to LIVE wary-squirrel-295. Only from a branch with the COMPLETE convex/ (incl. wms.ts).' && npx convex deploy",
     "build": "npx convex deploy --cmd 'next build'",
     "start": "next start"
   },
