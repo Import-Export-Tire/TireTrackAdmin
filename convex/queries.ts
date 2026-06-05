@@ -211,13 +211,40 @@ export const getReturnItems = query({
   },
 });
 
+// Look up a tire by a typed/scanned code. Matches the UPC first, then the
+// inventory/part number (exact, plus the check-digit-strip fallback used at
+// save), so operators can enter either when a barcode scan isn't possible.
 export const getTireByUPC = query({
   args: { upc: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const code = args.upc.trim();
+    if (!code) return null;
+
+    // 1) exact UPC match
+    const byUpc = await ctx.db
       .query("tireUPCs")
-      .withIndex("by_upc", (q) => q.eq("upc", args.upc))
+      .withIndex("by_upc", (q) => q.eq("upc", code))
       .first();
+    if (byUpc) return byUpc;
+
+    // 2) exact inventory/part number match
+    const byInv = await ctx.db
+      .query("tireUPCs")
+      .withIndex("by_inventoryNumber", (q) => q.eq("inventoryNumber", code))
+      .first();
+    if (byInv) return byInv;
+
+    // 3) scanned barcode may be an inventory# with a check digit appended
+    if (code.length >= 5 && code.length <= 8) {
+      const stripped = code.slice(0, -1);
+      const byStripped = await ctx.db
+        .query("tireUPCs")
+        .withIndex("by_inventoryNumber", (q) => q.eq("inventoryNumber", stripped))
+        .first();
+      if (byStripped) return byStripped;
+    }
+
+    return null;
   },
 });
 
