@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:backend": "echo 'WARNING: deploys backend to LIVE wary-squirrel-295. Only from a branch with the COMPLETE convex/ (incl. wms.ts).' && npx convex deploy",
-    "build": "npx convex deploy --cmd 'next build'",
+    "build": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npx convex deploy --cmd 'next build'; else next build; fi",
     "start": "next start"
   },
   "dependencies": {
