@@ -8,7 +8,7 @@ import { useAuth } from "../auth-context";
 import Link from "next/link";
 
 function ReturnsDashboard() {
-  const { canEdit } = useAuth();
+  const { canEdit, admin } = useAuth();
   const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -105,7 +105,11 @@ function ReturnsDashboard() {
   };
 
   const handleDeleteBatch = async (batchId: string) => {
-    await deleteBatch({ batchId: batchId as any });
+    const result = await deleteBatch({ batchId: batchId as any, callerAdminId: admin?.id as any });
+    if (result && !result.success) {
+      alert(result.error || "Failed to delete batch");
+      return;
+    }
     setBatchDeleteConfirm(null);
     if (selectedBatch === batchId) {
       setSelectedBatch(null);
