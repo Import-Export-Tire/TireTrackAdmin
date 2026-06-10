@@ -152,15 +152,19 @@ jobs:
       - name: Upload to Simple Tire FTP
         if: steps.fetch.outputs.scan_count != '0'
         run: |
-          FILENAME="simpletire_manifest_${{ steps.date.outputs.date }}.csv"
+          # Fixed remote filename "IE Scans" (no date) so Simple Tire always
+          # pulls the same file. Name the local file "IE Scans" and upload to
+          # the directory with a trailing slash so curl uses the local name —
+          # this sends the space literally instead of URL-encoding it.
+          cp simpletire_manifest.csv "IE Scans"
 
-          echo "Uploading $FILENAME with ${{ steps.fetch.outputs.scan_count }} scans..."
+          echo "Uploading 'IE Scans' with ${{ steps.fetch.outputs.scan_count }} scans..."
 
-          # Upload using curl with FTP
+          # Upload using curl with FTP (trailing slash => remote name = local name)
           curl --insecure -v \
-            -T simpletire_manifest.csv \
+            -T "IE Scans" \
             -u "${{ secrets.SIMPLETIRE_FTP_USER }}:${{ secrets.SIMPLETIRE_FTP_PASSWORD }}" \
-            "ftp://${{ secrets.SIMPLETIRE_FTP_HOST }}/Labels/$FILENAME"
+            "ftp://${{ secrets.SIMPLETIRE_FTP_HOST }}/Labels/"
 
           echo "Upload complete!"
 
