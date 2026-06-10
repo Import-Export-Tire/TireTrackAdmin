@@ -345,8 +345,6 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold">Tracking</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
-                        <th className="px-4 py-3 font-semibold text-center">Mis-Ship</th>
-                        <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Location</th>
                         <th className="px-4 py-3 font-semibold">Date</th>
@@ -386,19 +384,17 @@ function ReturnsDashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-center text-[#1c1c1e]">{item.quantity || 1}</td>
-                          <td className="px-4 py-3 text-center">
-                            {item.isMisship && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-orange/10 border border-ios-orange/40 rounded text-ios-orange font-semibold text-xs">⚠ MIS-SHIP</span>
-                            )}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              {getStatusBadge(item.status)}
+                              {item.isMisship && (
+                                <span title="Misship" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-orange/15 text-ios-orange text-xs">⚠</span>
+                              )}
+                              {item.isDamaged && (
+                                <span title="Damaged" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-red/15 text-ios-red text-xs">⚠</span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            {item.isDamaged && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
-                                <span>⚠</span> DAMAGED
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
                           <td className="px-4 py-3 text-ios-gray1 text-sm">{item.locationName}</td>
                           <td className="px-4 py-3 text-ios-gray1 text-xs">{formatDate(item.scannedAt)}</td>
                         </tr>
@@ -626,8 +622,6 @@ function ReturnsDashboard() {
                         <th className="px-4 py-3 font-semibold">Tire</th>
                         <th className="px-4 py-3 font-semibold">Part #</th>
                         <th className="px-4 py-3 font-semibold text-center">Qty</th>
-                        <th className="px-4 py-3 font-semibold text-center">Mis-Ship</th>
-                        <th className="px-4 py-3 font-semibold text-center">Damaged</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                         <th className="px-4 py-3 font-semibold">Scanned By</th>
                         {canEdit && <th className="px-4 py-3 font-semibold">Actions</th>}
@@ -713,33 +707,17 @@ function ReturnsDashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>
-                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            {item.isMisship ? (
-                              <button
-                                onClick={() => updateItem({ itemId: item._id as any, isMisship: false })}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-orange/10 border border-ios-orange/40 rounded-lg text-ios-orange font-semibold text-xs hover:bg-ios-orange/10 transition-all"
-                              >
-                                <span>⚠</span> MIS-SHIP
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => updateItem({ itemId: item._id as any, isMisship: true })}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-gray5 border border-ios-gray4 rounded-lg text-ios-gray1 text-xs hover:bg-ios-orange/10 hover:border-ios-orange/40 hover:text-ios-orange transition-all"
-                              >
-                                Mark
-                              </button>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {item.isDamaged && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ios-red/10 border border-ios-red/40 rounded-lg text-ios-red font-semibold text-xs">
-                                <span>⚠</span> DAMAGED
-                              </span>
-                            )}
-                          </td>
                           <td className="px-4 py-3">
                             <div>
-                              {getStatusBadge(item.status)}
+                              <div className="flex items-center gap-1.5">
+                                {getStatusBadge(item.status)}
+                                {item.isMisship && (
+                                  <span title="Misship" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-orange/15 text-ios-orange text-xs">⚠</span>
+                                )}
+                                {item.isDamaged && (
+                                  <span title="Damaged" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-red/15 text-ios-red text-xs">⚠</span>
+                                )}
+                              </div>
                               {item.notes && (
                                 <div className="text-xs text-ios-gray1 mt-1 max-w-[150px] truncate" title={item.notes}>
                                   {item.notes}
@@ -793,6 +771,19 @@ function ReturnsDashboard() {
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => updateItem({ itemId: item._id as any, isMisship: !item.isMisship })}
+                                  className={`p-1.5 rounded-lg transition-all ${
+                                    item.isMisship
+                                      ? "bg-ios-orange/10 text-ios-orange"
+                                      : "hover:bg-ios-orange/10 text-ios-gray1 hover:text-ios-orange"
+                                  }`}
+                                  title={item.isMisship ? "Unmark Misship" : "Mark Misship"}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-13m0 0V4a1 1 0 011-1h11l-2 3 2 3H4a1 1 0 01-1-1z" />
                                   </svg>
                                 </button>
                                 <button
