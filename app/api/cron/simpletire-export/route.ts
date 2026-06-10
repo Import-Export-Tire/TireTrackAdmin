@@ -119,7 +119,9 @@ export async function GET(request: NextRequest) {
     }
 
     const csvContent = csvRows.join("\n");
-    const fileName = `simpletire_manifest_${dateStr}.csv`;
+    // Fixed filename (no date) so Simple Tire always pulls the same file; each
+    // day's upload overwrites the previous one.
+    const fileName = `IE Scans.csv`;
 
     // Get FTP config at runtime
     const ftpConfig = getFtpConfig();
@@ -283,7 +285,9 @@ export async function POST(request: NextRequest) {
     }
 
     const csvContent = csvRows.join("\n");
-    const fileName = `simpletire_manifest_${dateStr}.csv`;
+    // Fixed filename (no date) so Simple Tire always pulls the same file; each
+    // day's upload overwrites the previous one.
+    const fileName = `IE Scans.csv`;
 
     // Get FTP config at runtime
     const ftpConfig = getFtpConfig();
