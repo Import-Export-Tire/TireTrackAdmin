@@ -57,13 +57,17 @@ async function authorizeCountActor(
   if (admin.role !== "admin" && admin.role !== "superadmin") {
     throw new Error("Not authorized");
   }
-  // Empty allowedLocations already means all-locations elsewhere in this codebase.
-  if (
-    admin.allowedLocations.length > 0 &&
-    !admin.allowedLocations.includes(locationCode)
-  ) {
-    throw new Error(`Not authorized for ${locationCode}`);
-  }
+  // adminUsers.allowedLocations is deliberately NOT consulted here.
+  //
+  // It is stored but enforced nowhere in this codebase, and its values are
+  // human-readable names, not location codes: real rows hold ["all"],
+  // ["latrobe"], ["chestnut"]. Note "chestnut" IS W09 (Chestnut Ridge) — so a
+  // code comparison rejects every admin, and a fuzzy name→code match is the
+  // kind of guess that silently locks the right person out. Gating on
+  // role + isActive matches how every other admin action in this app behaves.
+  //
+  // If per-location admin restriction is ever wanted, allowedLocations needs to
+  // become code-keyed first; that is a separate, app-wide change.
   return { performedBy: String(actor.adminId), performedByName: admin.name };
 }
 
@@ -512,6 +516,55 @@ export const closeCountBatch = mutation({
       closedAt: Date.now(),
     });
     return { success: true };
+  },
+});
+
+/**
+ * Delete a count batch and everything belonging to it.
+ *
+ * Needed because a batch opened by mistake would otherwise block the location
+ * forever — only one batch may be open per location, and an empty batch cannot
+ * be closed. Admin only, and it says how much it destroyed.
+ */
+export const deleteCountBatch = mutation({
+  args: {
+    batchId: v.id("wms_count_batches"),
+    callerAdminId: v.id("adminUsers"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await ctx.db.get(args.callerAdminId);
+    if (!admin || !admin.isActive) throw new Error("Not authorized");
+    if (admin.role !== "admin" && admin.role !== "superadmin") {
+      throw new Error("Not authorized");
+    }
+
+    const baseline = await ctx.db
+      .query("wms_count_baseline")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    for (const r of baseline) await ctx.db.delete(r._id);
+
+    const totals = await ctx.db
+      .query("wms_count_totals")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    for (const r of totals) await ctx.db.delete(r._id);
+
+    const scans = await ctx.db
+      .query("wms_count_scans")
+      .withIndex("by_batch_scannedAt", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    for (const r of scans) await ctx.db.delete(r._id);
+
+    await ctx.db.delete(args.batchId);
+    return {
+      success: true,
+      deleted: {
+        baseline: baseline.length,
+        totals: totals.length,
+        scans: scans.length,
+      },
+    };
   },
 });
 
