@@ -39,10 +39,11 @@ UPC as an ordinary, expected event rather than an error.
 - **No write-back.** Closing a batch writes nothing to IECentral, JMK, or
   TireTrack's own `wms_inventory`. Corrections are made by a human from the
   report.
-- No bin/location granularity. Counts roll up to the warehouse, matching what
+- No bin/location granularity. Counts roll up to the location, matching what
   IECentral can actually verify (it has no bin concept).
-- No support for warehouses other than W09 in this phase, though nothing in the
-  schema is W09-specific.
+- **W09 is the only location enabled at launch**, but location is a first-class
+  selectable parameter, not a constant — see below. Enabling another location is
+  a one-line change, not a refactor.
 
 ## Where the code lives
 
@@ -201,6 +202,54 @@ rows including an Arroyo `235/45R17` and a Dunlop `205/60R16` winter. Filtering 
 both report headers state how many rows were excluded and their unit total, so a
 future placeholder class is visible rather than mysterious.
 
+## Locations — W09 now, others by design
+
+Counting will not stay at W09. The near-term second case is replacing a manual
+count at another location, so location is a real parameter throughout: the schema
+keys everything on `warehouseCode`, the endpoints take `?location=`, and nothing
+hardcodes `"W09"` outside a single enabled-locations constant.
+
+All nine OEIVAL location codes are available in the cache today:
+
+| code | name | | code | name |
+|---|---|---|---|---|
+| `R10` | Everson | | `R30` | Jeannette |
+| `R15` | Rodgers | | `R35` | King's Super Tire |
+| `R20` | Essey Tire | | `W07` | Uniontown |
+| `R25` | Export | | `W08` | Latrobe |
+| | | | `W09` | Chestnut Ridge |
+
+**One constant, `COUNT_LOCATIONS`**, holds the enabled subset with display
+labels — seeded with `W09` alone. Enabling Jeannette is adding one entry. The
+constant is validated against the cache's own location list at snapshot time, so
+a typo returns an explicit error rather than an empty baseline that reads as "zero
+inventory".
+
+Deliberately a constant rather than a config table: enabling a location for
+counting is a decision with real consequences (someone will act on the variance
+report), and it should be a reviewed code change rather than a checkbox someone
+clicks by accident. Revisit if the list grows past a handful.
+
+### Count access must not be coupled to the WMS pilot
+
+The obvious shortcut is to gate counting on `wms_user_assignments`, the table
+built for the Chestnut Ridge WMS pilot. **That is wrong** — it would mean "can
+count inventory at Jeannette" requires "is a Chestnut Ridge warehouse-management
+user". Whoever counts at a retail store has nothing to do with the WMS.
+
+So counting gets its own assignment table, `wms_count_assignments`
+(`userId`, `locationCode`, `assignedAt`, `assignedBy`). The `inventory` role says
+*this person counts*; the assignment says *where*. The two compose, and the WMS
+pilot stays independent.
+
+**Scanner location selection** derives from the signed-in user's count
+assignments: exactly one assignment auto-selects it and shows the location in the
+header; more than one shows a picker before the batch banner. No constant is read
+on the device.
+
+**Admin location selection** is a dropdown over `COUNT_LOCATIONS`, remembered per
+admin session, defaulting to the only enabled entry.
+
 ## Access control
 
 TireTrackAdmin's warehouse-user editor (`app/page.tsx`, the Role `<select>` at
@@ -228,7 +277,9 @@ A shared `authorizeCountActor(ctx, actor, warehouseCode)` helper resolves it and
 throws otherwise:
 
 - `kind: "user"` — requires `users.role === "inventory"` **and** a
-  `wms_user_assignments` row for that warehouse.
+  `wms_count_assignments` row for that location. Deliberately NOT
+  `wms_user_assignments`: see "Count access must not be coupled to the WMS pilot"
+  above.
 - `kind: "admin"` — requires `adminUsers.role` of `"admin"` or `"superadmin"`,
   `isActive`, and the warehouse in `allowedLocations` (or `allowedLocations`
   empty, which the codebase already treats as all-locations).

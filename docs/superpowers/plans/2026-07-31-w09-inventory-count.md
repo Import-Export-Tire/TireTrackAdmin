@@ -16,7 +16,8 @@
 - **Anything imported by a file inside `convex/` must live inside `convex/`.** `convex/` is copied verbatim into Lite, which has no top-level `lib/`. An import like `../lib/foo` bundles fine in Admin and breaks Lite's typecheck. This was hit and fixed once already in the returns work — do not repeat it.
 - Both apps use Convex deployment **`wary-squirrel-295`**. `npx convex deploy` defaults to the wrong deployment (`energetic-badger-312`, 403). Deploy with `CONVEX_DEPLOY_KEY` for `wary-squirrel-295`, which the user supplies — never hardcode it into a file.
 - **`npx tsc --noEmit` is the gate in all three repos.** No eslint step. IECentral additionally has Vitest already configured (`vitest.config.ts`).
-- **Warehouse code is `W09` throughout this phase.** Do not hardcode it where a `warehouseCode` argument belongs; the schema is warehouse-generic.
+- **`W09` is the only location enabled at launch, but location is a parameter, not a constant.** Counting is going to other locations — the near-term case is replacing a manual count elsewhere. Exactly one place names enabled locations: `COUNT_LOCATIONS` in `convex/wms_count_locations.ts`. No `"W09"` literal may appear in a screen, page, or query outside that file. The nine codes the OEIVAL cache carries are `R10` Everson, `R15` Rodgers, `R20` Essey Tire, `R25` Export, `R30` Jeannette, `R35` King's Super Tire, `W07` Uniontown, `W08` Latrobe, `W09` Chestnut Ridge.
+- **Count access is NOT gated on `wms_user_assignments`.** That table belongs to the Chestnut Ridge WMS pilot; reusing it would make "can count at Jeannette" require "is a Chestnut Ridge warehouse-management user". Counting has its own `wms_count_assignments` table.
 - **Count tires only.** `productType` is the discriminator: exclude `T` (transaction placeholders — TIRE, TIRE/U, LTADJ, STH, NGT, TED, TEST*) and `T *` (studding parts/labour). Keep every other code — TP, TL, TM, TST, TP*, TL*, TF, TS, TSG, T2M, TA, TO, TPT, TT are all real tire classes. Blocklist not allowlist, so a new tire class is never silently dropped. Backstops: known placeholder itemIds, and `qtyOnHand >= 100_000`. **Do not filter on `dclass`** — 17 real tires would vanish.
 - Measured reality to design against: W09 has **56,107 catalog rows**, **480 real in-stock items**, **33,320 units**, max single-SKU qty **1,872**.
 - Admin UI uses existing `ios-*` Tailwind tokens and `components/ui` primitives. Scanner screens follow the existing keyboard-wedge pattern (`autoFocus`, `blurOnSubmit={false}`, commit on `onSubmitEditing`) used by `WMSPutAwayScreen` — that is how TC51 DataWedge feeds input.
@@ -34,6 +35,7 @@
 
 **TireTrackAdmin** (schema, functions, reports):
 - Modify `convex/schema.ts` — four new tables.
+- Create `convex/wms_count_locations.ts` — `COUNT_LOCATIONS`, the single source of truth for which locations are enabled. Inside `convex/` so scanner, Admin and Convex functions all read the same list.
 - Create `convex/wms_count.ts` — batch lifecycle, scans, queries. New file rather than growing `wms.ts` (891 lines).
 - Create `convex/wms_count_variance.ts` — the pure variance function, **inside `convex/`** so both the Convex functions and the Admin UI can import it.
 - Create `lib/countVariance.test.ts` — Vitest against that function.
@@ -654,6 +656,19 @@ In `convex/schema.ts`, after the `wms_user_assignments` table definition:
     .index("by_batch_item", ["batchId", "itemId"])
     .index("by_batch_upc", ["batchId", "upc"]),
 
+  // Who may count, and WHERE. Deliberately separate from wms_user_assignments:
+  // that table gates the Chestnut Ridge WMS pilot, and counting at a retail
+  // store has nothing to do with warehouse management. The `inventory` role says
+  // a person counts; this says which locations.
+  wms_count_assignments: defineTable({
+    userId: v.id("users"),
+    locationCode: v.string(),
+    assignedAt: v.number(),
+    assignedBy: v.string(),
+  }).index("by_user", ["userId"])
+    .index("by_location", ["locationCode"])
+    .index("by_user_location", ["userId", "locationCode"]),
+
   // Rollup maintained in the same transaction as each scan, so reports never
   // collect() thousands of raw scan rows. Exactly one of itemId / upc is set:
   // matched totals key on itemId, unmatched on upc.
@@ -1034,7 +1049,30 @@ import the repo's top-level lib/."
   - `searchIECentralTires` (action) `{ q, actor }` → `{ results }`
   - Actor validator shape shared by all of the above.
 
-- [ ] **Step 1: Create the file with the actor helper and batch lifecycle**
+- [ ] **Step 1: Create the enabled-locations constant**
+
+Create `TireTrackAdmin/convex/wms_count_locations.ts`. This is the **only** place
+a location code is named. Inside `convex/` so the scanner, the Admin pages and the
+Convex functions all read one list.
+
+```ts
+/**
+ * Locations enabled for physical counting.
+ *
+ * Deliberately a constant, not a config table: enabling a location means someone
+ * will act on its variance report, so it should be a reviewed code change rather
+ * than a checkbox clicked by accident. Adding Jeannette is one line here.
+ *
+ * All nine codes the OEIVAL cache carries, for reference when enabling:
+ *   R10 Everson · R15 Rodgers · R20 Essey Tire · R25 Export · R30 Jeannette
+ *   R35 King's Super Tire · W07 Uniontown · W08 Latrobe · W09 Chestnut Ridge
+ */
+export const COUNT_LOCATIONS: Array<{ code: string; label: string }> = [
+  { code: "W09", label: "Chestnut Ridge" },
+];
+```
+
+- [ ] **Step 2: Create the file with the actor helper and batch lifecycle**
 
 Create `TireTrackAdmin/convex/wms_count.ts`:
 
@@ -1043,6 +1081,7 @@ import { action, mutation, query, internalMutation, internalQuery } from "./_gen
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { computeVariance } from "./wms_count_variance";
+import { COUNT_LOCATIONS } from "./wms_count_locations";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -1074,13 +1113,15 @@ async function authorizeCountActor(
     if (user.role !== "inventory") {
       throw new Error("Inventory role required to count");
     }
+    // wms_count_assignments, NOT wms_user_assignments — counting is not the
+    // WMS pilot. A counter at a retail store never touches warehouse management.
     const assignment = await ctx.db
-      .query("wms_user_assignments")
-      .withIndex("by_user_warehouse", (q: any) =>
-        q.eq("userId", actor.userId).eq("warehouseCode", warehouseCode),
+      .query("wms_count_assignments")
+      .withIndex("by_user_location", (q: any) =>
+        q.eq("userId", actor.userId).eq("locationCode", warehouseCode),
       )
       .first();
-    if (!assignment) throw new Error(`Not assigned to ${warehouseCode}`);
+    if (!assignment) throw new Error(`Not assigned to count at ${warehouseCode}`);
     return { performedBy: String(actor.userId), performedByName: user.name };
   }
 
@@ -1106,6 +1147,12 @@ const normalizeUpc = (raw: string) => String(raw ?? "").replace(/\D/g, "");
 export const createBatchInternal = internalMutation({
   args: { warehouseCode: v.string(), actor: actorValidator },
   handler: async (ctx, args) => {
+    if (!COUNT_LOCATIONS.some((l) => l.code === args.warehouseCode)) {
+      // Explicit error rather than an empty baseline, which would read as
+      // "this location has zero inventory".
+      throw new Error(`${args.warehouseCode} is not enabled for counting`);
+    }
+
     const { performedBy, performedByName } = await authorizeCountActor(
       ctx,
       args.actor as Actor,
@@ -1307,7 +1354,7 @@ export const getBatchInternal = internalQuery({
 });
 ```
 
-- [ ] **Step 2: Append scan recording, void, close, and resolve**
+- [ ] **Step 3: Append scan recording, void, close, and resolve**
 
 Continue in the same file:
 
@@ -1616,10 +1663,102 @@ export const resolveUnmatchedUpc = mutation({
 });
 ```
 
-- [ ] **Step 3: Append the queries and the catalog-search action**
+- [ ] **Step 4: Append the queries and the catalog-search action**
 
 ```ts
 // ------------------------------------------------------------------ queries
+
+/**
+ * Locations this user may count at, resolved from wms_count_assignments and
+ * intersected with the enabled list. The scanner reads THIS — never a constant —
+ * so one assignment auto-selects and several show a picker.
+ */
+export const getMyCountLocations = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || !user.isActive || user.role !== "inventory") return [];
+    const rows = await ctx.db
+      .query("wms_count_assignments")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+    const enabled = new Map(COUNT_LOCATIONS.map((l) => [l.code, l.label]));
+    return rows
+      .filter((r) => enabled.has(r.locationCode))
+      .map((r) => ({ code: r.locationCode, label: enabled.get(r.locationCode)! }));
+  },
+});
+
+/** Enabled locations, for the Admin dropdown. */
+export const getCountLocations = query({
+  args: {},
+  handler: async () => COUNT_LOCATIONS,
+});
+
+/** Grant a user the ability to count at a location. Admin only. */
+export const assignCountLocation = mutation({
+  args: {
+    userId: v.id("users"),
+    locationCode: v.string(),
+    callerAdminId: v.id("adminUsers"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await ctx.db.get(args.callerAdminId);
+    if (!admin || !admin.isActive) throw new Error("Not authorized");
+    if (admin.role !== "admin" && admin.role !== "superadmin") {
+      throw new Error("Not authorized");
+    }
+    if (!COUNT_LOCATIONS.some((l) => l.code === args.locationCode)) {
+      throw new Error(`${args.locationCode} is not enabled for counting`);
+    }
+    const existing = await ctx.db
+      .query("wms_count_assignments")
+      .withIndex("by_user_location", (q) =>
+        q.eq("userId", args.userId).eq("locationCode", args.locationCode),
+      )
+      .first();
+    if (existing) return { success: true as const };
+    await ctx.db.insert("wms_count_assignments", {
+      userId: args.userId,
+      locationCode: args.locationCode,
+      assignedAt: Date.now(),
+      assignedBy: admin.name,
+    });
+    return { success: true as const };
+  },
+});
+
+export const unassignCountLocation = mutation({
+  args: {
+    userId: v.id("users"),
+    locationCode: v.string(),
+    callerAdminId: v.id("adminUsers"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await ctx.db.get(args.callerAdminId);
+    if (!admin || !admin.isActive) throw new Error("Not authorized");
+    const row = await ctx.db
+      .query("wms_count_assignments")
+      .withIndex("by_user_location", (q) =>
+        q.eq("userId", args.userId).eq("locationCode", args.locationCode),
+      )
+      .first();
+    if (row) await ctx.db.delete(row._id);
+    return { success: true as const };
+  },
+});
+
+export const getCountAssignments = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("wms_count_assignments").take(500);
+    const users = await ctx.db.query("users").take(500);
+    return rows.map((r) => ({
+      ...r,
+      userName: users.find((u) => u._id === r.userId)?.name ?? "Unknown",
+    }));
+  },
+});
 
 export const getOpenCountBatch = query({
   args: { warehouseCode: v.string() },
@@ -1742,18 +1881,18 @@ export const searchIECentralTires = action({
 });
 ```
 
-- [ ] **Step 4: Verify typecheck and bundling**
+- [ ] **Step 5: Verify typecheck and bundling**
 
 ```bash
 cd ~/TireTrackAdmin && npx tsc --noEmit && npx convex codegen && npx vitest run
 ```
 Expected: all clean.
 
-- [ ] **Step 5: Commit (fires the sync hook into TireTrackLite)**
+- [ ] **Step 6: Commit (fires the sync hook into TireTrackLite)**
 
 ```bash
 cd ~/TireTrackAdmin
-git add convex/wms_count.ts
+git add convex/wms_count.ts convex/wms_count_locations.ts
 git commit -m "feat(wms): count batch lifecycle, scan recording, variance queries
 
 Baseline is frozen at batch open by a Convex action fetching IECentral's
@@ -1764,14 +1903,14 @@ goes through one authorizeCountActor helper that accepts either a scanner
 user with the inventory role or an admin."
 ```
 
-- [ ] **Step 6: Confirm the sync hook copied it to Lite**
+- [ ] **Step 7: Confirm the sync hook copied it to Lite**
 
 ```bash
 diff -q ~/TireTrackAdmin/convex/wms_count.ts ~/TireTrackLite/convex/wms_count.ts && echo SYNCED
 ```
 Expected: `SYNCED`.
 
-- [ ] **Step 7: Set the Convex environment variables and deploy**
+- [ ] **Step 8: Set the Convex environment variables and deploy**
 
 `IECENTRAL_SNAPSHOT_URL` (e.g. `https://iecentral.com`) and `IECENTRAL_SNAPSHOT_TOKEN` must exist on the **Convex** deployment, not just in Vercel. Ask the user for the deploy key, then:
 
@@ -1883,8 +2022,6 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useAuth } from "../../context/AuthContext";
 
-const WAREHOUSE = "W09";
-
 type Props = { onBack: () => void };
 
 export default function WMSCountScreen({ onBack }: Props) {
@@ -1893,9 +2030,22 @@ export default function WMSCountScreen({ onBack }: Props) {
     ? ({ kind: "user" as const, userId: user._id as Id<"users"> })
     : null;
 
-  const openBatch = useQuery(api.wms_count.getOpenCountBatch, {
-    warehouseCode: WAREHOUSE,
-  });
+  // Location comes from THIS user's count assignments, never a constant — that
+  // is what lets counting move to other locations without touching this screen.
+  const myLocations = useQuery(
+    api.wms_count.getMyCountLocations,
+    user ? { userId: user._id as Id<"users"> } : "skip",
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const location =
+    picked ?? (myLocations?.length === 1 ? myLocations[0].code : null);
+  const locationLabel =
+    myLocations?.find((l: any) => l.code === location)?.label ?? location ?? "";
+
+  const openBatch = useQuery(
+    api.wms_count.getOpenCountBatch,
+    location ? { warehouseCode: location } : "skip",
+  );
   const batchDetail = useQuery(
     api.wms_count.getCountBatch,
     openBatch?._id ? { batchId: openBatch._id } : "skip",
@@ -1926,10 +2076,10 @@ export default function WMSCountScreen({ onBack }: Props) {
   const baselineStatus = batch?.baselineStatus;
 
   const handleOpen = async () => {
-    if (!actor) return;
+    if (!actor || !location) return;
     setBusy(true);
     try {
-      await openCountBatch({ warehouseCode: WAREHOUSE, actor });
+      await openCountBatch({ warehouseCode: location!, actor });
       setQty("1"); // fresh batch starts at 1 so a stale quantity can't carry over
     } catch (e: any) {
       Alert.alert("Could not open batch", e?.message ?? "Unknown error");
@@ -2025,16 +2175,39 @@ export default function WMSCountScreen({ onBack }: Props) {
         <TouchableOpacity onPress={onBack}>
           <Text style={styles.back}>‹ Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Inventory Count · {WAREHOUSE}</Text>
+        <Text style={styles.title}>Inventory Count{locationLabel ? ` · ${locationLabel}` : ""}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {!batch ? (
+        {myLocations !== undefined && myLocations.length === 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>No counting locations</Text>
+            <Text style={styles.muted}>
+              Ask an admin to assign you a location to count in TireTrack Admin.
+            </Text>
+          </View>
+        ) : !location ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Choose a location</Text>
+            {(myLocations ?? []).map((l: any) => (
+              <TouchableOpacity
+                key={l.code}
+                style={styles.primaryBtn}
+                onPress={() => setPicked(l.code)}
+              >
+                <Text style={styles.primaryBtnText}>
+                  {l.label} ({l.code})
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : !batch ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>No open count</Text>
             <Text style={styles.muted}>
-              Opening a batch freezes the current IECentral on-hand figures, so
-              stock moving during the count can't skew the result.
+              Opening a batch for {locationLabel} freezes the current IECentral
+              on-hand figures, so stock moving during the count can't skew the
+              result.
             </Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={handleOpen} disabled={busy}>
               {busy ? (
@@ -2392,8 +2565,8 @@ mid-aisle."
 - Modify: `TireTrackAdmin/app/wms/page.tsx`
 
 **Interfaces:**
-- Consumes: `api.wms_count.getCountBatches`, `getOpenCountBatch`, `openCountBatch`, `closeCountBatch`.
-- Produces: `/wms/counts` route; `inventory` selectable as a warehouse-user role.
+- Consumes: `api.wms_count.getCountBatches`, `getOpenCountBatch`, `openCountBatch`, `closeCountBatch`, `getCountLocations`, `getCountAssignments`, `assignCountLocation`, `unassignCountLocation`.
+- Produces: `/wms/counts` route; `inventory` selectable as a warehouse-user role; counting-location assignment UI.
 
 - [ ] **Step 1: Add the Inventory role to both selects**
 
@@ -2435,11 +2608,78 @@ Where `app/page.tsx` renders `{user.role === "supervisor" && (...)}`, add a sibl
 
 If `ios-teal` is not a defined token in `tailwind.config`/`globals.css`, use `bg-ios-blue/15 text-ios-blue` instead — check before assuming.
 
-- [ ] **Step 3: Add the nav link**
+- [ ] **Step 3: Add counting-location checkboxes to the user editor**
+
+Granting a counter their locations must be a UI operation — `wms_user_assignments`
+never got one and onboarding via CLI is not acceptable for real users.
+
+In the edit-user modal in `app/page.tsx`, directly below the Role select, add a
+block that appears only when the selected role is `inventory`:
+
+```tsx
+{editingUser.role === "inventory" && (
+  <div>
+    <label className="block text-ios-gray1 text-sm mb-2">Counting locations</label>
+    <div className="space-y-2">
+      {(countLocations ?? []).map((loc: any) => {
+        const assigned = (countAssignments ?? []).some(
+          (a: any) => a.userId === editingUser._id && a.locationCode === loc.code,
+        );
+        return (
+          <label key={loc.code} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={assigned}
+              onChange={async (e) => {
+                if (!admin?._id) return;
+                try {
+                  if (e.target.checked) {
+                    await assignCountLocation({
+                      userId: editingUser._id,
+                      locationCode: loc.code,
+                      callerAdminId: admin._id as any,
+                    });
+                  } else {
+                    await unassignCountLocation({
+                      userId: editingUser._id,
+                      locationCode: loc.code,
+                      callerAdminId: admin._id as any,
+                    });
+                  }
+                } catch (err: any) {
+                  alert(err?.message ?? "Could not update assignment");
+                }
+              }}
+            />
+            <span className="text-[#1c1c1e]">
+              {loc.label} ({loc.code})
+            </span>
+          </label>
+        );
+      })}
+    </div>
+    <p className="text-xs text-ios-gray1 mt-1">
+      Without at least one location, this user can't open a count.
+    </p>
+  </div>
+)}
+```
+
+Add the supporting hooks near the other `useQuery`/`useMutation` calls in that
+component:
+
+```tsx
+  const countLocations = useQuery(api.wms_count.getCountLocations, {});
+  const countAssignments = useQuery(api.wms_count.getCountAssignments, {});
+  const assignCountLocation = useMutation(api.wms_count.assignCountLocation);
+  const unassignCountLocation = useMutation(api.wms_count.unassignCountLocation);
+```
+
+- [ ] **Step 4: Add the nav link**
 
 In the nav grid alongside `href="/wms"`, add a card linking to `/wms/counts` labelled **Inventory Counts**, copying the markup of the adjacent card exactly so the styling matches.
 
-- [ ] **Step 4: Create the batch list page**
+- [ ] **Step 5: Create the batch list page**
 
 Create `TireTrackAdmin/app/wms/counts/page.tsx`:
 
@@ -2453,12 +2693,25 @@ import Link from "next/link";
 import { Protected } from "../../protected";
 import { useAuth } from "../../auth-context";
 
-const WAREHOUSE = "W09";
-
 function CountsDashboard() {
   const { admin, canEdit } = useAuth();
-  const batches = useQuery(api.wms_count.getCountBatches, { warehouseCode: WAREHOUSE });
-  const openBatch = useQuery(api.wms_count.getOpenCountBatch, { warehouseCode: WAREHOUSE });
+
+  // Enabled locations come from convex/wms_count_locations.ts — the one place a
+  // location code is named. Today that's W09 alone; the dropdown appears anyway
+  // so enabling another location needs no UI change.
+  const locations = useQuery(api.wms_count.getCountLocations, {});
+  const [location, setLocation] = useState<string | null>(null);
+  const active = location ?? locations?.[0]?.code ?? null;
+  const activeLabel = locations?.find((l: any) => l.code === active)?.label ?? "";
+
+  const batches = useQuery(
+    api.wms_count.getCountBatches,
+    active ? { warehouseCode: active } : "skip",
+  );
+  const openBatch = useQuery(
+    api.wms_count.getOpenCountBatch,
+    active ? { warehouseCode: active } : "skip",
+  );
   const openCountBatch = useAction(api.wms_count.openCountBatch);
   const closeCountBatch = useMutation(api.wms_count.closeCountBatch);
   const [busy, setBusy] = useState(false);
@@ -2474,18 +2727,34 @@ function CountsDashboard() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1c1c1e]">Inventory Counts</h1>
+          <h1 className="text-2xl font-bold text-[#1c1c1e]">
+            Inventory Counts{activeLabel ? ` — ${activeLabel}` : ""}
+          </h1>
           <p className="text-ios-gray1 text-sm">
-            {WAREHOUSE} · Chestnut Ridge. Opening a batch freezes IECentral's
-            on-hand figures so movement during the count can't skew variance.
+            Opening a batch freezes IECentral's on-hand figures so movement
+            during the count can't skew variance. Tires only — non-tire
+            product types are excluded.
           </p>
+          {(locations?.length ?? 0) > 1 && (
+            <select
+              value={active ?? ""}
+              onChange={(e) => setLocation(e.target.value)}
+              className="mt-2 px-3 py-2 bg-white border border-ios-gray5 rounded-xl"
+            >
+              {(locations ?? []).map((l: any) => (
+                <option key={l.code} value={l.code}>
+                  {l.label} ({l.code})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
-        {canEdit && actor && !openBatch && (
+        {canEdit && actor && active && !openBatch && (
           <button
             onClick={async () => {
               setBusy(true);
               try {
-                await openCountBatch({ warehouseCode: WAREHOUSE, actor });
+                await openCountBatch({ warehouseCode: active!, actor });
               } catch (e: any) {
                 alert(e?.message ?? "Could not open batch");
               } finally {
@@ -2601,18 +2870,18 @@ export default function CountsPage() {
 
 **Before running:** confirm `ios-green`, `ios-gray6`, and `shadow-ios` are real tokens in this project by grepping an existing page (`app/wms/inventory/page.tsx`). Substitute the nearest existing token for any that is not.
 
-- [ ] **Step 5: Link from the WMS page**
+- [ ] **Step 6: Link from the WMS page**
 
 Add an "Inventory Counts" card to `app/wms/page.tsx` beside the existing Inventory/Transactions links, matching their markup.
 
-- [ ] **Step 6: Verify**
+- [ ] **Step 7: Verify**
 
 ```bash
 cd ~/TireTrackAdmin && npx tsc --noEmit && npm run build
 ```
 Expected: both clean, and `/wms/counts` appears in the route list.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 cd ~/TireTrackAdmin
@@ -2915,23 +3184,21 @@ IECentral first — the Convex action depends on its endpoints existing.
 3. Merge TireTrackAdmin and let production build.
 4. Publish the Lite OTA: `npx eas-cli update --branch preview --message "..."`. Field scanners are on channel `preview`, `runtimeVersion 2.0.1`, and auto-update on next launch.
 
-- [ ] **Step 3: Grant yourself the Inventory role and W09 assignment**
+- [ ] **Step 3: Grant the Inventory role and a counting location, in the UI**
 
-The role is set in Admin, but `wms_user_assignments` has **no admin UI** — `assignUserToWarehouse` exists and is unused. Assign via the Convex dashboard or:
+Both are real UI operations now — no CLI, no Convex dashboard:
 
-```bash
-cd ~/TireTrackAdmin
-export CONVEX_DEPLOY_KEY='<key>'
-npx convex run wms:assignUserToWarehouse '{"userId":"<id>","warehouseCode":"W09","assignedBy":"setup"}'
-```
+1. In Admin, edit the warehouse user and set **Role → Inventory**.
+2. In the same editor, tick the counting location (Task 7 Step 3 adds this).
 
-If this proves awkward for real users, building that UI is the obvious follow-up — flag it rather than hand-running commands for each counter.
+Verify the negative case too: a user with the Inventory role but **no** location
+assignment sees "No counting locations" on the scanner and cannot open a batch.
 
 - [ ] **Step 4: Live test at W09**
 
 Record pass/fail with what was actually observed:
 
-1. A `Standard` user does **not** see Count, **and** a direct `recordCountScan` is rejected server-side.
+1. A `Standard` user does **not** see Count, **and** a direct `recordCountScan` is rejected server-side. A user with the Inventory role but no location assignment is rejected with "Not assigned to count at W09".
 2. Open a batch. Baseline reaches `ready` with **≈480 items** and an OEIVAL file date matching the last upload. **If it reports ~485, the sentinel exclusion is not running** — stop and fix before counting.
 3. Scan a known UPC with qty 1, then the same UPC with qty 8 — running total should read 9.
 4. Scan an unknown UPC; confirm it saves as unmatched, then resolve it via sidewall search and confirm `tireUPCs` gained the mapping.
@@ -2982,6 +3249,10 @@ State which steps passed and which did not, with observed output. Do not report 
 | CSV + PDF, jspdf dynamic import | 8 |
 | Discrepancy hidden when baseline not ready | 5 (query), 8 |
 | No write-back to IECentral/JMK | by omission — no task writes there |
+| W09 only at launch, location a parameter | 5 (`COUNT_LOCATIONS`), 6, 7 |
+| Location selectable, extensible to other locations | 5, 6 (assignment-derived), 7 (dropdown) |
+| Count access decoupled from the WMS pilot | 3 (`wms_count_assignments`), 5 |
+| Admin UI to grant counting locations | 7 |
 | Vitest on the variance function | 4 |
 | `tsc` gate in all three repos | 9 |
 
@@ -2991,4 +3262,15 @@ No gaps.
 
 **Type consistency:** `computeVariance`'s exported types (`VarianceRow`, `UnmatchedRow`, `VarianceSummary`, `BaselineRow`, `TotalRow`, `Bucket`) are defined in Task 4 and imported by name in Task 8. `actorValidator` / `Actor` are defined once in Task 5 and used by every mutation there and both Admin pages. `SnapshotItem` fields (`itemId`, `qtyOnHand`, `brand`, `model`, `size`, `mpn`) match across Task 1's reader, Task 2's response, Task 5's `insertBaselineChunk` validator, and the `wms_count_baseline` schema in Task 3. `matchSource` literals (`upc`, `manual-search`, `resolved`, `unmatched`) match between the Task 3 schema and Task 5's writers. Env var names `IECENTRAL_SNAPSHOT_URL` / `IECENTRAL_SNAPSHOT_TOKEN` (Convex) and `INVENTORY_SNAPSHOT_TOKEN` (IECentral) are used consistently and are deliberately distinct — they live on different platforms.
 
-**Known follow-up, not in scope:** `wms_user_assignments` still has no admin UI. Task 9 Step 3 works around it with a CLI call, which is fine for a pilot and wrong as a permanent answer.
+**Location model.** W09 is the only entry in `COUNT_LOCATIONS` at launch, but no
+screen, page or query names a location code — they all read that constant or the
+user's own assignments. Enabling another location is one line plus ticking a box
+per counter. This was tightened after the user noted counting is likely to replace
+a manual count elsewhere, so the extensibility is a near-term requirement rather
+than speculative generality.
+
+**Count access is deliberately NOT `wms_user_assignments`.** Reusing the WMS
+pilot's table would have made "can count at a retail store" depend on "is a
+Chestnut Ridge warehouse-management user". `wms_count_assignments` keeps the two
+independent, and Task 7 gives it the admin UI that `wms_user_assignments` never
+got — so no CLI or Convex-dashboard step is needed to onboard a counter.
