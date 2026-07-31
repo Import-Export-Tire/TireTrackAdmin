@@ -93,9 +93,10 @@ unauthenticated; this design does not widen that surface or depend on it.
 Streams the S3 cache the same way `app/api/reports/inventory-data/route.ts`
 already does (`GetObjectCommand` → `createGunzip` → `readline`), reusing
 `brandCodeToName` from `lib/brandMapping`. Keeps rows for the requested
-`location` where `qtyOnHand !== 0` **and the itemId is not a sentinel** (see
-above). Measured: W09 has exactly one row per itemId, so no aggregation is needed —
-but key by itemId anyway rather than assuming that holds for every location.
+`location` where `qtyOnHand !== 0` **and the row is a countable tire** (see
+"Count tires only" below). Measured: W09 has exactly one row per itemId, so no
+aggregation is needed — but key by itemId anyway rather than assuming that holds
+for every location.
 
 Cache field names, confirmed from
 `aws/dunlop-reporter/lambdas/oeival_processor.py`: `location`, `itemId`,
@@ -110,7 +111,7 @@ Response:
   "fileDate": "2026-07-31T14:45:44+00:00",
   "generatedAt": "2026-07-31T15:02:00.000Z",
   "count": 480,
-  "excludedSentinels": 5,
+  "excludedNonTires": 5,
   "excludedUnits": 4968000,
   "items": [
     { "itemId": "...", "qtyOnHand": 12, "brand": "...",
@@ -119,7 +120,7 @@ Response:
 }
 ```
 
-`excludedSentinels` / `excludedUnits` exist so the exclusion is auditable from the
+`excludedNonTires` / `excludedUnits` exist so the exclusion is auditable from the
 response itself rather than being invisible server-side behaviour.
 
 `maxDuration = 60`. If the cache meta is missing it returns 409 with the same
@@ -143,7 +144,7 @@ Pulled `location=W09` from the live cache (`IET-oeival (51).csv`,
 |---|---|
 | W09 catalog rows | **56,107** (one row per itemId) |
 | In stock (`qtyOnHand != 0`) | **485** |
-| — sentinel/pseudo SKUs | **5**, totalling **4,968,000 units** |
+| — non-tire rows (`productType` `T`) | **5**, totalling **4,968,000 units** |
 | — **real baseline items** | **480**, totalling **33,320 units** |
 | Real qty min / median / max | 1 / 32 / 1,872 |
 
@@ -157,34 +158,48 @@ catalog item (finding stock the book says is zero is a core purpose of counting)
 So `/api/inventory/search` **is** required. The "drop it if the numbers are small"
 option is dead.
 
-### Sentinel SKUs must be excluded from the baseline
+### Count tires only — `productType` is the discriminator
 
-Five JMK pseudo-SKUs hold ~4.97M "units" at W09 — placeholders for dropship,
-adjustment and ship-to-home transactions, not physical tires:
+**We are counting tires. `productType` is the field that says whether a row is
+one.** Every code in the OEIVAL begins with `T`, but they are not all tires:
 
-| qtyOnHand | itemId | description |
+| code | W09 rows | what they actually are |
 |---|---|---|
-| 999,000 | `TIRE/U` | USED - |
-| 999,000 | `STH` | SHIP TO HOME |
-| 990,000 | `TIRE` | = |
-| 990,000 | `LTADJ` | ADJUSTMENT |
-| 990,000 | `NGT` | NGT DROPSHIP |
+| `T` | 8 | `TIRE`, `TIRE/U`, `LTADJ`, `STH`, `NGT` (transaction placeholders), `TED` DROPSHIP, 2 `TEST` items — **no real tires** |
+| `T *` | 3 | `STUD12/13/15` — "TIRE STUDDING PARTS AND LABOR" — **parts and labour** |
+| `TP` | 35,763 | passenger tires |
+| `TL` | 10,641 | light-truck tires |
+| `TM` | 1,689 | medium/commercial truck tires |
+| `TST` | 1,378 | special-trailer (ST) tires |
+| `TP*`, `TL*`, `TF`, `TS`, `TSG`, `T2M`, `TA`, `TO`, `TPT`, `TT` | rest | further tire classes |
 
-Left in, the discrepancy report opens with five shorts of ~990,000 units each and
-is worthless.
+**Rule: exclude `productType` of `T` or `T *`; keep everything else.**
 
-**Exclude by explicit itemId list, plus a `qtyOnHand >= 100_000` threshold as a
-backstop for sentinels added later.** Do **not** exclude on blank `dclass`, the
-obvious-looking rule: nine of the in-stock rows with blank `dclass` are **real RBP
-truck tires** (11R22.5, 295/75R22.5, 225/70R19.5 …) and would be silently dropped
-from the count. Verified: after excluding the five by itemId, nothing else at W09
-exceeds the threshold.
+Verified against the live cache: this yields exactly **480 items / 33,320 units**
+at W09 — identical to a hand-built itemId blocklist, but derived from a JMK
+classification rather than a name list somebody has to maintain, and it
+additionally catches the studding parts/labour rows a name list missed.
 
-Exclusion list (`TIRE`, `TIRE/U`, `LTADJ`, `STH`, `NGT`, and `TEST%` items, which
-are all `qtyOnHand 0` today) lives in one exported constant so it is greppable and
-amendable. **Excluded rows are reported, not silently dropped** — the snapshot
-response and the report header both state how many rows were excluded and why, so
-a future sentinel showing up as a real variance is visible rather than mysterious.
+**A blocklist, not an allowlist**, deliberately: if JMK adds a new *tire* class
+(say `TB` for bus), an allowlist would silently drop real inventory from every
+count, which is the worse failure. A new *placeholder* class slipping in is caught
+by the two backstops below and is visible in the excluded-count.
+
+Two backstops, both cheap:
+1. `qtyOnHand >= 100_000` — the placeholders carry 990,000/999,000; the largest
+   real W09 stock is 1,872.
+2. The known placeholder itemIds (`TIRE`, `TIRE/U`, `LTADJ`, `STH`, `NGT`, `TED`,
+   `TEST*`) as a third layer.
+
+**Do not filter on `dclass`.** It looks tempting — 463 of the 480 real items are
+`dclass: "Dot"` — but the remaining 17 are also real tires: nine RBP commercial
+truck tires (`225/70R19.5`, `11R22.5`) with blank `dclass`, and eight `Bracket`
+rows including an Arroyo `235/45R17` and a Dunlop `205/60R16` winter. Filtering on
+`dclass` would silently drop them.
+
+**Excluded rows are reported, not silently dropped** — the snapshot response and
+both report headers state how many rows were excluded and their unit total, so a
+future placeholder class is visible rather than mysterious.
 
 ## Access control
 
