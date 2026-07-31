@@ -89,6 +89,27 @@ than becoming open.
 These are new and narrow on purpose. The existing `/api/reports/*` routes are
 unauthenticated; this design does not widen that surface or depend on it.
 
+**Always call the `www` host: `https://www.iecentral.com`.** The apex
+`iecentral.com` 301s to `www`, and clients drop the `Authorization` header across
+a cross-host redirect — so an apex call arrives with no credential and returns a
+puzzling 401 even with a perfectly good token. This cost real debugging time;
+`IECENTRAL_SNAPSHOT_URL` on the Convex deployment is set to the `www` host for
+exactly this reason.
+
+### Verified live, 2026-07-31
+
+| request | result |
+|---|---|
+| no token | **401** |
+| wrong token | **401** |
+| bad location (`!!`) | **400** |
+| `snapshot?location=W09` authed | **200** — `count: 480`, `excludedNonTires: 5`, `excludedUnits: 4968000` |
+| `search?q=11R22.5` authed | **200** — 40 results |
+| `search` no token | **401** |
+
+The `count: 480` / `excludedNonTires: 5` figures match the measurement exactly,
+confirming the tire filter runs correctly against production data.
+
 ### `GET /api/inventory/snapshot?location=W09`
 
 Streams the S3 cache the same way `app/api/reports/inventory-data/route.ts`

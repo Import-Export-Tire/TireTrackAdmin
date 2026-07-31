@@ -547,12 +547,12 @@ After the deploy, confirm the contract end to end:
 
 ```bash
 # 401 without a token
-curl -s -o /dev/null -w "%{http_code}\n" -L "https://iecentral.com/api/inventory/snapshot?location=W09"
+curl -s -o /dev/null -w "%{http_code}\n" -L "https://www.iecentral.com/api/inventory/snapshot?location=W09"
 # expect 401
 
 # 200 with it, and the measured shape
 curl -s -L -H "Authorization: Bearer $TOKEN" \
-  "https://iecentral.com/api/inventory/snapshot?location=W09" \
+  "https://www.iecentral.com/api/inventory/snapshot?location=W09" \
   | python3 -c "import json,sys;d=json.load(sys.stdin);print({k:d[k] for k in ('location','fileDate','count','excludedNonTires','excludedUnits')})"
 # expect count == 480, excludedNonTires == 5, excludedUnits ≈ 4968000
 ```
@@ -1912,12 +1912,12 @@ Expected: `SYNCED`.
 
 - [ ] **Step 8: Set the Convex environment variables and deploy**
 
-`IECENTRAL_SNAPSHOT_URL` (e.g. `https://iecentral.com`) and `IECENTRAL_SNAPSHOT_TOKEN` must exist on the **Convex** deployment, not just in Vercel. Ask the user for the deploy key, then:
+`IECENTRAL_SNAPSHOT_URL` (**`https://www.iecentral.com`** — the www host, see below) and `IECENTRAL_SNAPSHOT_TOKEN` must exist on the **Convex** deployment, not just in Vercel. Ask the user for the deploy key, then:
 
 ```bash
 cd ~/TireTrackAdmin
 export CONVEX_DEPLOY_KEY='<wary-squirrel-295 key from the user>'
-npx convex env set IECENTRAL_SNAPSHOT_URL https://iecentral.com
+npx convex env set IECENTRAL_SNAPSHOT_URL https://www.iecentral.com
 npx convex env set IECENTRAL_SNAPSHOT_TOKEN '<token from Task 2>'
 npx convex deploy -y
 ```
