@@ -320,4 +320,108 @@ export default defineSchema({
   }).index("by_user", ["userId"])
     .index("by_warehouse", ["warehouseCode"])
     .index("by_user_warehouse", ["userId", "warehouseCode"]),
+
+  // ==========================================================================
+  // Inventory Count — physical tire count vs a frozen IECentral baseline.
+  // Reports only; nothing is written back to IECentral or JMK.
+  // W09 is the only location enabled at launch, but every table is keyed on a
+  // location code — see convex/wms_count_locations.ts.
+  // ==========================================================================
+
+  wms_count_batches: defineTable({
+    warehouseCode: v.string(),
+    status: v.union(v.literal("open"), v.literal("closed")),
+    // Stringified id from EITHER users or adminUsers — batches are opened from
+    // the scanner and from Admin. Mirrors wms_transactions.performedBy.
+    openedBy: v.string(),
+    openedByName: v.string(),
+    openedAt: v.number(),
+    closedBy: v.optional(v.string()),
+    closedByName: v.optional(v.string()),
+    closedAt: v.optional(v.number()),
+    baselineStatus: v.union(
+      v.literal("pending"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    baselineError: v.optional(v.string()),
+    baselineFileDate: v.optional(v.string()),      // OEIVAL fileDate — self-describing report
+    baselineGeneratedAt: v.optional(v.string()),
+    baselineItemCount: v.optional(v.number()),
+    baselineUnitCount: v.optional(v.number()),
+    baselineExcludedNonTires: v.optional(v.number()),
+    baselineExcludedUnits: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  }).index("by_warehouse_status", ["warehouseCode", "status"])
+    .index("by_warehouse_openedAt", ["warehouseCode", "openedAt"]),
+
+  // Immutable once baselineStatus flips to "ready" — this is what makes a
+  // report run months later reproduce exactly what it said on the day.
+  wms_count_baseline: defineTable({
+    batchId: v.id("wms_count_batches"),
+    itemId: v.string(),
+    qtyOnHand: v.number(),
+    brand: v.optional(v.string()),
+    model: v.optional(v.string()),
+    size: v.optional(v.string()),
+    mpn: v.optional(v.string()),
+  }).index("by_batch", ["batchId"])
+    .index("by_batch_item", ["batchId", "itemId"]),
+
+  // One row per scan event — the audit trail. Undo is a soft void, never a
+  // delete: a miscount that vanishes is a miscount nobody can explain later.
+  wms_count_scans: defineTable({
+    batchId: v.id("wms_count_batches"),
+    warehouseCode: v.string(),
+    rawBarcode: v.string(),
+    upc: v.optional(v.string()),
+    itemId: v.optional(v.string()),        // absent = unmatched
+    quantity: v.number(),
+    matchSource: v.union(
+      v.literal("upc"),
+      v.literal("manual-search"),
+      v.literal("resolved"),
+      v.literal("unmatched"),
+    ),
+    brand: v.optional(v.string()),
+    model: v.optional(v.string()),
+    size: v.optional(v.string()),
+    scannedBy: v.string(),
+    scannedByName: v.string(),
+    scannedAt: v.number(),
+    voided: v.optional(v.boolean()),
+    voidedBy: v.optional(v.string()),
+    voidedAt: v.optional(v.number()),
+  }).index("by_batch_scannedAt", ["batchId", "scannedAt"])
+    .index("by_batch_item", ["batchId", "itemId"])
+    .index("by_batch_upc", ["batchId", "upc"]),
+
+  // Who may count, and WHERE. Deliberately separate from wms_user_assignments:
+  // that table gates the Chestnut Ridge WMS pilot, and counting at a retail
+  // store has nothing to do with warehouse management. The `inventory` role says
+  // a person counts; this says which locations.
+  wms_count_assignments: defineTable({
+    userId: v.id("users"),
+    locationCode: v.string(),
+    assignedAt: v.number(),
+    assignedBy: v.string(),
+  }).index("by_user", ["userId"])
+    .index("by_location", ["locationCode"])
+    .index("by_user_location", ["userId", "locationCode"]),
+
+  // Rollup maintained in the same transaction as each scan, so reports never
+  // collect() thousands of raw scan rows. Exactly one of itemId / upc is set:
+  // matched totals key on itemId, unmatched on upc. Deliberately not an
+  // empty-string sentinel, which is one grouping typo away from merging every
+  // unmatched UPC into a single phantom item.
+  wms_count_totals: defineTable({
+    batchId: v.id("wms_count_batches"),
+    itemId: v.optional(v.string()),
+    upc: v.optional(v.string()),
+    countedQty: v.number(),
+    scanCount: v.number(),
+    lastScannedAt: v.number(),
+  }).index("by_batch", ["batchId"])
+    .index("by_batch_item", ["batchId", "itemId"])
+    .index("by_batch_upc", ["batchId", "upc"]),
 });
