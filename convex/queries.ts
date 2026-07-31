@@ -1857,9 +1857,28 @@ export const getPayPeriodBonusSummary = query({
 
 // Return a (signed, 1-hour) URL for a damage image given its storage ID.
 // Returns null if the ID is missing or no longer in storage.
-export const getDamageImageUrl = query({
-  args: { storageId: v.id("_storage") },
+/**
+ * All condition photo URLs for a return item, ordered, legacy photo last.
+ * A null url means the blob is gone; callers render a placeholder rather
+ * than a broken image.
+ */
+export const getConditionImageUrls = query({
+  args: { itemId: v.id("returnItems") },
   handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId);
+    const item = await ctx.db.get(args.itemId);
+    if (!item) return [];
+    const arrayIds = item.conditionImageStorageIds ?? [];
+    const ids = [
+      ...arrayIds,
+      ...(item.damageImageStorageId && !arrayIds.includes(item.damageImageStorageId)
+        ? [item.damageImageStorageId]
+        : []),
+    ];
+    return await Promise.all(
+      ids.map(async (storageId) => ({
+        storageId,
+        url: await ctx.storage.getUrl(storageId),
+      }))
+    );
   },
 });
