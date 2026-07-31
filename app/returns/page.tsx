@@ -2,10 +2,44 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Protected } from "../protected";
 import { useAuth } from "../auth-context";
 import Link from "next/link";
+import { resolveConditionPhotoIds } from "../../lib/conditionPhotos";
+
+/** Status icons for one return item row. Shared by the batch and search tables. */
+function ItemStatusIcons({
+  item,
+  statusBadge,
+}: {
+  item: any;
+  statusBadge: React.ReactNode;
+}) {
+  const photoCount = resolveConditionPhotoIds(item).length;
+  return (
+    <div className="flex items-center gap-1.5">
+      {statusBadge}
+      {item.isMisship && (
+        <span title="Misship" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-orange/15 text-ios-orange text-xs">⚠</span>
+      )}
+      {item.isUsed && (
+        <span title="Used" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-orange/15 text-ios-orange text-xs">♻</span>
+      )}
+      {item.isDamaged && (
+        <span title="Damaged" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-red/15 text-ios-red text-xs">⚠</span>
+      )}
+      {photoCount > 0 && (
+        <span
+          title={`${photoCount} condition photo${photoCount === 1 ? "" : "s"}`}
+          className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-ios-blue/15 text-ios-blue text-[10px] font-semibold"
+        >
+          ▣ {photoCount}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function ReturnsDashboard() {
   const { canEdit, admin } = useAuth();
@@ -15,7 +49,10 @@ function ReturnsDashboard() {
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState<string | null>(null);
   const [renamingBatchId, setRenamingBatchId] = useState<string | null>(null);
   const [renameText, setRenameText] = useState("");
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  // Gallery lightbox: a list of urls plus the index being shown. A bare
+  // string url still works via openImage() below for the single label image.
+  const [gallery, setGallery] = useState<{ urls: string[]; index: number } | null>(null);
+  const openImage = (url: string) => setGallery({ urls: [url], index: 0 });
   const [viewingItem, setViewingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchStatusFilter, setSearchStatusFilter] = useState<string>("all");
@@ -36,12 +73,33 @@ function ReturnsDashboard() {
       : "skip"
   );
 
-  const damageImageUrl = useQuery(
-    api.queries.getDamageImageUrl,
-    viewingItem?.damageImageStorageId
-      ? { storageId: viewingItem.damageImageStorageId as any }
-      : "skip",
+  const conditionPhotos = useQuery(
+    api.queries.getConditionImageUrls,
+    viewingItem?._id ? { itemId: viewingItem._id as any } : "skip",
   );
+
+  // Urls the lightbox can actually show, computed once. A null url means the
+  // blob is gone; those render as placeholders and are excluded from paging.
+  const viewableUrls: string[] = (conditionPhotos ?? [])
+    .map((p: any) => p.url as string | null)
+    .filter((u): u is string => !!u);
+
+  // Depend on a primitive, not on `gallery` itself: keying this effect to the
+  // object would tear down and re-add the listener on every arrow press.
+  // Functional setState inside means the handler never needs the current index.
+  const galleryOpen = gallery !== null;
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGallery(null);
+      if (e.key === "ArrowLeft")
+        setGallery((g) => (g ? { ...g, index: (g.index - 1 + g.urls.length) % g.urls.length } : g));
+      if (e.key === "ArrowRight")
+        setGallery((g) => (g ? { ...g, index: (g.index + 1) % g.urls.length } : g));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [galleryOpen]);
 
   const updateItemStatus = useMutation(api.mutations.updateReturnItemStatus);
   const updateItem = useMutation(api.mutations.updateReturnItem);
@@ -385,15 +443,7 @@ function ReturnsDashboard() {
                           </td>
                           <td className="px-4 py-3 text-center text-[#1c1c1e]">{item.quantity || 1}</td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5">
-                              {getStatusBadge(item.status)}
-                              {item.isMisship && (
-                                <span title="Misship" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-orange/15 text-ios-orange text-xs">⚠</span>
-                              )}
-                              {item.isDamaged && (
-                                <span title="Damaged" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-red/15 text-ios-red text-xs">⚠</span>
-                              )}
-                            </div>
+                            <ItemStatusIcons item={item} statusBadge={getStatusBadge(item.status)} />
                           </td>
                           <td className="px-4 py-3 text-ios-gray1 text-sm">{item.locationName}</td>
                           <td className="px-4 py-3 text-ios-gray1 text-xs">{formatDate(item.scannedAt)}</td>
@@ -643,7 +693,7 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3">
                             {item.imageUrl && item.imageUrl.startsWith("http") ? (
                               <button
-                                onClick={() => setViewingImage(item.imageUrl!)}
+                                onClick={() => openImage(item.imageUrl!)}
                                 className="w-12 h-12 rounded-lg overflow-hidden border border-ios-gray4 hover:border-ios-blue transition-colors relative group"
                               >
                                 <img
@@ -709,15 +759,7 @@ function ReturnsDashboard() {
                           <td className="px-4 py-3 text-center font-medium">{item.quantity || 1}</td>
                           <td className="px-4 py-3">
                             <div>
-                              <div className="flex items-center gap-1.5">
-                                {getStatusBadge(item.status)}
-                                {item.isMisship && (
-                                  <span title="Misship" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-orange/15 text-ios-orange text-xs">⚠</span>
-                                )}
-                                {item.isDamaged && (
-                                  <span title="Damaged" className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-ios-red/15 text-ios-red text-xs">⚠</span>
-                                )}
-                              </div>
+                              <ItemStatusIcons item={item} statusBadge={getStatusBadge(item.status)} />
                               {item.notes && (
                                 <div className="text-xs text-ios-gray1 mt-1 max-w-[150px] truncate" title={item.notes}>
                                   {item.notes}
@@ -873,7 +915,7 @@ function ReturnsDashboard() {
                 <div>
                   <label className="block text-ios-gray1 text-xs uppercase tracking-wider font-medium mb-2">Captured Image</label>
                   <button
-                    onClick={() => setViewingImage(viewingItem.imageUrl)}
+                    onClick={() => openImage(viewingItem.imageUrl)}
                     className="block w-full rounded-2xl overflow-hidden shadow-ios hover:border-ios-blue transition-colors bg-white"
                   >
                     <img
@@ -901,36 +943,93 @@ function ReturnsDashboard() {
                 )}
               </div>
 
-              {/* Damage */}
-              {viewingItem.isDamaged && (
-                <div className="p-4 bg-ios-red/10 border border-ios-red/40 rounded-xl">
-                  <h3 className="text-ios-red font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <span>⚠</span> Damaged
+              {/* Condition */}
+              {(viewingItem.isDamaged || viewingItem.isUsed) && (
+                <div
+                  className={`p-4 rounded-xl border ${
+                    viewingItem.isDamaged
+                      ? "bg-ios-red/10 border-ios-red/40"
+                      : "bg-ios-orange/10 border-ios-orange/40"
+                  }`}
+                >
+                  <h3
+                    className={`font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2 ${
+                      viewingItem.isDamaged ? "text-ios-red" : "text-ios-orange"
+                    }`}
+                  >
+                    {viewingItem.isUsed && viewingItem.isDamaged
+                      ? "♻ ⚠ Used + Damaged"
+                      : viewingItem.isDamaged
+                        ? "⚠ Damaged"
+                        : "♻ Used"}
                   </h3>
-                  {viewingItem.damageNotes && (
+
+                  {viewingItem.isUsed && (
                     <div className="mb-3">
-                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-1">Notes</div>
-                      <div className="text-[#1c1c1e] whitespace-pre-wrap">{viewingItem.damageNotes}</div>
-                    </div>
-                  )}
-                  {damageImageUrl && (
-                    <div className="mb-3">
-                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-1">Photo</div>
-                      <button onClick={() => setViewingImage(damageImageUrl)}>
-                        <img
-                          src={damageImageUrl}
-                          alt="Damage"
-                          className="w-32 h-32 rounded-lg object-cover border border-ios-red/40 hover:border-ios-red transition-colors"
-                        />
-                      </button>
-                    </div>
-                  )}
-                  {viewingItem.damageMarkedAt && (
-                    <div className="text-xs text-ios-gray1">
-                      Marked at {new Date(viewingItem.damageMarkedAt).toLocaleString()}
-                      {viewingItem.damageMarkedBy && (
-                        <> by user <span className="font-mono">{String(viewingItem.damageMarkedBy).slice(0, 8)}…</span></>
+                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-1">
+                        Used notes
+                      </div>
+                      <div className="text-[#1c1c1e] whitespace-pre-wrap">
+                        {viewingItem.usedNotes || <span className="text-ios-gray1">—</span>}
+                      </div>
+                      {viewingItem.usedMarkedAt && (
+                        <div className="text-xs text-ios-gray1 mt-1">
+                          Marked at {new Date(viewingItem.usedMarkedAt).toLocaleString()}
+                        </div>
                       )}
+                    </div>
+                  )}
+
+                  {viewingItem.isDamaged && (
+                    <div className="mb-3">
+                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-1">
+                        Damage notes
+                      </div>
+                      <div className="text-[#1c1c1e] whitespace-pre-wrap">
+                        {viewingItem.damageNotes || <span className="text-ios-gray1">—</span>}
+                      </div>
+                      {viewingItem.damageMarkedAt && (
+                        <div className="text-xs text-ios-gray1 mt-1">
+                          Marked at {new Date(viewingItem.damageMarkedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {conditionPhotos && conditionPhotos.length > 0 && (
+                    <div>
+                      <div className="text-ios-gray1 text-xs uppercase tracking-wider mb-2">
+                        Photos ({conditionPhotos.length})
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {conditionPhotos.map((p: any, i: number) =>
+                          p.url ? (
+                            <button
+                              key={p.storageId}
+                              onClick={() =>
+                                setGallery({
+                                  urls: viewableUrls,
+                                  index: viewableUrls.indexOf(p.url as string),
+                                })
+                              }
+                            >
+                              <img
+                                src={p.url}
+                                alt={`Condition ${i + 1}`}
+                                className="w-24 h-24 rounded-lg object-cover border border-ios-gray5 hover:border-ios-blue transition-colors"
+                              />
+                            </button>
+                          ) : (
+                            <div
+                              key={p.storageId}
+                              title="Photo unavailable"
+                              className="w-24 h-24 rounded-lg bg-ios-gray5 flex items-center justify-center text-ios-gray1 text-xs"
+                            >
+                              unavailable
+                            </div>
+                          ),
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1030,28 +1129,65 @@ function ReturnsDashboard() {
       )}
 
       {/* Image Viewer Modal */}
-      {viewingImage && (
+      {gallery && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setViewingImage(null)}
+          onClick={() => setGallery(null)}
         >
           <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={() => setViewingImage(null)}
+              onClick={() => setGallery(null)}
               className="absolute -top-12 right-0 p-2 bg-white hover:bg-ios-gray5 rounded-lg transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+
+            {gallery.urls.length > 1 && (
+              <div className="absolute -top-12 left-0 px-3 py-2 bg-white rounded-lg text-sm font-medium">
+                {gallery.index + 1} / {gallery.urls.length}
+              </div>
+            )}
+
             <img
-              src={viewingImage}
-              alt="Return label"
+              src={gallery.urls[gallery.index]}
+              alt="Return photo"
               className="w-full h-auto max-h-[85vh] object-contain rounded-xl"
             />
+
+            {gallery.urls.length > 1 && (
+              <>
+                <button
+                  onClick={() =>
+                    setGallery((g) =>
+                      g ? { ...g, index: (g.index - 1 + g.urls.length) % g.urls.length } : g,
+                    )
+                  }
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 hover:bg-white rounded-full transition-colors"
+                  aria-label="Previous photo"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() =>
+                    setGallery((g) => (g ? { ...g, index: (g.index + 1) % g.urls.length } : g))
+                  }
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 hover:bg-white rounded-full transition-colors"
+                  aria-label="Next photo"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+
             <div className="absolute bottom-4 right-4">
               <a
-                href={viewingImage}
+                href={gallery.urls[gallery.index]}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 bg-white hover:bg-ios-gray5 backdrop-blur rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
@@ -1083,7 +1219,7 @@ function ReturnsDashboard() {
                 <div>
                   <label className="block text-ios-gray1 text-sm mb-2">Label Image</label>
                   <button
-                    onClick={() => setViewingImage(editingItem.imageUrl)}
+                    onClick={() => openImage(editingItem.imageUrl)}
                     className="w-full h-32 rounded-2xl overflow-hidden shadow-ios hover:border-ios-blue transition-colors"
                   >
                     <img

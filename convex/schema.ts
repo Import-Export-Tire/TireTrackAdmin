@@ -166,6 +166,15 @@ export default defineSchema({
     damageImageStorageId: v.optional(v.id("_storage")),
     damageMarkedBy: v.optional(v.id("users")),
     damageMarkedAt: v.optional(v.number()),
+    // Used condition — independent of isDamaged. An item can be both.
+    isUsed: v.optional(v.boolean()),
+    usedNotes: v.optional(v.string()),
+    usedMarkedBy: v.optional(v.id("users")),
+    usedMarkedAt: v.optional(v.number()),
+    // Multiple condition photos, shared by the used and damaged flags.
+    // Supersedes damageImageStorageId above, which is retained read-only so
+    // existing records keep rendering without a backfill. Cap 6.
+    conditionImageStorageIds: v.optional(v.array(v.id("_storage"))),
     scannedBy: v.id("users"),
     scannedAt: v.number(),
     status: v.string(),

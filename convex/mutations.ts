@@ -815,11 +815,18 @@ export const updateReturnItem = mutation({
     isMisship: v.optional(v.boolean()),
     status: v.optional(v.union(v.literal("pending"), v.literal("processed"), v.literal("not_processed"))),
     notes: v.optional(v.string()),
-    // Damage fields
+    // Condition fields — used and damaged are independent
     isDamaged: v.optional(v.boolean()),
     damageNotes: v.optional(v.string()),
+    isUsed: v.optional(v.boolean()),
+    usedNotes: v.optional(v.string()),
+    conditionImageStorageIds: v.optional(v.array(v.id("_storage"))),
+    // DEPRECATED, still accepted: scanner APKs already installed in the field
+    // send this until they take an OTA update. Folded into
+    // conditionImageStorageIds below rather than written to the legacy field.
     damageImageStorageId: v.optional(v.id("_storage")),
-    // Acting user — required when isDamaged is set to true so we can record damageMarkedBy
+    // Acting user — required when either condition flag is set to true so we
+    // can record damageMarkedBy / usedMarkedBy
     actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
@@ -833,38 +840,107 @@ export const updateReturnItem = mutation({
       Object.entries(rest).filter(([_, v]) => v !== undefined)
     );
 
-    // ----- Damage transition logic -----
-    const damageDetailProvided =
-      patch.damageNotes !== undefined || patch.damageImageStorageId !== undefined;
-    const willBeDamaged =
-      patch.isDamaged === true || (patch.isDamaged === undefined && item.isDamaged === true);
+    // ----- Condition transition logic -----
+    // isUsed and isDamaged are independent. Photos are shared by both, so
+    // they survive as long as EITHER flag is set and are destroyed only when
+    // both are off.
+    const CONDITION_PHOTO_CAP = 6;
 
-    if (damageDetailProvided && !willBeDamaged) {
+    // Back-compat: an old scanner build sends a single damageImageStorageId.
+    // Fold it into the array so its photo is not lost, then drop the legacy
+    // key from the patch so we never write that field again.
+    const legacySingleId = patch.damageImageStorageId as string | undefined;
+    delete patch.damageImageStorageId;
+    if (legacySingleId) {
+      const current = (patch.conditionImageStorageIds as string[] | undefined) ??
+        item.conditionImageStorageIds ??
+        [];
+      if (!current.includes(legacySingleId)) {
+        patch.conditionImageStorageIds = [...current, legacySingleId].slice(
+          0,
+          CONDITION_PHOTO_CAP
+        );
+      } else {
+        patch.conditionImageStorageIds = current;
+      }
+    }
+
+    if (
+      patch.conditionImageStorageIds !== undefined &&
+      (patch.conditionImageStorageIds as unknown[]).length > CONDITION_PHOTO_CAP
+    ) {
+      throw new Error("Photo limit reached");
+    }
+
+    const conditionDetailProvided =
+      patch.damageNotes !== undefined ||
+      patch.usedNotes !== undefined ||
+      patch.conditionImageStorageIds !== undefined;
+
+    const willBeDamaged =
+      patch.isDamaged === true ||
+      (patch.isDamaged === undefined && item.isDamaged === true);
+    const willBeUsed =
+      patch.isUsed === true || (patch.isUsed === undefined && item.isUsed === true);
+    const willHaveCondition = willBeDamaged || willBeUsed;
+
+    if (conditionDetailProvided && !willHaveCondition) {
+      // Message keeps the legacy prefix verbatim: outbox v1 in already-installed
+      // scanner builds detects a terminal failure by matching that substring.
       throw new Error(
-        "Cannot set damageNotes or damageImageStorageId without isDamaged: true"
+        "Cannot set damageNotes or damageImageStorageId without isDamaged: true — set isUsed or isDamaged first"
       );
     }
 
+    // Audit stamps — each flag stamps its own pair when turned on or edited.
     if (patch.isDamaged === true) {
-      // off→on OR on→on with new data — refresh audit fields
       if (!actingUserId) {
         throw new Error("actingUserId is required when marking an item as damaged");
       }
       patch.damageMarkedBy = actingUserId;
       patch.damageMarkedAt = Date.now();
     } else if (patch.isDamaged === false) {
-      // on→off — clear all 4 damage detail/audit fields
       patch.damageNotes = undefined;
-      patch.damageImageStorageId = undefined;
       patch.damageMarkedBy = undefined;
       patch.damageMarkedAt = undefined;
-    } else if (damageDetailProvided && willBeDamaged) {
-      // on→on (editing details on already-damaged item) — refresh audit
+    }
+
+    if (patch.isUsed === true) {
       if (!actingUserId) {
-        throw new Error("actingUserId is required when editing damage details");
+        throw new Error("actingUserId is required when marking an item as used");
       }
-      patch.damageMarkedBy = actingUserId;
-      patch.damageMarkedAt = Date.now();
+      patch.usedMarkedBy = actingUserId;
+      patch.usedMarkedAt = Date.now();
+    } else if (patch.isUsed === false) {
+      patch.usedNotes = undefined;
+      patch.usedMarkedBy = undefined;
+      patch.usedMarkedAt = undefined;
+    }
+
+    if (conditionDetailProvided && willHaveCondition) {
+      if (!actingUserId) {
+        throw new Error("actingUserId is required when editing condition details");
+      }
+      if (willBeDamaged) patch.damageMarkedAt = Date.now();
+      if (willBeUsed) patch.usedMarkedAt = Date.now();
+    }
+
+    // Both flags off — destroy the shared photos. This is the only path that
+    // deletes blobs, and it must run AFTER the flags are resolved above.
+    if (!willHaveCondition) {
+      const existingIds = [
+        ...(item.conditionImageStorageIds ?? []),
+        ...(item.damageImageStorageId ? [item.damageImageStorageId] : []),
+      ];
+      for (const sid of existingIds) {
+        try {
+          await ctx.storage.delete(sid);
+        } catch {
+          // Blob already gone — the field clear below is what matters.
+        }
+      }
+      patch.conditionImageStorageIds = undefined;
+      patch.damageImageStorageId = undefined;
     }
 
     // ----- Existing batch itemCount sync -----
@@ -883,6 +959,84 @@ export const updateReturnItem = mutation({
 
     await ctx.db.patch(itemId, patch);
     return { success: true };
+  },
+});
+
+/**
+ * Push one photo onto a return item's condition photo list.
+ *
+ * Append, not overwrite — this is what makes the offline outbox safe. A retry
+ * that wrote the whole array would drop photos taken after it was queued.
+ * Idempotent, so a retry whose response was lost cannot duplicate a photo.
+ */
+export const appendConditionImage = mutation({
+  args: {
+    itemId: v.id("returnItems"),
+    storageId: v.id("_storage"),
+    actingUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error("Return item not found");
+
+    // The outbox treats this message as terminal: the user cleared the flags
+    // after queuing, so their intent wins and the entry is dropped.
+    if (item.isDamaged !== true && item.isUsed !== true) {
+      // Message keeps the legacy prefix verbatim: outbox v1 in already-installed
+      // scanner builds detects a terminal failure by matching that substring.
+      throw new Error(
+        "Cannot set damageNotes or damageImageStorageId without isDamaged: true — set isUsed or isDamaged first"
+      );
+    }
+
+    const existing = item.conditionImageStorageIds ?? [];
+    if (existing.includes(args.storageId)) {
+      return { success: true as const, photoCount: existing.length };
+    }
+    if (existing.length >= 6) throw new Error("Photo limit reached");
+
+    const next = [...existing, args.storageId];
+    await ctx.db.patch(args.itemId, {
+      conditionImageStorageIds: next,
+      ...(item.isDamaged === true ? { damageMarkedAt: Date.now() } : {}),
+      ...(item.isUsed === true ? { usedMarkedAt: Date.now() } : {}),
+    });
+    return { success: true as const, photoCount: next.length };
+  },
+});
+
+/** Remove one photo and delete its blob. */
+export const removeConditionImage = mutation({
+  args: {
+    itemId: v.id("returnItems"),
+    storageId: v.id("_storage"),
+    actingUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error("Return item not found");
+
+    const next = (item.conditionImageStorageIds ?? []).filter(
+      (id) => id !== args.storageId
+    );
+    const patch: Record<string, unknown> = { conditionImageStorageIds: next };
+
+    // Removing the legacy photo clears the read-only field rather than the array.
+    if (item.damageImageStorageId === args.storageId) {
+      patch.damageImageStorageId = undefined;
+    }
+
+    await ctx.db.patch(args.itemId, patch);
+    try {
+      await ctx.storage.delete(args.storageId);
+    } catch {
+      // Already gone.
+    }
+    const legacyRemaining =
+      item.damageImageStorageId && item.damageImageStorageId !== args.storageId
+        ? 1
+        : 0;
+    return { success: true as const, photoCount: next.length + legacyRemaining };
   },
 });
 

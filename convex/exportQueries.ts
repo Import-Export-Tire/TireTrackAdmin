@@ -1,6 +1,25 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
+/**
+ * Ordered condition photos for a return item — new array first, legacy
+ * damageImageStorageId last.
+ *
+ * Inlined rather than imported from ../lib/conditionPhotos: this directory is
+ * copied verbatim into TireTrackLite by the post-commit sync hook, and Lite has
+ * no top-level lib/, so the import compiles in Admin and breaks Lite. Keep this
+ * in step with lib/conditionPhotos.ts, which is the tested copy.
+ */
+function resolveConditionPhotoIds(item: {
+  conditionImageStorageIds?: string[] | null;
+  damageImageStorageId?: string | null;
+}): string[] {
+  const ids = (item.conditionImageStorageIds ?? []).filter(Boolean);
+  const legacy = item.damageImageStorageId;
+  if (legacy && !ids.includes(legacy)) ids.push(legacy);
+  return ids;
+}
+
 // Get return items for export (with optional filters)
 export const getReturnItemsForExport = query({
   args: {
@@ -71,6 +90,12 @@ export const getReturnItemsForExport = query({
         tireSize: item.tireSize || "",
         tirePartNumber: item.tirePartNumber || "",
         quantity: item.quantity || 1,
+        isMisship: item.isMisship || false,
+        isDamaged: item.isDamaged || false,
+        damageNotes: item.damageNotes || "",
+        isUsed: item.isUsed || false,
+        usedNotes: item.usedNotes || "",
+        photoCount: resolveConditionPhotoIds(item).length,
         status: item.status,
         notes: item.notes || "",
         scannedByName: scanner?.name || "Unknown",
