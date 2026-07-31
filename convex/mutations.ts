@@ -821,6 +821,10 @@ export const updateReturnItem = mutation({
     isUsed: v.optional(v.boolean()),
     usedNotes: v.optional(v.string()),
     conditionImageStorageIds: v.optional(v.array(v.id("_storage"))),
+    // DEPRECATED, still accepted: scanner APKs already installed in the field
+    // send this until they take an OTA update. Folded into
+    // conditionImageStorageIds below rather than written to the legacy field.
+    damageImageStorageId: v.optional(v.id("_storage")),
     // Acting user — required when either condition flag is set to true so we
     // can record damageMarkedBy / usedMarkedBy
     actingUserId: v.optional(v.id("users")),
@@ -842,6 +846,25 @@ export const updateReturnItem = mutation({
     // both are off.
     const CONDITION_PHOTO_CAP = 6;
 
+    // Back-compat: an old scanner build sends a single damageImageStorageId.
+    // Fold it into the array so its photo is not lost, then drop the legacy
+    // key from the patch so we never write that field again.
+    const legacySingleId = patch.damageImageStorageId as string | undefined;
+    delete patch.damageImageStorageId;
+    if (legacySingleId) {
+      const current = (patch.conditionImageStorageIds as string[] | undefined) ??
+        item.conditionImageStorageIds ??
+        [];
+      if (!current.includes(legacySingleId)) {
+        patch.conditionImageStorageIds = [...current, legacySingleId].slice(
+          0,
+          CONDITION_PHOTO_CAP
+        );
+      } else {
+        patch.conditionImageStorageIds = current;
+      }
+    }
+
     if (
       patch.conditionImageStorageIds !== undefined &&
       (patch.conditionImageStorageIds as unknown[]).length > CONDITION_PHOTO_CAP
@@ -862,8 +885,10 @@ export const updateReturnItem = mutation({
     const willHaveCondition = willBeDamaged || willBeUsed;
 
     if (conditionDetailProvided && !willHaveCondition) {
+      // Message keeps the legacy prefix verbatim: outbox v1 in already-installed
+      // scanner builds detects a terminal failure by matching that substring.
       throw new Error(
-        "Cannot set condition notes or photos without isUsed or isDamaged"
+        "Cannot set damageNotes or damageImageStorageId without isDamaged: true — set isUsed or isDamaged first"
       );
     }
 
@@ -957,8 +982,10 @@ export const appendConditionImage = mutation({
     // The outbox treats this message as terminal: the user cleared the flags
     // after queuing, so their intent wins and the entry is dropped.
     if (item.isDamaged !== true && item.isUsed !== true) {
+      // Message keeps the legacy prefix verbatim: outbox v1 in already-installed
+      // scanner builds detects a terminal failure by matching that substring.
       throw new Error(
-        "Cannot set condition notes or photos without isUsed or isDamaged"
+        "Cannot set damageNotes or damageImageStorageId without isDamaged: true — set isUsed or isDamaged first"
       );
     }
 

@@ -1858,6 +1858,18 @@ export const getPayPeriodBonusSummary = query({
 // Return a (signed, 1-hour) URL for a damage image given its storage ID.
 // Returns null if the ID is missing or no longer in storage.
 /**
+ * DEPRECATED — kept because the TireTrackAdmin bundle currently deployed to
+ * production is built from main and still calls this. Remove once the branch
+ * carrying getConditionImageUrls is live in production.
+ */
+export const getDamageImageUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+/**
  * All condition photo URLs for a return item, ordered, legacy photo last.
  * A null url means the blob is gone; callers render a placeholder rather
  * than a broken image.
