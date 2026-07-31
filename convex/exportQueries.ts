@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { resolveConditionPhotoIds } from "../lib/conditionPhotos";
 
 // Get return items for export (with optional filters)
 export const getReturnItemsForExport = query({
@@ -71,6 +72,12 @@ export const getReturnItemsForExport = query({
         tireSize: item.tireSize || "",
         tirePartNumber: item.tirePartNumber || "",
         quantity: item.quantity || 1,
+        isMisship: item.isMisship || false,
+        isDamaged: item.isDamaged || false,
+        damageNotes: item.damageNotes || "",
+        isUsed: item.isUsed || false,
+        usedNotes: item.usedNotes || "",
+        photoCount: resolveConditionPhotoIds(item).length,
         status: item.status,
         notes: item.notes || "",
         scannedByName: scanner?.name || "Unknown",
