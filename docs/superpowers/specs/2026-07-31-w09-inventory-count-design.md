@@ -93,8 +93,9 @@ unauthenticated; this design does not widen that surface or depend on it.
 Streams the S3 cache the same way `app/api/reports/inventory-data/route.ts`
 already does (`GetObjectCommand` → `createGunzip` → `readline`), reusing
 `brandCodeToName` from `lib/brandMapping`. Keeps rows for the requested
-`location` where `qtyOnHand !== 0`, aggregating by `itemId` (a location can have
-multiple rows per item).
+`location` where `qtyOnHand !== 0` **and the itemId is not a sentinel** (see
+above). Measured: W09 has exactly one row per itemId, so no aggregation is needed —
+but key by itemId anyway rather than assuming that holds for every location.
 
 Cache field names, confirmed from
 `aws/dunlop-reporter/lambdas/oeival_processor.py`: `location`, `itemId`,
@@ -106,15 +107,20 @@ Response:
 ```json
 {
   "location": "W09",
-  "fileDate": "2026-07-30",
-  "generatedAt": "2026-07-31T04:12:00.000Z",
-  "count": 3184,
+  "fileDate": "2026-07-31T14:45:44+00:00",
+  "generatedAt": "2026-07-31T15:02:00.000Z",
+  "count": 480,
+  "excludedSentinels": 5,
+  "excludedUnits": 4968000,
   "items": [
     { "itemId": "...", "qtyOnHand": 12, "brand": "...",
       "model": "...", "size": "...", "mpn": "..." }
   ]
 }
 ```
+
+`excludedSentinels` / `excludedUnits` exist so the exclusion is auditable from the
+response itself rather than being invisible server-side behaviour.
 
 `maxDuration = 60`. If the cache meta is missing it returns 409 with the same
 "cache hasn't been built yet" explanation the reports route gives, so the
@@ -128,11 +134,57 @@ Token-authed wrapper around the existing `searchTires()` in
 `{ results: TireSearchResult[] }`, capped at 40. Used for the sidewall lookup
 when a scanned UPC is unknown.
 
-**Measure first:** before building the scanner screen, call the snapshot endpoint
-and record the real W09 row count. If in-stock W09 rows are only a few thousand,
-widen the baseline to include `qtyOnHand === 0` rows too and serve the sidewall
-lookup from the local `wms_count_baseline` table — dropping `/api/inventory/search`
-and one network dependency. Report the measured number rather than guessing at it.
+### Measured, 2026-07-31 — settles two open questions
+
+Pulled `location=W09` from the live cache (`IET-oeival (51).csv`,
+`fileDate 2026-07-31T14:45:44Z`):
+
+| | |
+|---|---|
+| W09 catalog rows | **56,107** (one row per itemId) |
+| In stock (`qtyOnHand != 0`) | **485** |
+| — sentinel/pseudo SKUs | **5**, totalling **4,968,000 units** |
+| — **real baseline items** | **480**, totalling **33,320 units** |
+| Real qty min / median / max | 1 / 32 / 1,872 |
+
+**Consequence 1 — the baseline is tiny.** 480 documents per batch. Chunked
+inserts stay in the design as a safety margin, but there is no scale problem
+here.
+
+**Consequence 2 — the sidewall lookup cannot read the local baseline.** Only 480
+of 56,107 W09 items are in stock, and a tire physically on the floor may be any
+catalog item (finding stock the book says is zero is a core purpose of counting).
+So `/api/inventory/search` **is** required. The "drop it if the numbers are small"
+option is dead.
+
+### Sentinel SKUs must be excluded from the baseline
+
+Five JMK pseudo-SKUs hold ~4.97M "units" at W09 — placeholders for dropship,
+adjustment and ship-to-home transactions, not physical tires:
+
+| qtyOnHand | itemId | description |
+|---|---|---|
+| 999,000 | `TIRE/U` | USED - |
+| 999,000 | `STH` | SHIP TO HOME |
+| 990,000 | `TIRE` | = |
+| 990,000 | `LTADJ` | ADJUSTMENT |
+| 990,000 | `NGT` | NGT DROPSHIP |
+
+Left in, the discrepancy report opens with five shorts of ~990,000 units each and
+is worthless.
+
+**Exclude by explicit itemId list, plus a `qtyOnHand >= 100_000` threshold as a
+backstop for sentinels added later.** Do **not** exclude on blank `dclass`, the
+obvious-looking rule: nine of the in-stock rows with blank `dclass` are **real RBP
+truck tires** (11R22.5, 295/75R22.5, 225/70R19.5 …) and would be silently dropped
+from the count. Verified: after excluding the five by itemId, nothing else at W09
+exceeds the threshold.
+
+Exclusion list (`TIRE`, `TIRE/U`, `LTADJ`, `STH`, `NGT`, and `TEST%` items, which
+are all `qtyOnHand 0` today) lives in one exported constant so it is greppable and
+amendable. **Excluded rows are reported, not silently dropped** — the snapshot
+response and the report header both state how many rows were excluded and why, so
+a future sentinel showing up as a real variance is visible rather than mysterious.
 
 ## Access control
 
