@@ -89,6 +89,7 @@ function Dashboard() {
             <PillButton href="/wms/floor-builder" variant="secondary">Floor builder</PillButton>
             <PillButton href="/wms/inventory" variant="secondary">Inventory</PillButton>
             <PillButton href="/wms/transactions" variant="secondary">Activity</PillButton>
+            <PillButton href="/wms/counts" variant="secondary">Counts</PillButton>
           </div>
         }
       />
