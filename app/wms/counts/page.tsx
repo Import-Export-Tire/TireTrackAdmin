@@ -26,6 +26,11 @@ function CountsDashboard() {
     api.wms_count.getOpenCountBatch,
     active ? { warehouseCode: active } : "skip",
   );
+  // Live detail for the open batch drives the who's-counting panel below.
+  const openDetail = useQuery(
+    api.wms_count.getCountBatch,
+    openBatch?._id ? { batchId: openBatch._id } : "skip",
+  );
   const openCountBatch = useAction(api.wms_count.openCountBatch);
   const closeCountBatch = useMutation(api.wms_count.closeCountBatch);
   const deleteCountBatch = useMutation(api.wms_count.deleteCountBatch);
@@ -89,6 +94,62 @@ function CountsDashboard() {
           </button>
         )}
       </div>
+
+      {/* Live per-counter view. Everyone scans into ONE batch so the location
+          gets a single variance figure; this is how you see who is doing what
+          without splitting the baseline. */}
+      {openBatch && openDetail && (
+        <div className="bg-white rounded-2xl shadow-ios p-5 mb-5">
+          <div className="flex items-baseline justify-between flex-wrap gap-2">
+            <h2 className="font-semibold text-[#1c1c1e]">
+              Counting now — live
+            </h2>
+            <div className="text-sm text-ios-gray1">
+              {openDetail.countedUnits.toLocaleString()} tires ·{" "}
+              {openDetail.countedItems.toLocaleString()} items ·{" "}
+              {openDetail.scanCount.toLocaleString()} scans
+              {openDetail.voidedCount
+                ? ` · ${openDetail.voidedCount} voided`
+                : ""}
+              {openDetail.unmatchedUpcs
+                ? ` · ${openDetail.unmatchedUpcs} unmatched UPCs`
+                : ""}
+            </div>
+          </div>
+          {openDetail.counters.length === 0 ? (
+            <p className="text-ios-gray1 text-sm mt-2">
+              Batch is open but nobody has scanned yet.
+            </p>
+          ) : (
+            <table className="w-full text-sm mt-3">
+              <thead className="text-ios-gray1 text-left">
+                <tr>
+                  <th className="py-1 font-semibold">Counter</th>
+                  <th className="py-1 font-semibold text-right">Tires</th>
+                  <th className="py-1 font-semibold text-right">Scans</th>
+                  <th className="py-1 font-semibold text-right">Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {openDetail.counters.map((c) => (
+                  <tr key={c.by} className="border-t border-ios-gray5">
+                    <td className="py-2 text-[#1c1c1e]">{c.name}</td>
+                    <td className="py-2 text-right text-[#1c1c1e] font-semibold">
+                      {c.units.toLocaleString()}
+                    </td>
+                    <td className="py-2 text-right text-ios-gray1">{c.scans}</td>
+                    <td className="py-2 text-right text-ios-gray1">
+                      {openDetail.countedUnits > 0
+                        ? `${Math.round((c.units / openDetail.countedUnits) * 100)}%`
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {batches === undefined ? (
         <div className="text-ios-gray1">Loading…</div>
