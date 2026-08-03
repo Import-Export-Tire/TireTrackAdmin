@@ -372,6 +372,7 @@ export const recordCountScan = mutation({
       throw new Error("Quantity must be a whole number between 1 and 999");
     }
 
+    const raw = String(args.rawBarcode ?? "").trim();
     const upc = normalizeUpc(args.rawBarcode);
     let itemId: string | undefined;
     let matchSource: "upc" | "manual-search" | "unmatched" = "unmatched";
@@ -379,33 +380,117 @@ export const recordCountScan = mutation({
     let model: string | undefined;
     let size: string | undefined;
 
+    /**
+     * Resolve the scan to an item in THIS BATCH'S BOOK.
+     *
+     * tireUPCs.inventoryNumber does NOT hold the OEIVAL itemId — measured 0 of
+     * 3,873 matches against itemId versus ~25% against mfgItemId. It holds the
+     * manufacturer part number. So a UPC gives us a part number, and that part
+     * number is resolved against the baseline by itemId first, then by mpn.
+     *
+     * Resolving against the BASELINE rather than the whole catalog is deliberate:
+     * catalog-wide, 21,119 mfgItemIds map to more than one itemId (variant
+     * suffixes like BS011457 vs "BS011457["), but within the in-stock set every
+     * mfgItemId is unique — verified 0 collisions across W09's 480. So this
+     * cannot silently attach a scan to the wrong tire, and a match is always to
+     * something the book says is actually in stock.
+     */
+    const resolveInBaseline = async (key: string) => {
+      const byItem = await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch_item", (q) =>
+          q.eq("batchId", args.batchId).eq("itemId", key),
+        )
+        .first();
+      if (byItem) return byItem;
+      return await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch_mpn", (q) =>
+          q.eq("batchId", args.batchId).eq("mpn", key),
+        )
+        .first();
+    };
+
     if (args.itemIdOverride) {
       itemId = args.itemIdOverride;
       matchSource = "manual-search";
-    } else if (upc) {
-      const tire = await ctx.db
-        .query("tireUPCs")
-        .withIndex("by_upc", (q) => q.eq("upc", upc))
-        .first();
-      if (tire?.inventoryNumber) {
-        itemId = tire.inventoryNumber;
-        matchSource = "upc";
-        brand = tire.brand;
-        model = tire.model;
-        size = tire.size;
+      const base = await resolveInBaseline(args.itemIdOverride);
+      if (base) {
+        itemId = base.itemId;
+        brand = base.brand;
+        model = base.model;
+        size = base.size;
       }
-    }
+    } else if (raw) {
+      /**
+       * Barcode -> tireUPCs, mirroring queries.getTireByUPC, which is already
+       * proven against these scanners in the Returns flow. Order matters:
+       *
+       *   1. exact UPC on the RAW code (never the digit-stripped one — part
+       *      numbers are alphanumeric, so stripping turns AEP044 into 044)
+       *   2. exact UPC on the digits-only form, for formatted barcodes
+       *   3. exact inventory/part number on the raw code
+       *   4. part number with a trailing check digit stripped
+       *
+       * A warehouse label may also carry the itemId or part number itself, so
+       * the raw code is finally tried straight against the book.
+       */
+      let tire =
+        (await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_upc", (q) => q.eq("upc", raw))
+          .first()) ??
+        (upc && upc !== raw
+          ? await ctx.db
+              .query("tireUPCs")
+              .withIndex("by_upc", (q) => q.eq("upc", upc))
+              .first()
+          : null) ??
+        (await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_inventoryNumber", (q) => q.eq("inventoryNumber", raw))
+          .first());
 
-    if (itemId && !brand) {
-      const base = await ctx.db
-        .query("wms_count_baseline")
-        .withIndex("by_batch_item", (q) =>
-          q.eq("batchId", args.batchId).eq("itemId", itemId!),
-        )
-        .first();
-      brand = base?.brand;
-      model = base?.model;
-      size = base?.size;
+      if (!tire && raw.length >= 5 && raw.length <= 8) {
+        tire = await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_inventoryNumber", (q) =>
+            q.eq("inventoryNumber", raw.slice(0, -1)),
+          )
+          .first();
+      }
+
+      // No UPC row at all — the code may still be a book key straight off a
+      // warehouse label.
+      if (!tire) {
+        const direct = await resolveInBaseline(raw);
+        if (direct) {
+          itemId = direct.itemId;
+          matchSource = "upc";
+          brand = direct.brand;
+          model = direct.model;
+          size = direct.size;
+        }
+      }
+
+      if (!itemId && tire?.inventoryNumber) {
+        const base = await resolveInBaseline(tire.inventoryNumber);
+        if (base) {
+          // Canonical itemId comes from the book, so totals and variance join.
+          itemId = base.itemId;
+          matchSource = "upc";
+          brand = base.brand ?? tire.brand;
+          model = base.model ?? tire.model;
+          size = base.size ?? tire.size;
+        } else {
+          // Known barcode, but the tire is not in this location's book. Keep it
+          // unmatched rather than inventing an itemId the baseline never had —
+          // it will surface as an unexpected/unmatched line, which is the truth.
+          brand = tire.brand;
+          model = tire.model;
+          size = tire.size;
+        }
+      }
     }
 
     const scanId = await ctx.db.insert("wms_count_scans", {
@@ -814,6 +899,35 @@ export const getCountBatch = query({
       byCounter.set(s.scannedBy, e);
     }
 
+    // Progress is measured against the BOOK — the baseline — because zero-stock
+    // SKUs are never in it and so can never be "pending". Scanning a zero-stock
+    // SKU surfaces as unexpected rather than as coverage, which is why counted
+    // items are split into on-book and unexpected instead of one total.
+    const baselineRows = await ctx.db
+      .query("wms_count_baseline")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    const bookItems = new Set(baselineRows.map((r) => r.itemId.trim().toUpperCase()));
+
+    let onBookItemsSeen = 0;
+    let onBookUnits = 0;
+    let unexpectedItems = 0;
+    let unexpectedUnits = 0;
+    for (const t of totals) {
+      if (!t.itemId) continue;
+      if (bookItems.has(t.itemId.trim().toUpperCase())) {
+        onBookItemsSeen += 1;
+        onBookUnits += t.countedQty;
+      } else {
+        unexpectedItems += 1;
+        unexpectedUnits += t.countedQty;
+      }
+    }
+
+    const bookItemCount = bookItems.size;
+    const bookUnitCount = batch.baselineUnitCount ?? 0;
+    const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+
     return {
       batch,
       countedItems: totals.filter((t) => !!t.itemId).length,
@@ -822,6 +936,106 @@ export const getCountBatch = query({
       scanCount: live.length,
       voidedCount: scans.length - live.length,
       counters: [...byCounter.values()].sort((a, b) => b.units - a.units),
+
+      // Progress vs the book
+      bookItemCount,
+      bookUnitCount,
+      onBookItemsSeen,
+      onBookUnits,
+      itemCoveragePct: pct(onBookItemsSeen, bookItemCount),
+      unitProgressPct: pct(onBookUnits, bookUnitCount),
+      unexpectedItems,
+      unexpectedUnits,
+    };
+  },
+});
+
+/**
+ * How much of a batch's book is actually SCANNABLE.
+ *
+ * A tire can only be matched by barcode if some row in tireUPCs carries its
+ * itemId as inventoryNumber. Anything without one will scan as an unmatched UPC
+ * and need resolving by hand — so knowing this number BEFORE a count starts is
+ * the difference between a smooth day and a pile of manual attribution.
+ *
+ * Uses the by_inventoryNumber index, one lookup per baseline item.
+ */
+export const getUpcCoverage = query({
+  args: { batchId: v.id("wms_count_batches") },
+  handler: async (ctx, args) => {
+    const baseline = await ctx.db
+      .query("wms_count_baseline")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .collect();
+
+    let withUpc = 0;
+    let viaItemId = 0;
+    let viaMpn = 0;
+    let unitsWithUpc = 0;
+    let unitsWithout = 0;
+    const missing: Array<{
+      itemId: string;
+      qtyOnHand: number;
+      brand?: string;
+      size?: string;
+    }> = [];
+
+    for (const row of baseline) {
+      // Two candidate keys, because tireUPCs.inventoryNumber is NOT the OEIVAL
+      // itemId — measured 0/3873 against itemId but ~25% against mfgItemId. The
+      // UPC table appears to carry vendor/auction part numbers, so try itemId
+      // first (what the resolver writes) then the manufacturer part number.
+      let hit = await ctx.db
+        .query("tireUPCs")
+        .withIndex("by_inventoryNumber", (q) =>
+          q.eq("inventoryNumber", row.itemId),
+        )
+        .first();
+      let via: "itemId" | "mpn" | null = hit ? "itemId" : null;
+      if (!hit && row.mpn) {
+        hit = await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_inventoryNumber", (q) =>
+            q.eq("inventoryNumber", row.mpn!),
+          )
+          .first();
+        if (hit) via = "mpn";
+      }
+      if (via === "itemId") viaItemId += 1;
+      if (via === "mpn") viaMpn += 1;
+      if (hit) {
+        withUpc += 1;
+        unitsWithUpc += row.qtyOnHand;
+      } else {
+        unitsWithout += row.qtyOnHand;
+        if (missing.length < 200) {
+          missing.push({
+            itemId: row.itemId,
+            qtyOnHand: row.qtyOnHand,
+            brand: row.brand,
+            size: row.size,
+          });
+        }
+      }
+    }
+
+    missing.sort((a, b) => b.qtyOnHand - a.qtyOnHand);
+    const total = baseline.length;
+    return {
+      totalItems: total,
+      withUpc,
+      withoutUpc: total - withUpc,
+      itemCoveragePct: total > 0 ? Math.round((withUpc / total) * 100) : 0,
+      viaItemId,
+      viaMpn,
+      unitsWithUpc,
+      unitsWithout,
+      unitCoveragePct:
+        unitsWithUpc + unitsWithout > 0
+          ? Math.round((unitsWithUpc / (unitsWithUpc + unitsWithout)) * 100)
+          : 0,
+      // Biggest gaps first — these are the tires worth mapping before a count.
+      missingTopItems: missing.slice(0, 25),
     };
   },
 });

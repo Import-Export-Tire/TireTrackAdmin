@@ -366,7 +366,10 @@ export default defineSchema({
     size: v.optional(v.string()),
     mpn: v.optional(v.string()),
   }).index("by_batch", ["batchId"])
-    .index("by_batch_item", ["batchId", "itemId"]),
+    .index("by_batch_item", ["batchId", "itemId"])
+    // Scans resolve through the manufacturer part number, because
+    // tireUPCs.inventoryNumber holds mfgItemId rather than itemId.
+    .index("by_batch_mpn", ["batchId", "mpn"]),
 
   // One row per scan event — the audit trail. Undo is a soft void, never a
   // delete: a miscount that vanishes is a miscount nobody can explain later.
