@@ -112,7 +112,7 @@ export function downloadDiscrepancyCsv(
     ...provenance(h),
     [],
     ["SUMMARY"],
-    ["Tires in book (baseline items)", summary.baselineItems],
+    ["Item lines in book", summary.baselineItems],
     ["Items counted", summary.countedItems],
     ["Matched", summary.matched],
     ["Short", summary.short],

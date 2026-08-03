@@ -105,7 +105,7 @@ function CountsDashboard() {
                 <th className="px-4 py-3 font-semibold">By</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Baseline</th>
-                <th className="px-4 py-3 font-semibold text-right">Tires in book</th>
+                <th className="px-4 py-3 font-semibold text-right">In book</th>
                 <th className="px-4 py-3 font-semibold text-right"></th>
               </tr>
             </thead>
@@ -153,8 +153,11 @@ function CountsDashboard() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right text-[#1c1c1e]">
-                    {fmt(b.baselineItemCount)}
+                  <td className="px-4 py-3 text-right text-[#1c1c1e] whitespace-nowrap">
+                    {fmt(b.baselineUnitCount)} tires
+                    <div className="text-xs text-ios-gray1">
+                      {fmt(b.baselineItemCount)} items
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link

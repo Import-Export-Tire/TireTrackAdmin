@@ -509,17 +509,11 @@ export const closeCountBatch = mutation({
       batch.warehouseCode,
     );
 
-    const anyScan = await ctx.db
-      .query("wms_count_scans")
-      .withIndex("by_batch_scannedAt", (q) => q.eq("batchId", args.batchId))
-      .filter((q) => q.neq(q.field("voided"), true))
-      .first();
-    if (!anyScan) {
-      throw new Error(
-        "Nothing has been counted yet — cannot close an empty batch",
-      );
-    }
-
+    // An empty batch CAN be closed. Blocking it was a mistake: only one batch
+    // may be open per location and the scanner cannot delete, so a batch opened
+    // by accident left the location permanently stuck with no way out from the
+    // floor. The scanner confirms with the actual counts before calling this, so
+    // closing an empty one is a visible, deliberate act rather than a slip.
     await ctx.db.patch(args.batchId, {
       status: "closed",
       closedBy: performedBy,

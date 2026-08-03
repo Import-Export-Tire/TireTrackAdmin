@@ -155,9 +155,9 @@ function CountReport() {
             OEIVAL {String(b.baselineFileDate ?? "unknown").slice(0, 10)}
           </div>
           <div>
-            <span className="text-ios-gray1">Tires in book </span>
-            {(b.baselineItemCount ?? 0).toLocaleString()} items /{" "}
-            {(b.baselineUnitCount ?? 0).toLocaleString()} units
+            <span className="text-ios-gray1">In book </span>
+            {(b.baselineUnitCount ?? 0).toLocaleString()} tires across{" "}
+            {(b.baselineItemCount ?? 0).toLocaleString()} items
           </div>
           <div>
             <span className="text-ios-gray1">Excluded </span>
