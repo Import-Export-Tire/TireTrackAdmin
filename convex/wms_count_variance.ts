@@ -14,6 +14,8 @@ export type BaselineRow = {
   model?: string;
   size?: string;
   mpn?: string;
+  upc?: string;
+  ean?: string;
 };
 
 export type TotalRow = {
@@ -27,6 +29,12 @@ export type Bucket = "match" | "short" | "over" | "notFound" | "unexpected";
 
 export type VarianceRow = {
   itemId: string;
+  /**
+   * Present when this line covers more than one SKU sharing a barcode. JMK
+   * d-class variants (AYAEP031^ and AYAEP031.) are the same physical tire, and a
+   * scanner cannot tell them apart, so they are counted and reported as one.
+   */
+  variantItemIds?: string[];
   brand?: string;
   model?: string;
   size?: string;
@@ -69,17 +77,46 @@ export function computeVariance(
   baseline: BaselineRow[],
   totals: TotalRow[],
 ): { rows: VarianceRow[]; unmatched: UnmatchedRow[]; summary: VarianceSummary } {
-  const baseByItem = new Map<string, BaselineRow>();
-  for (const row of baseline) baseByItem.set(key(row.itemId), row);
+  /**
+   * Group baseline rows by BARCODE, not by itemId.
+   *
+   * JMK carries the same physical tire under several d-class variants
+   * (AYAEP031^ = Caret, AYAEP031. = Dot) which share one printed barcode. At W08
+   * that is 353 barcodes covering 709 SKUs and 32,602 tires. Because the barcode
+   * is what the scanner reads, those SKUs cannot be distinguished on the floor —
+   * so counting them separately invents a precision the data does not have, and
+   * produces a fictional short on one variant plus a fictional over on the other.
+   *
+   * A line is therefore keyed on upc, else ean, else the itemId. Rows with no
+   * barcode stay separate: absent a shared barcode there is no evidence they are
+   * the same tire.
+   */
+  const groupKeyOf = (r: BaselineRow) =>
+    (r.upc ?? "").trim() || (r.ean ?? "").trim() || key(r.itemId);
 
-  const countedByItem = new Map<string, { qty: number; scans: number }>();
+  const groups = new Map<string, BaselineRow[]>();
+  const itemToGroup = new Map<string, string>();
+  for (const row of baseline) {
+    const g = groupKeyOf(row);
+    const list = groups.get(g);
+    if (list) list.push(row);
+    else groups.set(g, [row]);
+    itemToGroup.set(key(row.itemId), g);
+  }
+
+  // Counted quantities, folded onto the group each itemId belongs to.
+  const countedByGroup = new Map<string, { qty: number; scans: number }>();
   const unmatched: UnmatchedRow[] = [];
+  const unexpected = new Map<string, { qty: number; scans: number }>();
 
   for (const t of totals) {
     if (t.itemId) {
       const k = key(t.itemId);
-      const prev = countedByItem.get(k) ?? { qty: 0, scans: 0 };
-      countedByItem.set(k, {
+      const g = itemToGroup.get(k);
+      const target = g ? countedByGroup : unexpected;
+      const bucketKey = g ?? k;
+      const prev = target.get(bucketKey) ?? { qty: 0, scans: 0 };
+      target.set(bucketKey, {
         qty: prev.qty + t.countedQty,
         scans: prev.scans + t.scanCount,
       });
@@ -96,18 +133,21 @@ export function computeVariance(
 
   const rows: VarianceRow[] = [];
 
-  // Full outer join: every baseline item, plus every counted item with no
-  // baseline row.
-  for (const [k, base] of baseByItem) {
-    const c = countedByItem.get(k);
-    const expected = base.qtyOnHand;
+  for (const [g, members] of groups) {
+    const c = countedByGroup.get(g);
+    const expected = members.reduce((n, m) => n + m.qtyOnHand, 0);
     const counted = c?.qty ?? 0;
+    // Deepest-stocked member represents the line, and its description is the one
+    // an operator recognises.
+    const lead = members.reduce((a, b) => (b.qtyOnHand > a.qtyOnHand ? b : a));
     rows.push({
-      itemId: base.itemId,
-      brand: base.brand,
-      model: base.model,
-      size: base.size,
-      mpn: base.mpn,
+      itemId: lead.itemId,
+      variantItemIds:
+        members.length > 1 ? members.map((m) => m.itemId) : undefined,
+      brand: lead.brand,
+      model: lead.model,
+      size: lead.size,
+      mpn: lead.mpn,
       expected,
       counted,
       variance: counted - expected,
@@ -116,8 +156,7 @@ export function computeVariance(
     });
   }
 
-  for (const [k, c] of countedByItem) {
-    if (baseByItem.has(k)) continue;
+  for (const [k, c] of unexpected) {
     rows.push({
       itemId: k,
       expected: 0,
@@ -139,8 +178,8 @@ export function computeVariance(
     rows,
     unmatched,
     summary: {
-      baselineItems: baseByItem.size,
-      countedItems: countedByItem.size,
+      baselineItems: groups.size,
+      countedItems: countedByGroup.size,
       matched: count("match"),
       short: count("short"),
       over: count("over"),

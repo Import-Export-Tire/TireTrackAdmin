@@ -308,7 +308,13 @@ export const retryBaseline = action({
 async function applyTotalsDelta(
   ctx: any,
   batchId: Id<"wms_count_batches">,
-  opts: { itemId?: string; upc?: string; qtyDelta: number; scanDelta: number },
+  opts: {
+    itemId?: string;
+    upc?: string;
+    qtyDelta: number;
+    scanDelta: number;
+    onBook?: boolean;
+  },
 ) {
   const existing = opts.itemId
     ? await ctx.db
@@ -333,6 +339,7 @@ async function applyTotalsDelta(
       countedQty: opts.qtyDelta,
       scanCount: opts.scanDelta,
       lastScannedAt: Date.now(),
+      onBook: opts.onBook ?? false,
     });
     return;
   }
@@ -347,6 +354,7 @@ async function applyTotalsDelta(
     countedQty,
     scanCount,
     lastScannedAt: Date.now(),
+    ...(opts.onBook !== undefined ? { onBook: opts.onBook } : {}),
   });
 }
 
@@ -384,6 +392,9 @@ export const recordCountScan = mutation({
     let brand: string | undefined;
     let model: string | undefined;
     let size: string | undefined;
+    // True when the scan resolved to a row in THIS batch's baseline. Recorded on
+    // the totals row so progress needs no baseline read.
+    let matchedInBook = false;
 
     /**
      * Resolve the scan to an item in THIS BATCH'S BOOK.
@@ -405,19 +416,37 @@ export const recordCountScan = mutation({
       // Barcode first — JMK's own upcCode/ean, keyed by this itemId, is the
       // authoritative scan key (99% populated at W09). Then itemId and the
       // manufacturer part number, for labels that carry those instead.
-      const byUpc = await ctx.db
-        .query("wms_count_baseline")
-        .withIndex("by_batch_upc", (q) =>
-          q.eq("batchId", args.batchId).eq("upc", key),
-        )
-        .first();
+      // A barcode can match SEVERAL baseline rows: JMK carries the same tire under
+      // d-class variants (AYAEP031^ / AYAEP031.) that share one printed barcode —
+      // 353 such barcodes at W08. Pick deterministically (deepest stock, then
+      // itemId) so repeat scans of one tire always land on the same row and the
+      // running total is stable. The variance report then reunites the variants
+      // into a single line, so the choice cannot skew the result either way.
+      const pick = (rows: any[]) =>
+        rows.length === 0
+          ? null
+          : rows.slice().sort(
+              (a, b) =>
+                b.qtyOnHand - a.qtyOnHand || a.itemId.localeCompare(b.itemId),
+            )[0];
+
+      const byUpc = pick(
+        await ctx.db
+          .query("wms_count_baseline")
+          .withIndex("by_batch_upc", (q) =>
+            q.eq("batchId", args.batchId).eq("upc", key),
+          )
+          .collect(),
+      );
       if (byUpc) return byUpc;
-      const byEan = await ctx.db
-        .query("wms_count_baseline")
-        .withIndex("by_batch_ean", (q) =>
-          q.eq("batchId", args.batchId).eq("ean", key),
-        )
-        .first();
+      const byEan = pick(
+        await ctx.db
+          .query("wms_count_baseline")
+          .withIndex("by_batch_ean", (q) =>
+            q.eq("batchId", args.batchId).eq("ean", key),
+          )
+          .collect(),
+      );
       if (byEan) return byEan;
       const byItem = await ctx.db
         .query("wms_count_baseline")
@@ -439,6 +468,7 @@ export const recordCountScan = mutation({
       matchSource = "manual-search";
       const base = await resolveInBaseline(args.itemIdOverride);
       if (base) {
+        matchedInBook = true;
         itemId = base.itemId;
         brand = base.brand;
         model = base.model;
@@ -462,6 +492,7 @@ export const recordCountScan = mutation({
       //    now, so this is the common path and needs no bridge table at all.
       const direct0 = (await resolveInBaseline(raw)) ?? (upc && upc !== raw ? await resolveInBaseline(upc) : null);
       if (direct0) {
+        matchedInBook = true;
         itemId = direct0.itemId;
         matchSource = "upc";
         brand = direct0.brand;
@@ -499,6 +530,7 @@ export const recordCountScan = mutation({
         const base = await resolveInBaseline(tire.inventoryNumber);
         if (base) {
           // Canonical itemId comes from the book, so totals and variance join.
+          matchedInBook = true;
           itemId = base.itemId;
           matchSource = "upc";
           brand = base.brand ?? tire.brand;
@@ -536,6 +568,7 @@ export const recordCountScan = mutation({
       upc: upc || args.rawBarcode,
       qtyDelta: args.quantity,
       scanDelta: 1,
+      onBook: matchedInBook,
     });
 
     // Read back the rollup so the scanner can show the ACCUMULATED count, not
@@ -636,47 +669,95 @@ export const closeCountBatch = mutation({
  *
  * Needed because a batch opened by mistake would otherwise block the location
  * forever — only one batch may be open per location, and an empty batch cannot
- * be closed. Admin only, and it says how much it destroyed.
+ * be closed... but the real reason this is an ACTION that pages is scale: a
+ * single mutation deleting a whole baseline blew Convex's 4,096-read limit at
+ * W08 (6,837 rows). W09's 479 rows hid that entirely.
  */
-export const deleteCountBatch = mutation({
-  args: {
-    batchId: v.id("wms_count_batches"),
-    callerAdminId: v.id("adminUsers"),
+export const deleteCountBatchPage = internalMutation({
+  args: { batchId: v.id("wms_count_batches"), limit: v.number() },
+  handler: async (ctx, args) => {
+    let budget = args.limit;
+    let baseline = 0;
+    let totals = 0;
+    let scans = 0;
+
+    const bl = await ctx.db
+      .query("wms_count_baseline")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .take(budget);
+    for (const r of bl) await ctx.db.delete(r._id);
+    baseline = bl.length;
+    budget -= baseline;
+
+    if (budget > 0) {
+      const tl = await ctx.db
+        .query("wms_count_totals")
+        .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+        .take(budget);
+      for (const r of tl) await ctx.db.delete(r._id);
+      totals = tl.length;
+      budget -= totals;
+    }
+
+    if (budget > 0) {
+      const sc = await ctx.db
+        .query("wms_count_scans")
+        .withIndex("by_batch_scannedAt", (q) => q.eq("batchId", args.batchId))
+        .take(budget);
+      for (const r of sc) await ctx.db.delete(r._id);
+      scans = sc.length;
+      budget -= scans;
+    }
+
+    const done = baseline + totals + scans === 0;
+    if (done) await ctx.db.delete(args.batchId);
+    return { baseline, totals, scans, done };
   },
+});
+
+export const authorizeDelete = internalMutation({
+  args: { callerAdminId: v.id("adminUsers") },
   handler: async (ctx, args) => {
     const admin = await ctx.db.get(args.callerAdminId);
     if (!admin || !admin.isActive) throw new Error("Not authorized");
     if (admin.role !== "admin" && admin.role !== "superadmin") {
       throw new Error("Not authorized");
     }
+    return true;
+  },
+});
 
-    const baseline = await ctx.db
-      .query("wms_count_baseline")
-      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
-      .collect();
-    for (const r of baseline) await ctx.db.delete(r._id);
+export const deleteCountBatch = action({
+  args: {
+    batchId: v.id("wms_count_batches"),
+    callerAdminId: v.id("adminUsers"),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    success: true;
+    deleted: { baseline: number; totals: number; scans: number };
+  }> => {
+    await ctx.runMutation(internal.wms_count.authorizeDelete, {
+      callerAdminId: args.callerAdminId,
+    });
 
-    const totals = await ctx.db
-      .query("wms_count_totals")
-      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
-      .collect();
-    for (const r of totals) await ctx.db.delete(r._id);
-
-    const scans = await ctx.db
-      .query("wms_count_scans")
-      .withIndex("by_batch_scannedAt", (q) => q.eq("batchId", args.batchId))
-      .collect();
-    for (const r of scans) await ctx.db.delete(r._id);
-
-    await ctx.db.delete(args.batchId);
-    return {
-      success: true,
-      deleted: {
-        baseline: baseline.length,
-        totals: totals.length,
-        scans: scans.length,
-      },
-    };
+    const tally = { baseline: 0, totals: 0, scans: 0 };
+    // 1,000 deletes per call keeps each mutation well inside the read limit;
+    // the loop bound is generous headroom over the largest location.
+    for (let i = 0; i < 200; i++) {
+      const page: { baseline: number; totals: number; scans: number; done: boolean } =
+        await ctx.runMutation(internal.wms_count.deleteCountBatchPage, {
+          batchId: args.batchId,
+          limit: 1000,
+        });
+      tally.baseline += page.baseline;
+      tally.totals += page.totals;
+      tally.scans += page.scans;
+      if (page.done) break;
+    }
+    return { success: true as const, deleted: tally };
   },
 });
 
@@ -921,23 +1002,17 @@ export const getCountBatch = query({
       byCounter.set(s.scannedBy, e);
     }
 
-    // Progress is measured against the BOOK — the baseline — because zero-stock
-    // SKUs are never in it and so can never be "pending". Scanning a zero-stock
-    // SKU surfaces as unexpected rather than as coverage, which is why counted
-    // items are split into on-book and unexpected instead of one total.
-    const baselineRows = await ctx.db
-      .query("wms_count_baseline")
-      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
-      .collect();
-    const bookItems = new Set(baselineRows.map((r) => r.itemId.trim().toUpperCase()));
-
+    // Progress is measured against the BOOK. Denominators come off the batch
+    // record and the on/off-book split comes off the totals rows, so this does
+    // NOT read the baseline — doing so cost 6,837 document reads per reactive
+    // call at W08, on a query the scanner subscribes to.
     let onBookItemsSeen = 0;
     let onBookUnits = 0;
     let unexpectedItems = 0;
     let unexpectedUnits = 0;
     for (const t of totals) {
       if (!t.itemId) continue;
-      if (bookItems.has(t.itemId.trim().toUpperCase())) {
+      if (t.onBook) {
         onBookItemsSeen += 1;
         onBookUnits += t.countedQty;
       } else {
@@ -946,7 +1021,7 @@ export const getCountBatch = query({
       }
     }
 
-    const bookItemCount = bookItems.size;
+    const bookItemCount = batch.baselineItemCount ?? 0;
     const bookUnitCount = batch.baselineUnitCount ?? 0;
     const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 

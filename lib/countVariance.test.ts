@@ -108,3 +108,91 @@ describe("computeVariance", () => {
     expect(r.rows[0].bucket).toBe("match");
   });
 });
+
+describe("computeVariance — barcodes shared by multiple SKUs", () => {
+  // Real W08 case: AYAEP031^ and AYAEP031. are the SAME tire in two JMK d-class
+  // variants, both in stock, sharing one printed barcode. A scanner physically
+  // cannot tell them apart, so the report must not pretend it can.
+  const variant = (itemId: string, qtyOnHand: number, upc: string) => ({
+    itemId,
+    qtyOnHand,
+    upc,
+  });
+
+  it("treats SKUs sharing a barcode as ONE line, summing expected", () => {
+    const r = computeVariance(
+      [variant("AYAEP031^", 345, "841623117337"), variant("AYAEP031.", 204, "841623117337")],
+      [t("AYAEP031^", 549)],
+    );
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].expected).toBe(549); // 345 + 204
+    expect(r.rows[0].counted).toBe(549);
+    expect(r.rows[0].variance).toBe(0);
+    expect(r.rows[0].bucket).toBe("match");
+  });
+
+  it("does NOT manufacture a short and an over for the same tire", () => {
+    // The bug: counting all 549 onto one variant read as over +204 on that one
+    // and notFound -345 on the other.
+    const r = computeVariance(
+      [variant("AYAEP031^", 345, "841623117337"), variant("AYAEP031.", 204, "841623117337")],
+      [t("AYAEP031.", 549)],
+    );
+    expect(r.summary.over).toBe(0);
+    expect(r.summary.notFound).toBe(0);
+    expect(r.summary.matched).toBe(1);
+  });
+
+  it("sums counted across whichever variants got scanned", () => {
+    const r = computeVariance(
+      [variant("A^", 10, "111"), variant("A.", 5, "111")],
+      [t("A^", 9), t("A.", 6)],
+    );
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].counted).toBe(15);
+    expect(r.rows[0].expected).toBe(15);
+    expect(r.rows[0].bucket).toBe("match");
+  });
+
+  it("reports the variant itemIds on the grouped row", () => {
+    const r = computeVariance(
+      [variant("A^", 10, "111"), variant("A.", 5, "111")],
+      [t("A^", 15)],
+    );
+    expect(r.rows[0].variantItemIds?.sort()).toEqual(["A.", "A^"]);
+  });
+
+  it("still reports a real shortage on a grouped line", () => {
+    const r = computeVariance(
+      [variant("A^", 10, "111"), variant("A.", 5, "111")],
+      [t("A^", 12)],
+    );
+    expect(r.rows[0].expected).toBe(15);
+    expect(r.rows[0].counted).toBe(12);
+    expect(r.rows[0].bucket).toBe("short");
+    expect(r.rows[0].variance).toBe(-3);
+  });
+
+  it("groups on EAN when there is no UPC", () => {
+    const r = computeVariance(
+      [
+        { itemId: "B^", qtyOnHand: 4, ean: "999" },
+        { itemId: "B.", qtyOnHand: 6, ean: "999" },
+      ],
+      [t("B.", 10)],
+    );
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].expected).toBe(10);
+  });
+
+  it("keeps barcode-less SKUs as separate lines", () => {
+    // No barcode means no evidence they are the same tire — do not merge.
+    const r = computeVariance(
+      [{ itemId: "X", qtyOnHand: 3 }, { itemId: "Y", qtyOnHand: 4 }],
+      [t("X", 3)],
+    );
+    expect(r.rows).toHaveLength(2);
+    expect(r.summary.matched).toBe(1);
+    expect(r.summary.notFound).toBe(1);
+  });
+});

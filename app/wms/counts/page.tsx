@@ -33,7 +33,7 @@ function CountsDashboard() {
   );
   const openCountBatch = useAction(api.wms_count.openCountBatch);
   const closeCountBatch = useMutation(api.wms_count.closeCountBatch);
-  const deleteCountBatch = useMutation(api.wms_count.deleteCountBatch);
+  const deleteCountBatch = useAction(api.wms_count.deleteCountBatch);
   const [busy, setBusy] = useState(false);
 
   const actor = admin?.id

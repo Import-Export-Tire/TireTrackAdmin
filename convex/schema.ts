@@ -446,6 +446,10 @@ export default defineSchema({
     countedQty: v.number(),
     scanCount: v.number(),
     lastScannedAt: v.number(),
+    // Set when the scan resolved to a row in this batch's baseline. Lets progress
+    // be computed from the totals table alone — reading the whole baseline on
+    // every reactive call cost 6,837 document reads per scan at W08.
+    onBook: v.optional(v.boolean()),
   }).index("by_batch", ["batchId"])
     .index("by_batch_item", ["batchId", "itemId"])
     .index("by_batch_upc", ["batchId", "upc"]),

@@ -14,6 +14,7 @@
  */
 export const COUNT_LOCATIONS: Array<{ code: string; label: string }> = [
   { code: "W09", label: "Chestnut Ridge" },
+  { code: "W08", label: "Latrobe" },
 ];
 
 export function isCountLocationEnabled(code: string): boolean {
