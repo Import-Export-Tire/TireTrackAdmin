@@ -187,10 +187,26 @@ export default defineSchema({
     brand: v.string(),
     model: v.string(),
     size: v.string(),
+    // NOTE: holds the MANUFACTURER PART NUMBER (OEIVAL mfgItemId), not the
+    // OEIVAL itemId. Measured 2026-08-03: 0 of 3,873 sampled values match
+    // itemId; ~25% match mfgItemId. Count scans resolve on both keys.
     inventoryNumber: v.optional(v.string()),
     auctionTitle: v.optional(v.string()),
+    // Service description, split so it is queryable. Populated for tires added
+    // during a count; older rows carry it inside `size` only.
+    speedRating: v.optional(v.string()),   // e.g. "S", "V", "W"
+    loadIndex: v.optional(v.string()),     // e.g. "115", "121"
+    loadRange: v.optional(v.string()),     // e.g. "E", "G", "XL"
+    // Provenance for tires created from the floor during a count. These are
+    // scannable immediately but do NOT exist in JMK — somebody still has to add
+    // them there before the book can ever agree.
+    createdFromCountBatchId: v.optional(v.id("wms_count_batches")),
+    createdByName: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
+    needsJmkEntry: v.optional(v.boolean()),
   }).index("by_upc", ["upc"])
-    .index("by_inventoryNumber", ["inventoryNumber"]),
+    .index("by_inventoryNumber", ["inventoryNumber"])
+    .index("by_needsJmkEntry", ["needsJmkEntry"]),
 
   // Error logs for debugging issues
   errorLogs: defineTable({
@@ -365,10 +381,16 @@ export default defineSchema({
     model: v.optional(v.string()),
     size: v.optional(v.string()),
     mpn: v.optional(v.string()),
+    // JMK's own barcode, straight from the OEIVAL and keyed by this itemId.
+    // The authoritative scan key — 99% populated at W09.
+    upc: v.optional(v.string()),
+    ean: v.optional(v.string()),
   }).index("by_batch", ["batchId"])
     .index("by_batch_item", ["batchId", "itemId"])
-    // Scans resolve through the manufacturer part number, because
+    // Scans resolve on the barcode first, then the manufacturer part number —
     // tireUPCs.inventoryNumber holds mfgItemId rather than itemId.
+    .index("by_batch_upc", ["batchId", "upc"])
+    .index("by_batch_ean", ["batchId", "ean"])
     .index("by_batch_mpn", ["batchId", "mpn"]),
 
   // One row per scan event — the audit trail. Undo is a soft void, never a

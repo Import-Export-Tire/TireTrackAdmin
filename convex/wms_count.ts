@@ -121,6 +121,8 @@ export const insertBaselineChunk = internalMutation({
         model: v.optional(v.string()),
         size: v.optional(v.string()),
         mpn: v.optional(v.string()),
+        upc: v.optional(v.string()),
+        ean: v.optional(v.string()),
       }),
     ),
   },
@@ -217,6 +219,7 @@ async function loadBaseline(
       count: number;
       excludedNonTires: number;
       excludedUnits: number;
+      withBarcode?: number;
       items: Array<{
         itemId: string;
         qtyOnHand: number;
@@ -224,6 +227,8 @@ async function loadBaseline(
         model?: string;
         size?: string;
         mpn?: string;
+        upc?: string;
+        ean?: string;
       }>;
     };
 
@@ -396,6 +401,24 @@ export const recordCountScan = mutation({
      * something the book says is actually in stock.
      */
     const resolveInBaseline = async (key: string) => {
+      if (!key) return null;
+      // Barcode first — JMK's own upcCode/ean, keyed by this itemId, is the
+      // authoritative scan key (99% populated at W09). Then itemId and the
+      // manufacturer part number, for labels that carry those instead.
+      const byUpc = await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch_upc", (q) =>
+          q.eq("batchId", args.batchId).eq("upc", key),
+        )
+        .first();
+      if (byUpc) return byUpc;
+      const byEan = await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch_ean", (q) =>
+          q.eq("batchId", args.batchId).eq("ean", key),
+        )
+        .first();
+      if (byEan) return byEan;
       const byItem = await ctx.db
         .query("wms_count_baseline")
         .withIndex("by_batch_item", (q) =>
@@ -435,7 +458,19 @@ export const recordCountScan = mutation({
        * A warehouse label may also carry the itemId or part number itself, so
        * the raw code is finally tried straight against the book.
        */
+      // 0. The scanned code straight against the book. JMK's barcode lives there
+      //    now, so this is the common path and needs no bridge table at all.
+      const direct0 = (await resolveInBaseline(raw)) ?? (upc && upc !== raw ? await resolveInBaseline(upc) : null);
+      if (direct0) {
+        itemId = direct0.itemId;
+        matchSource = "upc";
+        brand = direct0.brand;
+        model = direct0.model;
+        size = direct0.size;
+      }
+
       let tire =
+        itemId ? null :
         (await ctx.db
           .query("tireUPCs")
           .withIndex("by_upc", (q) => q.eq("upc", raw))
@@ -451,26 +486,13 @@ export const recordCountScan = mutation({
           .withIndex("by_inventoryNumber", (q) => q.eq("inventoryNumber", raw))
           .first());
 
-      if (!tire && raw.length >= 5 && raw.length <= 8) {
+      if (!itemId && !tire && raw.length >= 5 && raw.length <= 8) {
         tire = await ctx.db
           .query("tireUPCs")
           .withIndex("by_inventoryNumber", (q) =>
             q.eq("inventoryNumber", raw.slice(0, -1)),
           )
           .first();
-      }
-
-      // No UPC row at all — the code may still be a book key straight off a
-      // warehouse label.
-      if (!tire) {
-        const direct = await resolveInBaseline(raw);
-        if (direct) {
-          itemId = direct.itemId;
-          matchSource = "upc";
-          brand = direct.brand;
-          model = direct.model;
-          size = direct.size;
-        }
       }
 
       if (!itemId && tire?.inventoryNumber) {
@@ -969,6 +991,7 @@ export const getUpcCoverage = query({
       .collect();
 
     let withUpc = 0;
+    let viaOeival = 0;
     let viaItemId = 0;
     let viaMpn = 0;
     let unitsWithUpc = 0;
@@ -981,10 +1004,18 @@ export const getUpcCoverage = query({
     }> = [];
 
     for (const row of baseline) {
-      // Two candidate keys, because tireUPCs.inventoryNumber is NOT the OEIVAL
-      // itemId — measured 0/3873 against itemId but ~25% against mfgItemId. The
-      // UPC table appears to carry vendor/auction part numbers, so try itemId
-      // first (what the resolver writes) then the manufacturer part number.
+      // JMK's own barcode on the baseline row is the authoritative key and needs
+      // no bridge table at all — count it first.
+      if (row.upc || row.ean) {
+        viaOeival += 1;
+        withUpc += 1;
+        unitsWithUpc += row.qtyOnHand;
+        continue;
+      }
+
+      // Otherwise fall back to tireUPCs. Two candidate keys, because
+      // tireUPCs.inventoryNumber is NOT the OEIVAL itemId — measured 0/3873
+      // against itemId but ~25% against mfgItemId.
       let hit = await ctx.db
         .query("tireUPCs")
         .withIndex("by_inventoryNumber", (q) =>
@@ -1026,6 +1057,7 @@ export const getUpcCoverage = query({
       withUpc,
       withoutUpc: total - withUpc,
       itemCoveragePct: total > 0 ? Math.round((withUpc / total) * 100) : 0,
+      viaOeival,
       viaItemId,
       viaMpn,
       unitsWithUpc,
