@@ -796,9 +796,15 @@ export const getCountBatch = query({
     const live = scans.filter((s) => s.voided !== true);
 
     // Per-counter breakdown — accountability on a multi-counter inventory day.
-    const byCounter = new Map<string, { name: string; units: number; scans: number }>();
+    // `by` is the stringified id, included so a client can identify ITSELF
+    // reliably — two counters can share a display name.
+    const byCounter = new Map<
+      string,
+      { by: string; name: string; units: number; scans: number }
+    >();
     for (const s of live) {
       const e = byCounter.get(s.scannedBy) ?? {
+        by: s.scannedBy,
         name: s.scannedByName,
         units: 0,
         scans: 0,
