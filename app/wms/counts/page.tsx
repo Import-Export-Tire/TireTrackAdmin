@@ -57,10 +57,31 @@ function CountsDashboard() {
             Inventory Counts{activeLabel ? ` — ${activeLabel}` : ""}
           </h1>
           <p className="text-ios-gray1 text-sm max-w-2xl">
-            Opening a batch freezes IECentral&apos;s on-hand figures, so stock
-            moving during the count can&apos;t skew the variance. Tires only —
-            non-tire product types are excluded from the baseline.
+            A batch takes a snapshot of what the books say is on hand right now and
+            freezes it. Everything counted is compared against that moment — not
+            against the books as they change afterwards. Tires only; non-tire
+            product types are excluded from the baseline.
           </p>
+          <div className="mt-3 max-w-2xl border-l-[3px] border-ios-blue bg-ios-blue/5 rounded-r-lg px-4 py-3">
+            <p className="text-sm font-semibold text-[#1c1c1e]">
+              One batch per count — and leave it open
+            </p>
+            <ul className="mt-1 text-sm text-ios-gray1 space-y-1 list-disc pl-5">
+              <li>
+                Every counter joins the same batch. Don&apos;t open one per person.
+              </li>
+              <li>
+                Don&apos;t close it daily. Leave it open until the whole warehouse
+                is counted, even across several days — progress is saved as you go.
+              </li>
+              <li>
+                Closing early reports every tire not yet scanned as missing, so
+                real shrink can&apos;t be told apart from what simply
+                hasn&apos;t been reached.
+              </li>
+              <li>Freeze shipping and receiving while the count is open.</li>
+            </ul>
+          </div>
           {(locations?.length ?? 0) > 1 && (
             <select
               value={active ?? ""}
@@ -230,7 +251,12 @@ function CountsDashboard() {
                     {b.status === "open" && canEdit && actor && (
                       <button
                         onClick={async () => {
-                          if (!confirm("Close this count batch?")) return;
+                          if (
+                            !confirm(
+                              "Close this count batch?\n\nOnly close once the WHOLE warehouse has been counted. Anything not yet scanned will be reported as missing.",
+                            )
+                          )
+                            return;
                           try {
                             await closeCountBatch({ batchId: b._id, actor });
                           } catch (e: any) {
