@@ -22,6 +22,9 @@ import type * as mutations from "../mutations.js";
 import type * as queries from "../queries.js";
 import type * as scheduled from "../scheduled.js";
 import type * as wms from "../wms.js";
+import type * as wms_count from "../wms_count.js";
+import type * as wms_count_locations from "../wms_count_locations.js";
+import type * as wms_count_variance from "../wms_count_variance.js";
 import type * as wms_routing from "../wms_routing.js";
 
 import type {
@@ -45,6 +48,9 @@ declare const fullApi: ApiFromModules<{
   queries: typeof queries;
   scheduled: typeof scheduled;
   wms: typeof wms;
+  wms_count: typeof wms_count;
+  wms_count_locations: typeof wms_count_locations;
+  wms_count_variance: typeof wms_count_variance;
   wms_routing: typeof wms_routing;
 }>;
 

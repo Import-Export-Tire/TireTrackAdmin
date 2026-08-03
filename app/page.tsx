@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { Protected } from "./protected";
 import { useAuth } from "./auth-context";
 import Link from "next/link";
@@ -48,6 +48,10 @@ function Dashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [selectedScan, setSelectedScan] = useState<any | null>(null);
   const [editingUser, setEditingUser] = useState<any | null>(null);
+  // Mirrors the edit-modal Role select so the counting-location checkboxes can
+  // appear the moment Inventory is chosen. The select stays uncontrolled
+  // (name + defaultValue, read from FormData on submit); this is display only.
+  const [editingUserRole, setEditingUserRole] = useState<string>("");
   const [userDeleteConfirm, setUserDeleteConfirm] = useState<string | null>(null);
   const [vendorExportTruck, setVendorExportTruck] = useState<string | null>(null);
   const [showNewAdmin, setShowNewAdmin] = useState(false);
@@ -100,6 +104,21 @@ function Dashboard() {
   const resolveAllErrors = useMutation(api.mutations.resolveAllErrors);
   const errorLogs = useQuery(api.queries.getErrorLogs, showErrorLogs ? { limit: 100 } : "skip");
   const unresolvedErrorCount = useQuery(api.queries.getUnresolvedErrorCount);
+
+  // Seed the role mirror whenever a different user is opened for editing.
+  // Without this, an existing Inventory user's counting-location checkboxes stay
+  // hidden until someone touches the dropdown.
+  useEffect(() => {
+    setEditingUserRole(editingUser?.role ?? "");
+  }, [editingUser?._id]);
+
+  // Counting locations + per-user assignments. The `inventory` role says a person
+  // counts; the assignment says WHERE. Deliberately not wms_user_assignments,
+  // which gates the Chestnut Ridge WMS pilot.
+  const countLocations = useQuery(api.wms_count.getCountLocations, {});
+  const countAssignments = useQuery(api.wms_count.getCountAssignments, {});
+  const assignCountLocation = useMutation(api.wms_count.assignCountLocation);
+  const unassignCountLocation = useMutation(api.wms_count.unassignCountLocation);
 
   const effectiveLocationFilter = useMemo(() => {
     if (admin?.allowedLocations.includes("all")) return locationFilter;
@@ -446,6 +465,12 @@ function Dashboard() {
                 className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-ios-gray1 hover:text-[#1c1c1e] hover:bg-white/60 transition-all whitespace-nowrap"
               >
                 WMS
+              </Link>
+              <Link
+                href="/wms/counts"
+                className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-ios-gray1 hover:text-[#1c1c1e] hover:bg-white/60 transition-all whitespace-nowrap"
+              >
+                Counts
               </Link>
               <Link
                 href="/app-download"
@@ -895,6 +920,9 @@ function Dashboard() {
                           {user.name}
                           {user.role === "supervisor" && (
                             <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-500/20 text-teal-400 border border-teal-500/20">SUP</span>
+                          )}
+                          {user.role === "inventory" && (
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-ios-blue/20 text-ios-blue border border-ios-blue/20">INV</span>
                           )}
                         </td>
                         <td className="px-5 py-4 text-ios-gray1 font-mono text-sm hidden sm:table-cell">{user.empId}</td>
@@ -1356,7 +1384,41 @@ function Dashboard() {
             </div>
             <form className="p-6 space-y-4" onSubmit={async (e) => { e.preventDefault(); const form = e.target as HTMLFormElement; const formData = new FormData(form); const updates: any = {}; const name = formData.get("name") as string; const pin = formData.get("pin") as string; const locationId = formData.get("locationId") as string; const role = formData.get("role") as string; if (name && name.trim()) updates.name = name.trim(); if (pin && pin.length === 4 && /^\d{4}$/.test(pin)) updates.pin = pin; if (locationId && locationId !== editingUser.locationId) { updates.locationId = locationId; const loc = LOCATION_OPTIONS.find(l => l.id === locationId); if (loc) updates.locationName = loc.name; } if (role !== (editingUser.role || "")) updates.role = role || undefined; if (Object.keys(updates).length > 0) { await handleUpdateUser(editingUser._id, updates); } else { setEditingUser(null); } }}>
               <div><label className="block text-ios-gray1 text-sm mb-2">Name</label><input type="text" name="name" defaultValue={editingUser.name} required className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all" /></div>
-              <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select name="role" defaultValue={editingUser.role || ""} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="">Standard</option><option value="supervisor">Supervisor</option></select><p className="text-xs text-ios-gray1 mt-1">Supervisors can access the Bonus Tracker</p></div>
+              <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select name="role" defaultValue={editingUser.role || ""} onChange={(e) => setEditingUserRole(e.target.value)} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="">Standard</option><option value="supervisor">Supervisor</option><option value="inventory">Inventory</option></select><p className="text-xs text-ios-gray1 mt-1">Supervisors can access the Bonus Tracker. Inventory can run physical counts.</p></div>
+              {editingUserRole === "inventory" && (
+                <div>
+                  <label className="block text-ios-gray1 text-sm mb-2">Counting locations</label>
+                  <div className="space-y-2">
+                    {(countLocations ?? []).map((loc: any) => {
+                      const assigned = (countAssignments ?? []).some(
+                        (a: any) => a.userId === editingUser._id && a.locationCode === loc.code
+                      );
+                      return (
+                        <label key={loc.code} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={assigned}
+                            onChange={async (e) => {
+                              if (!admin?.id) return;
+                              try {
+                                if (e.target.checked) {
+                                  await assignCountLocation({ userId: editingUser._id, locationCode: loc.code, callerAdminId: admin.id as any });
+                                } else {
+                                  await unassignCountLocation({ userId: editingUser._id, locationCode: loc.code, callerAdminId: admin.id as any });
+                                }
+                              } catch (err: any) {
+                                alert(err?.message ?? "Could not update assignment");
+                              }
+                            }}
+                          />
+                          <span className="text-[#1c1c1e]">{loc.label} ({loc.code})</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-ios-gray1 mt-1">Saves immediately. Without at least one location this user cannot open a count.</p>
+                </div>
+              )}
               <div><label className="block text-ios-gray1 text-sm mb-2">Location</label><select name="locationId" defaultValue={editingUser.locationId} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all">{LOCATION_OPTIONS.map(loc => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}</select></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">New PIN (4 digits)</label><input type="text" name="pin" placeholder="Leave blank to keep current" maxLength={4} pattern="\d{4}" className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" /><p className="text-xs text-ios-gray1 mt-1">Enter 4 digits to change PIN</p></div>
               <div className="flex gap-3 pt-2"><button type="button" onClick={() => setEditingUser(null)} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button type="submit" className="flex-1 px-4 py-3 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl font-medium shadow-ios transition-all">Save</button></div>
@@ -1488,7 +1550,7 @@ function Dashboard() {
               <div><label className="block text-ios-gray1 text-sm mb-2">Employee ID *</label><input type="text" value={newUser.empId} onChange={(e) => setNewUser({ ...newUser, empId: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" placeholder="EMP001" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">PIN (4 digits) *</label><input type="text" value={newUser.pin} onChange={(e) => setNewUser({ ...newUser, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })} maxLength={4} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all font-mono" placeholder="1234" /></div>
               <div><label className="block text-ios-gray1 text-sm mb-2">Location *</label><select value={newUser.locationId} onChange={(e) => { const loc = LOCATION_OPTIONS.find(l => l.id === e.target.value); setNewUser({ ...newUser, locationId: e.target.value, locationName: loc?.name || "" }); }} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="">Select location...</option>{LOCATION_OPTIONS.map((loc) => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}</select></div>
-              <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="user">User</option><option value="supervisor">Supervisor</option></select></div>
+              <div><label className="block text-ios-gray1 text-sm mb-2">Role</label><select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })} className="w-full px-4 py-3 bg-white border border-ios-gray5 rounded-xl focus:outline-none focus:border-ios-blue focus:ring-2 focus:ring-ios-blue/20 transition-all"><option value="user">User</option><option value="supervisor">Supervisor</option><option value="inventory">Inventory</option></select></div>
               <div className="flex gap-3 pt-2"><button onClick={() => { setShowNewUser(false); setNewUserError(""); }} className="flex-1 px-4 py-3 bg-ios-gray5 hover:bg-ios-gray4 rounded-xl font-medium transition-colors">Cancel</button><button onClick={handleCreateUser} className="flex-1 px-4 py-3 bg-white border border-ios-blue text-ios-blue hover:bg-ios-blue/5 rounded-xl font-medium shadow-ios transition-all">Create</button></div>
             </div>
           </div>
