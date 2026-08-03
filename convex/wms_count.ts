@@ -431,6 +431,11 @@ export const recordCountScan = mutation({
       scanDelta: 1,
     });
 
+    // Read back the rollup so the scanner can show the ACCUMULATED count, not
+    // just this scan. The same barcode gets scanned again later ("found 4 more"),
+    // and showing only the latest quantity makes a counter think the earlier
+    // scan was lost and re-scan it. Unmatched UPCs need this just as much as
+    // matched items, so look up whichever key this scan used.
     const totals = itemId
       ? await ctx.db
           .query("wms_count_totals")
@@ -438,7 +443,12 @@ export const recordCountScan = mutation({
             q.eq("batchId", args.batchId).eq("itemId", itemId!),
           )
           .first()
-      : null;
+      : await ctx.db
+          .query("wms_count_totals")
+          .withIndex("by_batch_upc", (q) =>
+            q.eq("batchId", args.batchId).eq("upc", upc || args.rawBarcode),
+          )
+          .first();
 
     return {
       scanId,
@@ -449,6 +459,7 @@ export const recordCountScan = mutation({
       model,
       size,
       runningQty: totals?.countedQty ?? args.quantity,
+      runningScans: totals?.scanCount ?? 1,
     };
   },
 });
