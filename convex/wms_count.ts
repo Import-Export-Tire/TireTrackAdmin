@@ -7,7 +7,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { computeVariance } from "./wms_count_variance";
+import { computeVariance, canonicalItemIdFrom } from "./wms_count_variance";
 import { COUNT_LOCATIONS, isCountLocationEnabled } from "./wms_count_locations";
 import { Id } from "./_generated/dataModel";
 
@@ -773,6 +773,8 @@ export const resolveUnmatchedUpc = mutation({
     batchId: v.id("wms_count_batches"),
     upc: v.string(),
     itemId: v.string(),
+    /** Manufacturer part number from the search result, when the client sends it. */
+    mpn: v.optional(v.string()),
     alsoSaveMapping: v.boolean(),
     scope: v.union(v.literal("batch"), v.literal("scan")),
     scanId: v.optional(v.id("wms_count_scans")),
@@ -797,18 +799,44 @@ export const resolveUnmatchedUpc = mutation({
             )
             .collect();
 
-    const base = await ctx.db
+    /**
+     * The canonical itemId comes from the BOOK, never from the catalog search.
+     * The search returns AYAGS089 where the book holds AYAGS089. (461 of W09's
+     * 478 itemIds carry that d-class suffix), so storing the search's spelling
+     * files a correctly-counted tire as an off-book "unexpected" line AND leaves
+     * its real book row reported as shrink — two wrong numbers from one right count.
+     *
+     * Indexed lookups first; the whole-baseline scan is the last resort and only
+     * runs on a genuine miss, since manual resolves are rare.
+     */
+    let base = await ctx.db
       .query("wms_count_baseline")
       .withIndex("by_batch_item", (q) =>
         q.eq("batchId", args.batchId).eq("itemId", args.itemId),
       )
       .first();
+    if (!base && args.mpn) {
+      base = await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch_mpn", (q) =>
+          q.eq("batchId", args.batchId).eq("mpn", args.mpn!),
+        )
+        .first();
+    }
+    if (!base) {
+      const allBaseline = await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+        .collect();
+      base = canonicalItemIdFrom(args.itemId, args.mpn, allBaseline);
+    }
+    const itemId = base?.itemId ?? args.itemId;
 
     let moved = 0;
     for (const scan of candidates as any[]) {
       if (!scan || scan.voided || scan.itemId) continue;
       await ctx.db.patch(scan._id, {
-        itemId: args.itemId,
+        itemId,
         matchSource: "resolved" as const,
         brand: base?.brand ?? scan.brand,
         model: base?.model ?? scan.model,
@@ -820,7 +848,7 @@ export const resolveUnmatchedUpc = mutation({
         scanDelta: -1,
       });
       await applyTotalsDelta(ctx, args.batchId, {
-        itemId: args.itemId,
+        itemId,
         qtyDelta: scan.quantity,
         scanDelta: 1,
       });
@@ -832,15 +860,24 @@ export const resolveUnmatchedUpc = mutation({
         .query("tireUPCs")
         .withIndex("by_upc", (q) => q.eq("upc", args.upc))
         .first();
+      /**
+       * inventoryNumber holds the manufacturer PART NUMBER, per the schema note
+       * on tireUPCs — not the itemId. Prefer the book's mpn, then the search's;
+       * either resolves, since the barcode ladder tries itemId and mpn both.
+       * The old code stored args.itemId here, which matched neither key once the
+       * search's spelling diverged from the book's, so the mapping was dead on
+       * arrival and the same barcode came up unknown again on the next scan.
+       */
+      const partNumber = base?.mpn || args.mpn || args.itemId;
       if (existing) {
-        await ctx.db.patch(existing._id, { inventoryNumber: args.itemId });
+        await ctx.db.patch(existing._id, { inventoryNumber: partNumber });
       } else {
         await ctx.db.insert("tireUPCs", {
           upc: args.upc,
           brand: base?.brand ?? "",
           model: base?.model ?? "",
           size: base?.size ?? "",
-          inventoryNumber: args.itemId,
+          inventoryNumber: partNumber,
         });
       }
     }

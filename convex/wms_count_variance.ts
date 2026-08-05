@@ -64,6 +64,62 @@ export type VarianceSummary = {
 
 const key = (s: string) => String(s ?? "").trim().toUpperCase();
 
+/**
+ * itemId with punctuation removed. JMK's d-class suffixes (AYAEP031^ Caret,
+ * AYAEP031. Dot) are part of the book's itemId but are absent from the catalog
+ * search's, so the two spellings must compare equal to canonicalise a manual
+ * resolve onto the book.
+ */
+const normalizeId = (s: string) => key(s).replace(/[^A-Z0-9]/g, "");
+
+/**
+ * The book row a manually-resolved scan belongs to, or null.
+ *
+ * `/api/inventory/search` (sidewall lookup) and `/api/inventory/snapshot` (the
+ * frozen book) disagree on itemId format — the search returns AYAGS089 where the
+ * book holds AYAGS089. Storing the search's spelling makes the tire an
+ * off-book "unexpected" line AND leaves its real book row reported as shrink,
+ * so the resolve must come back to the book's own itemId.
+ *
+ * Order: exact itemId, then manufacturer part number, then suffix-insensitive
+ * itemId. Never guesses — an unmatched code stays unmatched, which is the truth.
+ */
+export function canonicalItemIdFrom<
+  T extends { itemId: string; mpn?: string; qtyOnHand: number },
+>(requestedItemId: string, mpn: string | undefined, rows: T[]): T | null {
+  const want = key(requestedItemId);
+  const wantMpn = key(mpn ?? "");
+  if (!want && !wantMpn) return null;
+
+  // Deepest stock wins, then itemId — same deterministic pick the variance
+  // grouping uses, so repeat resolves of one tire always land on one row.
+  const pick = (matches: T[]) =>
+    matches.length === 0
+      ? null
+      : matches
+          .slice()
+          .sort(
+            (a, b) => b.qtyOnHand - a.qtyOnHand || a.itemId.localeCompare(b.itemId),
+          )[0];
+
+  if (want) {
+    const exact = pick(rows.filter((r) => key(r.itemId) === want));
+    if (exact) return exact;
+  }
+  if (wantMpn) {
+    const byMpn = pick(rows.filter((r) => key(r.mpn ?? "") === wantMpn));
+    if (byMpn) return byMpn;
+  }
+  if (want) {
+    const wantNorm = normalizeId(requestedItemId);
+    if (wantNorm) {
+      const loose = pick(rows.filter((r) => normalizeId(r.itemId) === wantNorm));
+      if (loose) return loose;
+    }
+  }
+  return null;
+}
+
 function bucketFor(expected: number, counted: number): Bucket {
   // notFound is separated from short deliberately: "in the book, never seen on
   // the floor" is where real shrink shows up, and merging it into short buries it.
