@@ -744,13 +744,15 @@ function CountReport() {
                 No items match the search.
               </div>
             ) : (
-              <table className="w-full text-sm min-w-[700px]">
+              <table className="w-full text-sm min-w-[820px]">
                 <thead className="bg-ios-gray6 text-ios-gray1 text-left">
                   <tr>
                     <th className="px-4 py-2 font-semibold">Item ID</th>
                     <th className="px-4 py-2 font-semibold">Brand</th>
                     <th className="px-4 py-2 font-semibold">Size</th>
+                    <th className="px-4 py-2 font-semibold text-right">Book</th>
                     <th className="px-4 py-2 font-semibold text-right">Counted</th>
+                    <th className="px-4 py-2 font-semibold text-right">Variance</th>
                     <th className="px-4 py-2 font-semibold text-right">Scans</th>
                   </tr>
                 </thead>
@@ -760,7 +762,20 @@ function CountReport() {
                       <td className="px-4 py-2 font-mono text-xs text-[#1c1c1e]">{r.itemId}</td>
                       <td className="px-4 py-2 text-[#1c1c1e]">{r.brand ?? "—"}</td>
                       <td className="px-4 py-2 text-ios-gray1">{r.size ?? "—"}</td>
+                      <td className="px-4 py-2 text-right text-[#1c1c1e]">{r.expected}</td>
                       <td className="px-4 py-2 text-right text-[#1c1c1e]">{r.counted}</td>
+                      <td
+                        className={`px-4 py-2 text-right font-semibold ${
+                          r.variance < 0
+                            ? "text-ios-red"
+                            : r.variance > 0
+                              ? "text-ios-blue"
+                              : "text-ios-gray1"
+                        }`}
+                      >
+                        {r.variance > 0 ? "+" : ""}
+                        {r.variance}
+                      </td>
                       <td className="px-4 py-2 text-right text-ios-gray1">{r.scanCount}</td>
                     </tr>
                   ))}
