@@ -129,24 +129,24 @@ function bucketFor(expected: number, counted: number): Bucket {
   return counted < expected ? "short" : "over";
 }
 
-export function computeVariance(
-  baseline: BaselineRow[],
-  totals: TotalRow[],
-): { rows: VarianceRow[]; unmatched: UnmatchedRow[]; summary: VarianceSummary } {
-  /**
-   * Group baseline rows by BARCODE, not by itemId.
-   *
-   * JMK carries the same physical tire under several d-class variants
-   * (AYAEP031^ = Caret, AYAEP031. = Dot) which share one printed barcode. At W08
-   * that is 353 barcodes covering 709 SKUs and 32,602 tires. Because the barcode
-   * is what the scanner reads, those SKUs cannot be distinguished on the floor —
-   * so counting them separately invents a precision the data does not have, and
-   * produces a fictional short on one variant plus a fictional over on the other.
-   *
-   * A line is therefore keyed on upc, else ean, else the itemId. Rows with no
-   * barcode stay separate: absent a shared barcode there is no evidence they are
-   * the same tire.
-   */
+/**
+ * Group baseline rows by BARCODE, not by itemId.
+ *
+ * JMK carries the same physical tire under several d-class variants
+ * (AYAEP031^ = Caret, AYAEP031. = Dot) which share one printed barcode. At W08
+ * that is 353 barcodes covering 709 SKUs and 32,602 tires. Because the barcode
+ * is what the scanner reads, those SKUs cannot be distinguished on the floor —
+ * so counting them separately invents a precision the data does not have, and
+ * produces a fictional short on one variant plus a fictional over on the other.
+ *
+ * A line is therefore keyed on upc, else ean, else the itemId. Rows with no
+ * barcode stay separate: absent a shared barcode there is no evidence they are
+ * the same tire.
+ *
+ * Shared by the variance report and the count-to-count comparison so the two can
+ * never disagree about what one line is.
+ */
+export function groupBaseline(baseline: BaselineRow[]) {
   const groupKeyOf = (r: BaselineRow) =>
     (r.upc ?? "").trim() || (r.ean ?? "").trim() || key(r.itemId);
 
@@ -159,6 +159,14 @@ export function computeVariance(
     else groups.set(g, [row]);
     itemToGroup.set(key(row.itemId), g);
   }
+  return { groups, itemToGroup };
+}
+
+export function computeVariance(
+  baseline: BaselineRow[],
+  totals: TotalRow[],
+): { rows: VarianceRow[]; unmatched: UnmatchedRow[]; summary: VarianceSummary } {
+  const { groups, itemToGroup } = groupBaseline(baseline);
 
   // Counted quantities, folded onto the group each itemId belongs to.
   const countedByGroup = new Map<string, { qty: number; scans: number }>();
@@ -245,6 +253,184 @@ export function computeVariance(
       expectedUnits,
       countedUnits,
       netUnitVariance: countedUnits - expectedUnits,
+    },
+  };
+}
+
+// ------------------------------------------------- count-to-count comparison
+
+export type ComparisonBucket =
+  | "agreed-clean"
+  | "agreed-variance"
+  | "disagree"
+  | "missed-in-first"
+  | "missed-in-second";
+
+export type ComparisonRow = {
+  itemId: string;
+  variantItemIds?: string[];
+  brand?: string;
+  model?: string;
+  size?: string;
+  mpn?: string;
+  /** Book quantity as each count froze it — they differ if stock moved between. */
+  expectedFirst: number;
+  expectedSecond: number;
+  bookMoved: boolean;
+  countedFirst: number;
+  countedSecond: number;
+  /** Second minus first. The number that says how much the two passes disagree. */
+  spread: number;
+  /**
+   * Variance you can act on: only set when both counts got the same answer, and
+   * measured against the SECOND count's book, which is the newer truth.
+   */
+  confirmedVariance: number | null;
+  bucket: ComparisonBucket;
+};
+
+export type ComparisonSummary = {
+  lines: number;
+  agreedClean: number;
+  agreedVariance: number;
+  disagree: number;
+  missedInFirst: number;
+  missedInSecond: number;
+  bookMovedLines: number;
+  /** Sum of |spread| — how many units the two counts cannot agree on. */
+  unitsInDispute: number;
+  /** Net variance across lines where both passes agree. The defensible number. */
+  confirmedNetVariance: number;
+  confirmedShortUnits: number;
+  confirmedOverUnits: number;
+  countedUnitsFirst: number;
+  countedUnitsSecond: number;
+};
+
+/**
+ * Compare two physical counts of the same location.
+ *
+ * A single count cannot tell a real shortage from a miscount — the whole reason
+ * to count twice. So the output is built around one distinction: lines where both
+ * passes got the SAME answer (believe it, even when it disagrees with the book)
+ * versus lines where the passes disagree with each other (a counting problem, and
+ * no basis for adjusting anything until somebody looks again).
+ *
+ * Lines are joined on the same barcode grouping the variance report uses, so a
+ * d-class variant pair is one line in both. Items present in only one baseline
+ * still appear: a tire that arrived between the two freezes is real, and silently
+ * dropping it would hide it.
+ */
+export function compareCounts(
+  first: { baseline: BaselineRow[]; totals: TotalRow[] },
+  second: { baseline: BaselineRow[]; totals: TotalRow[] },
+): { rows: ComparisonRow[]; summary: ComparisonSummary } {
+  const side = (input: { baseline: BaselineRow[]; totals: TotalRow[] }) => {
+    const { groups, itemToGroup } = groupBaseline(input.baseline);
+    const counted = new Map<string, number>();
+    for (const t of input.totals) {
+      if (!t.itemId) continue; // unmatched barcodes belong to neither line
+      const k = key(t.itemId);
+      const g = itemToGroup.get(k) ?? k;
+      counted.set(g, (counted.get(g) ?? 0) + t.countedQty);
+    }
+    return { groups, counted };
+  };
+
+  const a = side(first);
+  const b = side(second);
+
+  const keys = new Set<string>([
+    ...a.groups.keys(),
+    ...b.groups.keys(),
+    ...a.counted.keys(),
+    ...b.counted.keys(),
+  ]);
+
+  const rows: ComparisonRow[] = [];
+  for (const g of keys) {
+    const membersA = a.groups.get(g) ?? [];
+    const membersB = b.groups.get(g) ?? [];
+    // Prefer the newer book for the description — it is the one an operator will
+    // look up today.
+    const members = membersB.length ? membersB : membersA;
+    const lead = members.length
+      ? members.reduce((x, y) => (y.qtyOnHand > x.qtyOnHand ? y : x))
+      : undefined;
+
+    const expectedFirst = membersA.reduce((n, m) => n + m.qtyOnHand, 0);
+    const expectedSecond = membersB.reduce((n, m) => n + m.qtyOnHand, 0);
+    const countedFirst = a.counted.get(g) ?? 0;
+    const countedSecond = b.counted.get(g) ?? 0;
+
+    const scannedFirst = a.counted.has(g);
+    const scannedSecond = b.counted.has(g);
+
+    let bucket: ComparisonBucket;
+    if (scannedFirst && !scannedSecond && countedFirst > 0) {
+      bucket = "missed-in-second";
+    } else if (!scannedFirst && scannedSecond && countedSecond > 0) {
+      bucket = "missed-in-first";
+    } else if (countedFirst !== countedSecond) {
+      bucket = "disagree";
+    } else {
+      bucket =
+        countedSecond === expectedSecond ? "agreed-clean" : "agreed-variance";
+    }
+
+    const agreed = bucket === "agreed-clean" || bucket === "agreed-variance";
+
+    rows.push({
+      itemId: lead?.itemId ?? g,
+      variantItemIds: members.length > 1 ? members.map((m) => m.itemId) : undefined,
+      brand: lead?.brand,
+      model: lead?.model,
+      size: lead?.size,
+      mpn: lead?.mpn,
+      expectedFirst,
+      expectedSecond,
+      bookMoved: membersA.length > 0 && membersB.length > 0 && expectedFirst !== expectedSecond,
+      countedFirst,
+      countedSecond,
+      spread: countedSecond - countedFirst,
+      confirmedVariance: agreed ? countedSecond - expectedSecond : null,
+      bucket,
+    });
+  }
+
+  // Worst disagreement first, then biggest confirmed variance — a report is read
+  // top-down, and a disagreement is the thing somebody has to go do something about.
+  rows.sort(
+    (x, z) =>
+      Math.abs(z.spread) - Math.abs(x.spread) ||
+      Math.abs(z.confirmedVariance ?? 0) - Math.abs(x.confirmedVariance ?? 0),
+  );
+
+  const count = (bkt: ComparisonBucket) => rows.filter((r) => r.bucket === bkt).length;
+  const confirmed = rows.filter((r) => r.confirmedVariance !== null);
+
+  return {
+    rows,
+    summary: {
+      lines: rows.length,
+      agreedClean: count("agreed-clean"),
+      agreedVariance: count("agreed-variance"),
+      disagree: count("disagree"),
+      missedInFirst: count("missed-in-first"),
+      missedInSecond: count("missed-in-second"),
+      bookMovedLines: rows.filter((r) => r.bookMoved).length,
+      unitsInDispute: rows.reduce((n, r) => n + Math.abs(r.spread), 0),
+      confirmedNetVariance: confirmed.reduce((n, r) => n + (r.confirmedVariance ?? 0), 0),
+      confirmedShortUnits: confirmed.reduce(
+        (n, r) => n + Math.min(0, r.confirmedVariance ?? 0),
+        0,
+      ),
+      confirmedOverUnits: confirmed.reduce(
+        (n, r) => n + Math.max(0, r.confirmedVariance ?? 0),
+        0,
+      ),
+      countedUnitsFirst: rows.reduce((n, r) => n + r.countedFirst, 0),
+      countedUnitsSecond: rows.reduce((n, r) => n + r.countedSecond, 0),
     },
   };
 }

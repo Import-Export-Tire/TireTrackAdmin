@@ -7,7 +7,11 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { computeVariance, canonicalItemIdFrom } from "./wms_count_variance";
+import {
+  computeVariance,
+  canonicalItemIdFrom,
+  compareCounts,
+} from "./wms_count_variance";
 import { COUNT_LOCATIONS, isCountLocationEnabled } from "./wms_count_locations";
 import { Id } from "./_generated/dataModel";
 
@@ -547,6 +551,59 @@ export const recordCountScan = mutation({
       }
     }
 
+    /**
+     * Duplicate guard.
+     *
+     * The failure it catches, measured on W09's first count: a counter scans a
+     * stack, the confirmation is missed or the barcode is unknown so nothing
+     * visibly lands, and they scan the same stack again. Both copies count. One
+     * such pair put 204 extra tires on a 261-tire line (+197) and another put 121
+     * on a 177-tire line — 345 phantom units between them, indistinguishable from
+     * a real overage once the batch is closed.
+     *
+     * It WARNS rather than refuses. "I found 20 more of these" is ordinary
+     * counting, and a hard block would either lose that stock or teach counters
+     * to work around the tool. So the scan is recorded, the pair is flagged, and
+     * both the scanner and the Admin review panel can surface it while the people
+     * who were on the floor are still standing there.
+     */
+    const now = Date.now();
+    let duplicateOf: Id<"wms_count_scans"> | undefined;
+    let duplicatePrior:
+      | { quantity: number; minutesAgo: number; scannedByName: string }
+      | undefined;
+    {
+      const priors = itemId
+        ? await ctx.db
+            .query("wms_count_scans")
+            .withIndex("by_batch_item", (q) =>
+              q.eq("batchId", args.batchId).eq("itemId", itemId),
+            )
+            .collect()
+        : await ctx.db
+            .query("wms_count_scans")
+            .withIndex("by_batch_upc", (q) =>
+              q.eq("batchId", args.batchId).eq("upc", upc || args.rawBarcode),
+            )
+            .collect();
+      const twin = priors
+        .filter(
+          (p) =>
+            !p.voided &&
+            p.quantity === args.quantity &&
+            now - p.scannedAt <= DUPLICATE_WINDOW_MS,
+        )
+        .sort((a, b) => b.scannedAt - a.scannedAt)[0];
+      if (twin) {
+        duplicateOf = twin._id;
+        duplicatePrior = {
+          quantity: twin.quantity,
+          minutesAgo: Math.round((now - twin.scannedAt) / 60000),
+          scannedByName: twin.scannedByName,
+        };
+      }
+    }
+
     const scanId = await ctx.db.insert("wms_count_scans", {
       batchId: args.batchId,
       warehouseCode: batch.warehouseCode,
@@ -560,7 +617,8 @@ export const recordCountScan = mutation({
       size,
       scannedBy: performedBy,
       scannedByName: performedByName,
-      scannedAt: Date.now(),
+      scannedAt: now,
+      suspectedDuplicateOf: duplicateOf,
     });
 
     await applyTotalsDelta(ctx, args.batchId, {
@@ -601,6 +659,289 @@ export const recordCountScan = mutation({
       runningQty: totals?.countedQty ?? args.quantity,
       runningScans: totals?.scanCount ?? 1,
     };
+  },
+});
+
+/**
+ * How long after a scan an identical quantity on the same tire counts as a
+ * suspected re-scan. Measured against W09's real duplicates: every confirmed pair
+ * was under 40 seconds apart, and the widest same-quantity pair that turned out
+ * LEGITIMATE was 37 minutes. 15 minutes sits between the two.
+ */
+const DUPLICATE_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * Scans flagged as a suspected re-scan, with the earlier scan they duplicate.
+ *
+ * Review queue, not a verdict — the point is to put the pair in front of somebody
+ * while the count is still open and the counters are still on the floor.
+ */
+export const listSuspectedDuplicates = query({
+  args: { batchId: v.id("wms_count_batches") },
+  handler: async (ctx, args) => {
+    const scans = await ctx.db
+      .query("wms_count_scans")
+      .withIndex("by_batch_scannedAt", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    const byId = new Map(scans.map((s) => [s._id, s]));
+
+    const pairs = [];
+    for (const s of scans) {
+      if (!s.suspectedDuplicateOf || s.voided) continue;
+      const prior = byId.get(s.suspectedDuplicateOf);
+      if (!prior || prior.voided) continue;
+      pairs.push({
+        scanId: s._id,
+        priorScanId: prior._id,
+        itemId: s.itemId,
+        brand: s.brand,
+        model: s.model,
+        size: s.size,
+        quantity: s.quantity,
+        rawBarcode: s.rawBarcode,
+        scannedAt: s.scannedAt,
+        priorScannedAt: prior.scannedAt,
+        secondsApart: Math.round((s.scannedAt - prior.scannedAt) / 1000),
+        scannedByName: s.scannedByName,
+        priorScannedByName: prior.scannedByName,
+        sameCounter: s.scannedBy === prior.scannedBy,
+      });
+    }
+    return pairs.sort((a, z) => z.quantity - a.quantity);
+  },
+});
+
+/**
+ * Fold off-book count totals back onto the book row they actually belong to.
+ *
+ * A hand-resolve stores whatever itemId the sidewall search returned, and that
+ * search drops the book's d-class suffix (AYAGS008 where the book holds
+ * AYAGS008.). resolveUnmatchedUpc canonicalises onto the book to prevent this,
+ * but anything filed before that guard existed — or through any path that ever
+ * misses — leaves one correct count producing two wrong numbers: an "unexpected"
+ * over of the full counted quantity, plus the real book row reported as shrink.
+ *
+ * This is the repair, and it is deliberately a REPAIR rather than a report fix:
+ * the stored data is what a closed batch is judged on, so it has to be right in
+ * the table, not just in one query. The scans move with the units so the audit
+ * trail names the book's own item, and the tireUPCs mapping a bad resolve wrote
+ * is repointed at the manufacturer part number, per that table's convention —
+ * otherwise the same sidewall barcode comes up unknown on the next scan.
+ *
+ * Internal, and dryRun-first, because it rewrites counted quantities on a live
+ * inventory. Run with dryRun true, read the plan, then run it for real.
+ */
+export const repairOffBookTotals = internalMutation({
+  args: { batchId: v.id("wms_count_batches"), dryRun: v.boolean() },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) throw new Error("Batch not found");
+
+    const baseline = await ctx.db
+      .query("wms_count_baseline")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    const totals = await ctx.db
+      .query("wms_count_totals")
+      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .collect();
+    const scans = await ctx.db
+      .query("wms_count_scans")
+      .withIndex("by_batch_scannedAt", (q) => q.eq("batchId", args.batchId))
+      .collect();
+
+    const moves: Array<{
+      from: string;
+      to: string;
+      qty: number;
+      scans: number;
+      bookQty: number;
+      mappingsFixed: string[];
+    }> = [];
+
+    for (const t of totals) {
+      if (!t.itemId || t.onBook) continue;
+      const base = canonicalItemIdFrom(t.itemId, undefined, baseline);
+      // No book row in any spelling means the count is a genuine off-book find —
+      // stock the book says this location does not have. Leave it alone.
+      if (!base || base.itemId === t.itemId) continue;
+
+      const mine = scans.filter((s) => s.itemId === t.itemId && !s.voided);
+      const mappingsFixed: string[] = [];
+
+      if (!args.dryRun) {
+        for (const s of mine) {
+          await ctx.db.patch(s._id, {
+            itemId: base.itemId,
+            brand: base.brand ?? s.brand,
+            model: base.model ?? s.model,
+            size: base.size ?? s.size,
+          });
+        }
+        await ctx.db.delete(t._id);
+        await applyTotalsDelta(ctx, args.batchId, {
+          itemId: base.itemId,
+          qtyDelta: t.countedQty,
+          scanDelta: t.scanCount,
+          onBook: true,
+        });
+      }
+
+      // Repoint only the mappings these scans actually created — a sweep by
+      // inventoryNumber alone could rewrite rows belonging to another location.
+      for (const code of new Set(mine.map((s) => s.upc || s.rawBarcode))) {
+        if (!code) continue;
+        const row = await ctx.db
+          .query("tireUPCs")
+          .withIndex("by_upc", (q) => q.eq("upc", code))
+          .first();
+        if (!row || row.inventoryNumber !== t.itemId || !base.mpn) continue;
+        mappingsFixed.push(`${code} -> ${base.mpn}`);
+        if (args.dryRun) continue;
+        await ctx.db.patch(row._id, {
+          inventoryNumber: base.mpn,
+          brand: row.brand || base.brand || "",
+          model: row.model || base.model || "",
+          size: row.size || base.size || "",
+        });
+      }
+
+      moves.push({
+        from: t.itemId,
+        to: base.itemId,
+        qty: t.countedQty,
+        scans: t.scanCount,
+        bookQty: base.qtyOnHand,
+        mappingsFixed,
+      });
+    }
+
+    return { dryRun: args.dryRun, moved: moves.length, moves };
+  },
+});
+
+/**
+ * Void scans by id, reversing their totals — the same effect as the scanner's
+ * undo, without an actor, for cleaning up a duplicate a counter could not undo
+ * themselves (a retry of a stack that was later attached by a batch-scope
+ * resolve, so both copies ended up counted).
+ *
+ * dryRun-first for the same reason as above.
+ */
+export const voidCountScansById = internalMutation({
+  args: {
+    scanIds: v.array(v.id("wms_count_scans")),
+    dryRun: v.boolean(),
+    note: v.optional(v.string()),
+    /**
+     * Correct a batch that is already CLOSED. Off by default: a closed batch is
+     * the figure the business has been given, so changing it has to be a decision
+     * somebody made on purpose, not a side effect of running a repair script.
+     */
+    allowClosed: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const done: Array<{
+      scanId: string;
+      itemId?: string;
+      qty: number;
+      scannedByName: string;
+      skipped?: string;
+    }> = [];
+
+    for (const scanId of args.scanIds) {
+      const scan = await ctx.db.get(scanId);
+      if (!scan) {
+        done.push({ scanId, qty: 0, scannedByName: "", skipped: "not found" });
+        continue;
+      }
+      const row = {
+        scanId,
+        itemId: scan.itemId,
+        qty: scan.quantity,
+        scannedByName: scan.scannedByName,
+      };
+      if (scan.voided) {
+        done.push({ ...row, skipped: "already voided" });
+        continue;
+      }
+      const batch = await ctx.db.get(scan.batchId);
+      if (!batch || (batch.status !== "open" && !args.allowClosed)) {
+        done.push({ ...row, skipped: "batch closed — pass allowClosed to correct it" });
+        continue;
+      }
+      done.push(row);
+      if (args.dryRun) continue;
+
+      await ctx.db.patch(scanId, {
+        voided: true,
+        voidedBy: args.note ?? "repair:duplicate",
+        voidedAt: Date.now(),
+      });
+      await applyTotalsDelta(ctx, scan.batchId, {
+        itemId: scan.itemId,
+        upc: scan.upc || scan.rawBarcode,
+        qtyDelta: -scan.quantity,
+        scanDelta: -1,
+      });
+    }
+
+    return { dryRun: args.dryRun, scans: done };
+  },
+});
+
+/**
+ * Put a voided scan back, restoring its units — the inverse of the above, because
+ * a correction made from a report can itself be wrong, and the only safe repair
+ * tool is one that goes both ways.
+ */
+export const unvoidCountScansById = internalMutation({
+  args: {
+    scanIds: v.array(v.id("wms_count_scans")),
+    dryRun: v.boolean(),
+    allowClosed: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const done: Array<{
+      scanId: string;
+      itemId?: string;
+      qty: number;
+      skipped?: string;
+    }> = [];
+
+    for (const scanId of args.scanIds) {
+      const scan = await ctx.db.get(scanId);
+      if (!scan) {
+        done.push({ scanId, qty: 0, skipped: "not found" });
+        continue;
+      }
+      const row = { scanId, itemId: scan.itemId, qty: scan.quantity };
+      if (!scan.voided) {
+        done.push({ ...row, skipped: "not voided" });
+        continue;
+      }
+      const batch = await ctx.db.get(scan.batchId);
+      if (!batch || (batch.status !== "open" && !args.allowClosed)) {
+        done.push({ ...row, skipped: "batch closed — pass allowClosed" });
+        continue;
+      }
+      done.push(row);
+      if (args.dryRun) continue;
+
+      await ctx.db.patch(scanId, {
+        voided: undefined,
+        voidedBy: undefined,
+        voidedAt: undefined,
+      });
+      await applyTotalsDelta(ctx, scan.batchId, {
+        itemId: scan.itemId,
+        upc: scan.upc || scan.rawBarcode,
+        qtyDelta: scan.quantity,
+        scanDelta: 1,
+      });
+    }
+
+    return { dryRun: args.dryRun, scans: done };
   },
 });
 
@@ -1209,6 +1550,94 @@ export const getCountVariance = query({
       baselineExcludedNonTires: batch.baselineExcludedNonTires,
       baselineExcludedUnits: batch.baselineExcludedUnits,
       ...computeVariance(baseline, totals),
+    };
+  },
+});
+
+/**
+ * Compare two counts of the same location — the second-count report.
+ *
+ * One count cannot separate a real shortage from a miscount. Two can: where both
+ * passes land on the same number, that number is worth adjusting on even when it
+ * disagrees with JMK; where they disagree with each other, the only honest output
+ * is "go look again". This query produces exactly that split.
+ *
+ * Both batches must be the same warehouse — comparing two locations would produce
+ * a report that looks meaningful and is not.
+ *
+ * Scale ceiling is real and deliberate rather than hidden: this reads BOTH
+ * baselines in one query, so it is bounded by Convex's per-query document limit.
+ * W09 (477 lines a side) is nowhere near it; W08 Latrobe at 6,837 a side is, so
+ * the guard refuses loudly instead of failing halfway through a report somebody
+ * is about to act on.
+ */
+export const compareCountBatches = query({
+  args: {
+    firstBatchId: v.id("wms_count_batches"),
+    secondBatchId: v.id("wms_count_batches"),
+  },
+  handler: async (ctx, args) => {
+    if (args.firstBatchId === args.secondBatchId) {
+      throw new Error("Pick two different count batches");
+    }
+    const first = await ctx.db.get(args.firstBatchId);
+    const second = await ctx.db.get(args.secondBatchId);
+    if (!first || !second) throw new Error("Batch not found");
+    if (first.warehouseCode !== second.warehouseCode) {
+      throw new Error(
+        `Those batches are different locations (${first.warehouseCode} vs ${second.warehouseCode})`,
+      );
+    }
+    if (first.baselineStatus !== "ready" || second.baselineStatus !== "ready") {
+      return {
+        ready: false as const,
+        reason: "One of these counts has no frozen book to judge against yet.",
+      };
+    }
+    const size = (first.baselineItemCount ?? 0) + (second.baselineItemCount ?? 0);
+    if (size > 12000) {
+      throw new Error(
+        `These two books total ${size} lines, too many to compare in one query. ` +
+          `This location needs the paged comparison (not built yet) — ask before relying on a partial answer.`,
+      );
+    }
+
+    // Order by open time, so "first" and "second" mean what an operator expects
+    // however the two ids were passed in.
+    const [a, z] =
+      first.openedAt <= second.openedAt ? [first, second] : [second, first];
+
+    const load = async (batchId: Id<"wms_count_batches">) => ({
+      baseline: await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch", (q) => q.eq("batchId", batchId))
+        .collect(),
+      totals: await ctx.db
+        .query("wms_count_totals")
+        .withIndex("by_batch", (q) => q.eq("batchId", batchId))
+        .collect(),
+    });
+
+    const result = compareCounts(await load(a._id), await load(z._id));
+
+    return {
+      ready: true as const,
+      warehouseCode: a.warehouseCode,
+      first: {
+        batchId: a._id,
+        openedAt: a.openedAt,
+        closedAt: a.closedAt,
+        baselineFileDate: a.baselineFileDate,
+        openedByName: a.openedByName,
+      },
+      second: {
+        batchId: z._id,
+        openedAt: z.openedAt,
+        closedAt: z.closedAt,
+        baselineFileDate: z.baselineFileDate,
+        openedByName: z.openedByName,
+      },
+      ...result,
     };
   },
 });

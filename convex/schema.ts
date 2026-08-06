@@ -417,6 +417,14 @@ export default defineSchema({
     voided: v.optional(v.boolean()),
     voidedBy: v.optional(v.string()),
     voidedAt: v.optional(v.number()),
+    /**
+     * Set when an identical quantity was already recorded against the same tire
+     * a short time earlier — the signature of a counter re-scanning a stack they
+     * thought had not registered. Recorded rather than blocked: finding 20 more
+     * of something an hour later is normal counting, and refusing the scan would
+     * lose real stock. This flags the pair for review instead.
+     */
+    suspectedDuplicateOf: v.optional(v.id("wms_count_scans")),
   }).index("by_batch_scannedAt", ["batchId", "scannedAt"])
     .index("by_batch_item", ["batchId", "itemId"])
     .index("by_batch_upc", ["batchId", "upc"]),

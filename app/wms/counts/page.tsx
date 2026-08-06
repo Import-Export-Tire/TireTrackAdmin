@@ -53,9 +53,17 @@ function CountsDashboard() {
 
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-[#1c1c1e]">
-            Inventory Counts{activeLabel ? ` — ${activeLabel}` : ""}
-          </h1>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold text-[#1c1c1e]">
+              Inventory Counts{activeLabel ? ` — ${activeLabel}` : ""}
+            </h1>
+            <Link
+              href="/wms/counts/compare"
+              className="text-ios-blue text-sm font-medium hover:underline"
+            >
+              Compare two counts →
+            </Link>
+          </div>
           <p className="text-ios-gray1 text-sm max-w-2xl">
             A batch takes a snapshot of what the books say is on hand right now and
             freezes it. Everything counted is compared against that moment — not

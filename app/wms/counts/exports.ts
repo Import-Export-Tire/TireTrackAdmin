@@ -347,3 +347,113 @@ export async function downloadDiscrepancyPdf(
 
   doc.save(`${stamp(h)}_discrepancy.pdf`);
 }
+
+export const COMPARISON_LABEL: Record<string, string> = {
+  disagree:
+    "DISAGREE — the two counts got different numbers. Recount before adjusting anything.",
+  "missed-in-second": "Counted in the first pass, never scanned in the second",
+  "missed-in-first": "Counted in the second pass, never scanned in the first",
+  "agreed-variance":
+    "CONFIRMED variance — both counts agree, and both disagree with the book",
+  "agreed-clean": "Agreed and matching the book",
+};
+
+/**
+ * Second-count comparison export.
+ *
+ * Ordered by what somebody has to act on: disagreements first (a counting problem
+ * nobody can adjust against), then lines only one pass reached, then the confirmed
+ * variances, and the clean agreement last. The clean block is included rather than
+ * dropped so the file can stand as the evidence that the location was counted.
+ */
+export function downloadComparisonCsv(
+  meta: {
+    warehouseCode: string;
+    locationLabel: string;
+    first: { batchId: string; openedAt: number; closedAt?: number; baselineFileDate?: string; openedByName: string };
+    second: { batchId: string; openedAt: number; closedAt?: number; baselineFileDate?: string; openedByName: string };
+  },
+  rows: any[],
+  summary: any,
+) {
+  const pass = (label: string, p: typeof meta.first) => [
+    [label, p.batchId],
+    ["  opened", `${new Date(p.openedAt).toLocaleString()} by ${p.openedByName}`],
+    ["  closed", p.closedAt ? new Date(p.closedAt).toLocaleString() : "still open"],
+    ["  book (OEIVAL file date)", p.baselineFileDate ?? "unknown"],
+  ];
+
+  const body: unknown[][] = [
+    ["Location", `${meta.locationLabel} (${meta.warehouseCode})`],
+    ...pass("FIRST COUNT", meta.first),
+    ...pass("SECOND COUNT", meta.second),
+    [],
+    ["SUMMARY"],
+    ["Lines compared", summary.lines],
+    ["Agreed and clean", summary.agreedClean],
+    ["Agreed variance (actionable)", summary.agreedVariance],
+    ["Disagree (recount)", summary.disagree],
+    ["Missed in first pass", summary.missedInFirst],
+    ["Missed in second pass", summary.missedInSecond],
+    ["Book moved between counts", summary.bookMovedLines],
+    ["Units in dispute", summary.unitsInDispute],
+    ["CONFIRMED net variance", summary.confirmedNetVariance],
+    ["  confirmed short units", summary.confirmedShortUnits],
+    ["  confirmed over units", summary.confirmedOverUnits],
+    ["Counted units, first pass", summary.countedUnitsFirst],
+    ["Counted units, second pass", summary.countedUnitsSecond],
+    [],
+  ];
+
+  const order = [
+    "disagree",
+    "missed-in-second",
+    "missed-in-first",
+    "agreed-variance",
+    "agreed-clean",
+  ];
+  for (const bucket of order) {
+    const group = rows.filter((r) => r.bucket === bucket);
+    if (group.length === 0) continue;
+    body.push([COMPARISON_LABEL[bucket]]);
+    body.push([
+      "Item ID",
+      "Brand",
+      "Model",
+      "Size",
+      "MPN",
+      "Book (1st)",
+      "Book (2nd)",
+      "Counted 1st",
+      "Counted 2nd",
+      "Spread",
+      "Confirmed variance",
+      "Book moved",
+      "Variants",
+    ]);
+    for (const r of group) {
+      body.push([
+        r.itemId,
+        r.brand ?? "",
+        r.model ?? "",
+        r.size ?? "",
+        r.mpn ?? "",
+        r.expectedFirst,
+        r.expectedSecond,
+        r.countedFirst,
+        r.countedSecond,
+        r.spread,
+        r.confirmedVariance ?? "",
+        r.bookMoved ? "yes" : "",
+        (r.variantItemIds ?? []).join(" + "),
+      ]);
+    }
+    body.push([]);
+  }
+
+  download(
+    `${meta.warehouseCode}_count_comparison_${new Date(meta.second.openedAt).toISOString().slice(0, 10)}.csv`,
+    csv(body),
+    "text/csv;charset=utf-8",
+  );
+}

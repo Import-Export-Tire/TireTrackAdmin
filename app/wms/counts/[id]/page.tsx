@@ -35,6 +35,10 @@ function CountReport() {
   const locations = useQuery(api.wms_count.getCountLocations, {});
   const resolveUpc = useMutation(api.wms_count.resolveUnmatchedUpc);
   const searchTires = useAction(api.wms_count.searchIECentralTires);
+  const duplicates = useQuery(api.wms_count.listSuspectedDuplicates, {
+    batchId: batchId as any,
+  });
+  const voidScan = useMutation(api.wms_count.voidCountScan);
 
   // Inline resolver state, keyed by the UPC being resolved.
   const [resolving, setResolving] = useState<string | null>(null);
@@ -337,6 +341,82 @@ function CountReport() {
               </div>
             );
           })}
+
+          {!!duplicates?.length && (
+            <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
+              <div className="px-5 py-3 border-b border-ios-gray5 font-semibold text-[#1c1c1e]">
+                Possible duplicate scans{" "}
+                <span className="text-ios-gray1 font-normal">
+                  ({duplicates.length}) —{" "}
+                  {duplicates.reduce((n, d) => n + d.quantity, 0)} units at stake
+                </span>
+              </div>
+              <div className="px-5 py-2 text-xs text-ios-gray1">
+                The same quantity was recorded twice on one tire within a few
+                minutes. That is usually a stack scanned again because the first
+                scan didn&apos;t look like it registered — but finding more of
+                something is also normal, so nothing is removed automatically.
+                Check with the counter, then void the extra scan.
+              </div>
+              <table className="w-full text-sm">
+                <tbody>
+                  {duplicates.map((d) => (
+                    <tr key={d.scanId} className="border-t border-ios-gray5 align-top">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-[#1c1c1e]">
+                          {d.itemId ?? d.rawBarcode}
+                        </div>
+                        <div className="text-xs text-ios-gray1">
+                          {[d.brand, d.model, d.size].filter(Boolean).join(" ")}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[#1c1c1e]">
+                        {d.quantity} units, twice
+                        <div className="text-xs text-ios-gray1">
+                          {d.secondsApart}s apart ·{" "}
+                          {d.sameCounter
+                            ? `${d.scannedByName} both times`
+                            : `${d.priorScannedByName} then ${d.scannedByName}`}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {canEdit && b.status === "open" ? (
+                          <Btn
+                            tone="gray"
+                            onClick={async () => {
+                              if (
+                                !confirm(
+                                  `Void the second scan of ${d.quantity} on ${d.itemId ?? d.rawBarcode}?`,
+                                )
+                              )
+                                return;
+                              try {
+                                await voidScan({
+                                  scanId: d.scanId as any,
+                                  actor: {
+                                    kind: "admin",
+                                    adminId: admin!.id as any,
+                                  },
+                                });
+                              } catch (e: any) {
+                                alert(e?.message ?? "Could not void");
+                              }
+                            }}
+                          >
+                            Void the second scan
+                          </Btn>
+                        ) : (
+                          <span className="text-xs text-ios-gray1">
+                            {b.status === "open" ? "read only" : "batch closed"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {unmatched.length > 0 && (
             <div className="bg-white rounded-2xl shadow-ios overflow-hidden">
