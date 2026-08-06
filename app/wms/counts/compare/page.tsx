@@ -5,7 +5,11 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Protected } from "../../../protected";
 import { useAuth } from "../../../auth-context";
-import { downloadComparisonCsv, COMPARISON_LABEL } from "../exports";
+import {
+  downloadComparisonCsv,
+  downloadComparisonExcel,
+  COMPARISON_LABEL,
+} from "../exports";
 
 type Bucket =
   | "disagree"
@@ -66,6 +70,14 @@ function Compare() {
   const ready = result && "rows" in result && result.ready;
   const rows: any[] = ready ? (result as any).rows : [];
   const summary: any = ready ? (result as any).summary : null;
+  const meta = ready
+    ? {
+        warehouseCode: (result as any).warehouseCode,
+        locationLabel,
+        first: (result as any).first,
+        second: (result as any).second,
+      }
+    : null!;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
@@ -180,21 +192,16 @@ function Compare() {
             </div>
             <div className="mt-4 flex gap-2 items-center">
               <button
-                onClick={() =>
-                  downloadComparisonCsv(
-                    {
-                      warehouseCode: (result as any).warehouseCode,
-                      locationLabel,
-                      first: (result as any).first,
-                      second: (result as any).second,
-                    },
-                    rows,
-                    summary,
-                  )
-                }
+                onClick={() => downloadComparisonExcel(meta, rows, summary)}
                 className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm"
               >
-                Download CSV
+                Download Excel
+              </button>
+              <button
+                onClick={() => downloadComparisonCsv(meta, rows, summary)}
+                className="px-4 py-2 rounded-xl bg-white border border-ios-gray5 text-[#1c1c1e] text-sm"
+              >
+                CSV
               </button>
               <label className="text-xs text-ios-gray1 flex items-center gap-2">
                 <input

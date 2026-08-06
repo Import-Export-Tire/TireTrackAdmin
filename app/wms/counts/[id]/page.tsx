@@ -10,8 +10,10 @@ import { useAuth } from "../../../auth-context";
 import {
   BUCKET_LABEL,
   downloadScannedCsv,
+  downloadScannedExcel,
   downloadScannedPdf,
   downloadDiscrepancyCsv,
+  downloadDiscrepancyExcel,
   downloadDiscrepancyPdf,
   type ReportHeader,
 } from "../exports";
@@ -372,6 +374,12 @@ function CountReport() {
             <Btn tone="gray" onClick={() => downloadDiscrepancyCsv(header, rows, unmatched, summary)}>
               CSV
             </Btn>
+            <Btn
+              tone="gray"
+              onClick={() => downloadDiscrepancyExcel(header, rows, unmatched, summary)}
+            >
+              Excel
+            </Btn>
             <Btn onClick={() => downloadDiscrepancyPdf(header, rows, unmatched, summary)}>
               PDF
             </Btn>
@@ -381,6 +389,9 @@ function CountReport() {
           <>
             <Btn tone="gray" onClick={() => downloadScannedCsv(header, rows, unmatched)}>
               CSV
+            </Btn>
+            <Btn tone="gray" onClick={() => downloadScannedExcel(header, rows, unmatched)}>
+              Excel
             </Btn>
             <Btn onClick={() => downloadScannedPdf(header, rows, unmatched)}>PDF</Btn>
           </>
