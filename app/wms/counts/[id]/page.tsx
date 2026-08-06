@@ -84,7 +84,9 @@ function CountReport() {
   });
   const locations = useQuery(api.wms_count.getCountLocations, {});
   const resolveUpc = useMutation(api.wms_count.resolveUnmatchedUpc);
+  const reopenBatch = useMutation(api.wms_count.reopenCountBatch);
   const searchTires = useAction(api.wms_count.searchIECentralTires);
+  const [reopening, setReopening] = useState(false);
 
   // Inline resolver state, keyed by the UPC being resolved.
   const [resolving, setResolving] = useState<string | null>(null);
@@ -256,6 +258,33 @@ function CountReport() {
             {b.closedAt
               ? `${new Date(b.closedAt).toLocaleString()} by ${b.closedByName ?? ""}`
               : "still open"}
+            {b.status === "closed" && canEdit && admin?.id && (
+              <button
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      "Reopen this closed count batch? New scans can be added again.",
+                    )
+                  )
+                    return;
+                  setReopening(true);
+                  try {
+                    await reopenBatch({
+                      batchId: batchId as any,
+                      actor: { kind: "admin", adminId: admin.id as any },
+                    });
+                  } catch (e: any) {
+                    alert(e?.message ?? "Could not reopen batch");
+                  } finally {
+                    setReopening(false);
+                  }
+                }}
+                disabled={reopening}
+                className="ml-2 px-2 py-1 rounded-lg border border-ios-gray5 text-xs font-medium text-ios-blue disabled:opacity-40"
+              >
+                {reopening ? "Reopening…" : "Reopen"}
+              </button>
+            )}
           </div>
           <div>
             <span className="text-ios-gray1">Baseline </span>
