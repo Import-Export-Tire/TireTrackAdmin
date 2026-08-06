@@ -39,6 +39,8 @@ export type VarianceRow = {
   model?: string;
   size?: string;
   mpn?: string;
+  upc?: string;
+  ean?: string;
   expected: number;
   counted: number;
   variance: number;
@@ -204,6 +206,8 @@ export function computeVariance(
       model: lead.model,
       size: lead.size,
       mpn: lead.mpn,
+      upc: lead.upc,
+      ean: lead.ean,
       expected,
       counted,
       variance: counted - expected,
