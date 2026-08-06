@@ -632,6 +632,7 @@ export type ComparisonMeta = {
  */
 export const COMPARISON_STATUS: Record<string, string> = {
   disagree: "RECOUNT — counts disagree",
+  "not-recounted": "Not recounted (1st count only)",
   "missed-in-second": "Missed in 2nd count",
   "missed-in-first": "Missed in 1st count",
   "agreed-variance": "CONFIRMED variance",
@@ -642,6 +643,8 @@ export const COMPARISON_STATUS: Record<string, string> = {
 export const COMPARISON_LABEL: Record<string, string> = {
   disagree:
     "DISAGREE — the two counts got different numbers. Recount before adjusting anything.",
+  "not-recounted":
+    "NOT RECOUNTED — outside the second pass. The first count's figure stands unverified.",
   "missed-in-second": "Counted in the first pass, never scanned in the second",
   "missed-in-first": "Counted in the second pass, never scanned in the first",
   "agreed-variance":
@@ -681,6 +684,8 @@ export function comparisonTable(meta: ComparisonMeta, rows: any[]): Table {
       "Book moved",
       "Counted 1st",
       "Counted 2nd",
+      "Recounted",
+      "1st count variance",
       "Spread",
       "Abs spread",
       "Confirmed variance",
@@ -701,6 +706,8 @@ export function comparisonTable(meta: ComparisonMeta, rows: any[]): Table {
       r.bookMoved ? "yes" : "",
       r.countedFirst,
       r.countedSecond,
+      r.recounted ? "yes" : "no",
+      r.firstVariance,
       r.spread,
       Math.abs(r.spread),
       // BLANK, not 0, when the passes disagree: there is no variance to report,
@@ -711,7 +718,7 @@ export function comparisonTable(meta: ComparisonMeta, rows: any[]): Table {
         : r.confirmedVariance,
       ...prov,
     ]),
-    widths: [26, 16, 20, 18, 22, 30, 14, 11, 11, 11, 12, 12, 9, 11, 18, 26, 20, 18, 20, 18],
+    widths: [26, 16, 20, 18, 22, 30, 14, 11, 11, 11, 12, 12, 11, 17, 9, 11, 18, 26, 20, 18, 20, 18],
   };
 }
 
@@ -731,7 +738,14 @@ function comparisonSummary(meta: ComparisonMeta, summary: any): KeyValues {
       ["", ""],
       ...pass("SECOND COUNT", meta.second),
       ["", ""],
+      [
+        "Second pass covered",
+        summary.mode === "partial"
+          ? `PART of the location — ${summary.recountedLines} of ${summary.bookLines} book lines (${summary.coverageLinesPct}%), ${summary.coverageUnitsPct}% of book units`
+          : `the whole location — ${summary.recountedLines} of ${summary.bookLines} book lines (${summary.coverageLinesPct}%)`,
+      ],
       ["Lines compared", summary.lines],
+      ["Not recounted", summary.notRecounted],
       ["Agreed, matches book", summary.agreedClean],
       ["CONFIRMED variance lines", summary.agreedVariance],
       ["Recount — counts disagree", summary.disagree],
@@ -750,6 +764,18 @@ function comparisonSummary(meta: ComparisonMeta, summary: any): KeyValues {
         "Note",
         "Only CONFIRMED variance lines are safe to adjust against — both passes reached the same figure.",
       ],
+      ...(summary.mode === "partial"
+        ? ([
+            [
+              "PARTIAL COUNT",
+              "The second pass covered only part of the location. Lines it never reached carry NO confirmed variance — their '1st count variance' is the first pass's own figure, unverified.",
+            ],
+            [
+              "PARTIAL COUNT",
+              "Scope is inferred from what the second pass scanned, so a line that WAS recounted and genuinely came up empty cannot be told apart from one nobody visited. A partial count can confirm an overage; it cannot confirm a shortage to zero.",
+            ],
+          ] as Array<[string, Cell]>)
+        : []),
       [
         "Note",
         "RECOUNT lines carry no variance. The two passes disagree, so the discrepancy is in the counting, not the stock.",

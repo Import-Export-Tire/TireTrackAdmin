@@ -16,6 +16,7 @@ type Bucket =
   | "missed-in-second"
   | "missed-in-first"
   | "agreed-variance"
+  | "not-recounted"
   | "agreed-clean";
 
 /**
@@ -31,6 +32,7 @@ const ORDER: Bucket[] = [
   "missed-in-second",
   "missed-in-first",
   "agreed-variance",
+  "not-recounted",
   "agreed-clean",
 ];
 
@@ -39,6 +41,7 @@ const TONE: Record<Bucket, string> = {
   "missed-in-second": "text-ios-orange",
   "missed-in-first": "text-ios-orange",
   "agreed-variance": "text-[#1c1c1e]",
+  "not-recounted": "text-ios-gray1",
   "agreed-clean": "text-ios-gray1",
 };
 
@@ -48,6 +51,10 @@ function Compare() {
   const [firstId, setFirstId] = useState("");
   const [secondId, setSecondId] = useState("");
   const [showClean, setShowClean] = useState(false);
+  // Left undefined so the server infers it from coverage; set only to override.
+  const [modeOverride, setModeOverride] = useState<"full" | "partial" | undefined>(
+    undefined,
+  );
 
   const locations = useQuery(api.wms_count.getCountLocations, {});
   const batches = useQuery(api.wms_count.getCountBatches, {
@@ -56,7 +63,11 @@ function Compare() {
   const result = useQuery(
     api.wms_count.compareCountBatches,
     firstId && secondId && firstId !== secondId
-      ? { firstBatchId: firstId as any, secondBatchId: secondId as any }
+      ? {
+          firstBatchId: firstId as any,
+          secondBatchId: secondId as any,
+          ...(modeOverride ? { mode: modeOverride } : {}),
+        }
       : "skip",
   );
 
@@ -162,6 +173,59 @@ function Compare() {
 
       {ready && summary && (
         <>
+          {/* Scope banner. This governs what the report is ALLOWED to conclude,
+              so it goes above the numbers rather than in a footnote. */}
+          <div
+            className={`rounded-2xl p-4 border-l-[3px] ${
+              summary.mode === "partial"
+                ? "bg-ios-orange/5 border-ios-orange"
+                : "bg-ios-blue/5 border-ios-blue"
+            }`}
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-[#1c1c1e]">
+                {summary.mode === "partial"
+                  ? `Partial second count — ${summary.recountedLines} of ${summary.bookLines} book lines recounted (${summary.coverageLinesPct}%, ${summary.coverageUnitsPct}% of units)`
+                  : `Full second count — ${summary.recountedLines} of ${summary.bookLines} book lines recounted (${summary.coverageLinesPct}%)`}
+              </p>
+              <label className="text-xs text-ios-gray1 flex items-center gap-2">
+                Treat as
+                <select
+                  value={modeOverride ?? "auto"}
+                  onChange={(e) =>
+                    setModeOverride(
+                      e.target.value === "auto"
+                        ? undefined
+                        : (e.target.value as "full" | "partial"),
+                    )
+                  }
+                  className="px-2 py-1 border border-ios-gray5 rounded-lg bg-white"
+                >
+                  <option value="auto">
+                    auto ({(result as any).mode})
+                  </option>
+                  <option value="partial">partial</option>
+                  <option value="full">full</option>
+                </select>
+              </label>
+            </div>
+            {summary.mode === "partial" ? (
+              <p className="mt-1 text-sm text-ios-gray1">
+                Lines the second pass never reached carry{" "}
+                <strong>no confirmed variance</strong> — only the first
+                count&apos;s own figure, unverified. Scope is inferred from what
+                was scanned, so a line that was recounted and genuinely came up
+                empty can&apos;t be told apart from one nobody visited: a partial
+                count can confirm an overage, never a shortage to zero.
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-ios-gray1">
+                Both passes covered the location, so a tire absent from both
+                confirms shrink.
+              </p>
+            )}
+          </div>
+
           <div className="bg-white rounded-2xl shadow-ios p-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               {[
@@ -181,7 +245,13 @@ function Compare() {
                     : summary.confirmedNetVariance,
                   "text-[#1c1c1e] font-semibold",
                 ],
-                ["Missed in 1st / 2nd", `${summary.missedInFirst} / ${summary.missedInSecond}`, "text-ios-orange"],
+                summary.mode === "partial"
+                  ? ["Not recounted", summary.notRecounted, "text-ios-gray1"]
+                  : [
+                      "Missed in 1st / 2nd",
+                      `${summary.missedInFirst} / ${summary.missedInSecond}`,
+                      "text-ios-orange",
+                    ],
                 ["Book moved between", summary.bookMovedLines, "text-ios-gray1"],
               ].map(([k, v, tone]) => (
                 <div key={String(k)}>
@@ -209,12 +279,15 @@ function Compare() {
                   checked={showClean}
                   onChange={(e) => setShowClean(e.target.checked)}
                 />
-                also show the lines that agreed and matched the book
+                also show clean lines and lines that weren&apos;t recounted
               </label>
             </div>
           </div>
 
-          {ORDER.filter((bk) => bk !== "agreed-clean" || showClean).map((bk) => {
+          {ORDER.filter(
+            (bk) =>
+              (bk !== "agreed-clean" && bk !== "not-recounted") || showClean,
+          ).map((bk) => {
             const group = rows.filter((r) => r.bucket === bk);
             if (!group.length) return null;
             return (
@@ -238,6 +311,7 @@ function Compare() {
                         <th className="px-4 py-2 text-right">Book</th>
                         <th className="px-4 py-2 text-right">1st count</th>
                         <th className="px-4 py-2 text-right">2nd count</th>
+                        <th className="px-4 py-2 text-right">1st var</th>
                         <th className="px-4 py-2 text-right">Spread</th>
                         <th className="px-4 py-2 text-right">Confirmed</th>
                       </tr>
@@ -268,7 +342,14 @@ function Compare() {
                             )}
                           </td>
                           <td className="px-4 py-2 text-right">{r.countedFirst}</td>
-                          <td className="px-4 py-2 text-right">{r.countedSecond}</td>
+                          <td className="px-4 py-2 text-right">
+                            {r.recounted ? r.countedSecond : "—"}
+                          </td>
+                          <td
+                            className={`px-4 py-2 text-right ${r.firstVariance ? "text-[#1c1c1e]" : "text-ios-gray1"}`}
+                          >
+                            {r.firstVariance > 0 ? `+${r.firstVariance}` : r.firstVariance}
+                          </td>
                           <td
                             className={`px-4 py-2 text-right ${r.spread ? "text-ios-red" : "text-ios-gray1"}`}
                           >

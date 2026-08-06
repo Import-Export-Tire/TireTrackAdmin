@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { compareCounts } from "../convex/wms_count_variance";
+import {
+  compareCounts,
+  detectComparisonMode,
+} from "../convex/wms_count_variance";
 
 const b = (itemId: string, qtyOnHand: number, extra: Record<string, any> = {}) => ({
   itemId,
@@ -130,5 +133,104 @@ describe("compareCounts", () => {
     );
     expect(r.rows[0].itemId).toBe("B");
     expect(Math.abs(r.rows[0].spread)).toBe(8);
+  });
+});
+
+describe("compareCounts — PARTIAL second count", () => {
+  // W09's real shape: the second pass is a spot check, not a recount of the
+  // location, and whoever runs it does not declare a scope.
+  const bookOf = (...pairs: Array<[string, number]>) =>
+    pairs.map(([id, q]) => b(id, q));
+
+  it("REGRESSION: does not confirm shrink on a line the recount never visited", () => {
+    const book = bookOf(["A", 10], ["NEVER_VISITED", 55]);
+    const full = compareCounts(
+      side(book, [t("A", 10)]),
+      side(book, [t("A", 10)]),
+    );
+    // full mode: absent from both passes genuinely confirms shrink
+    expect(row(full, "NEVER_VISITED").bucket).toBe("agreed-variance");
+    expect(row(full, "NEVER_VISITED").confirmedVariance).toBe(-55);
+
+    const partial = compareCounts(
+      side(book, [t("A", 10)]),
+      side(book, [t("A", 10)]),
+      { mode: "partial" },
+    );
+    const x = row(partial, "NEVER_VISITED");
+    expect(x.bucket).toBe("not-recounted");
+    expect(x.confirmedVariance).toBeNull();
+    expect(x.recounted).toBe(false);
+    expect(partial.summary.confirmedNetVariance).toBe(0);
+  });
+
+  it("keeps out-of-scope lines out of units-in-dispute", () => {
+    const book = bookOf(["IN", 10], ["OUT", 400]);
+    const r = compareCounts(
+      side(book, [t("IN", 10), t("OUT", 400)]),
+      side(book, [t("IN", 8)]),
+      { mode: "partial" },
+    );
+    expect(row(r, "OUT").bucket).toBe("not-recounted");
+    expect(row(r, "OUT").spread).toBe(0);
+    // only the recounted line disputes anything
+    expect(r.summary.unitsInDispute).toBe(2);
+  });
+
+  it("still confirms a variance the recount DID reach", () => {
+    const book = bookOf(["A", 10], ["OUT", 400]);
+    const r = compareCounts(
+      side(book, [t("A", 7)]),
+      side(book, [t("A", 7)]),
+      { mode: "partial" },
+    );
+    expect(row(r, "A").bucket).toBe("agreed-variance");
+    expect(row(r, "A").confirmedVariance).toBe(-3);
+    expect(r.summary.confirmedNetVariance).toBe(-3);
+  });
+
+  it("carries the first pass's own variance so an un-recounted line still says something", () => {
+    const book = bookOf(["OUT", 400]);
+    const r = compareCounts(
+      side(book, [t("OUT", 380)]),
+      side(book, []),
+      { mode: "partial" },
+    );
+    const x = row(r, "OUT");
+    expect(x.bucket).toBe("not-recounted");
+    expect(x.firstVariance).toBe(-20);
+    expect(x.confirmedVariance).toBeNull();
+  });
+
+  it("reports the scope it actually covered", () => {
+    const book = bookOf(["A", 10], ["B", 10], ["C", 80]);
+    const r = compareCounts(
+      side(book, [t("A", 10), t("B", 10), t("C", 80)]),
+      side(book, [t("A", 10)]),
+      { mode: "partial" },
+    );
+    expect(r.summary.mode).toBe("partial");
+    expect(r.summary.recountedLines).toBe(1);
+    expect(r.summary.bookLines).toBe(3);
+    expect(r.summary.coverageLinesPct).toBe(33);
+    expect(r.summary.coverageUnitsPct).toBe(10); // 10 of 100 book units
+    expect(r.summary.notRecounted).toBe(2);
+  });
+
+  it("sorts what was recounted above what wasn't, however big the old variance", () => {
+    const book = bookOf(["RECOUNTED", 10], ["HUGE_BUT_SKIPPED", 2000]);
+    const r = compareCounts(
+      side(book, [t("RECOUNTED", 10), t("HUGE_BUT_SKIPPED", 100)]),
+      side(book, [t("RECOUNTED", 4)]),
+      { mode: "partial" },
+    );
+    expect(r.rows[0].itemId).toBe("RECOUNTED");
+  });
+
+  it("infers the mode from coverage so nobody has to set it", () => {
+    expect(detectComparisonMode(400, 390)).toBe("full");
+    expect(detectComparisonMode(400, 40)).toBe("partial");
+    expect(detectComparisonMode(400, 280)).toBe("full"); // 70% — a full pass with gaps
+    expect(detectComparisonMode(0, 0)).toBe("full");
   });
 });

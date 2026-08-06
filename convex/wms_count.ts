@@ -11,6 +11,7 @@ import {
   computeVariance,
   canonicalItemIdFrom,
   compareCounts,
+  detectComparisonMode,
 } from "./wms_count_variance";
 import { COUNT_LOCATIONS, isCountLocationEnabled } from "./wms_count_locations";
 import { Id } from "./_generated/dataModel";
@@ -1642,6 +1643,12 @@ export const compareCountBatches = query({
   args: {
     firstBatchId: v.id("wms_count_batches"),
     secondBatchId: v.id("wms_count_batches"),
+    /**
+     * Omit to infer from how much the second pass covered. Only set it to
+     * override a wrong guess — see ComparisonMode for why this changes what the
+     * report may conclude, not just how it looks.
+     */
+    mode: v.optional(v.union(v.literal("full"), v.literal("partial"))),
   },
   handler: async (ctx, args) => {
     if (args.firstBatchId === args.secondBatchId) {
@@ -1685,10 +1692,24 @@ export const compareCountBatches = query({
         .collect(),
     });
 
-    const result = compareCounts(await load(a._id), await load(z._id));
+    const loadedFirst = await load(a._id);
+    const loadedSecond = await load(z._id);
+
+    const countedLines = (t: { totals: Array<{ itemId?: string }> }) =>
+      t.totals.filter((x) => !!x.itemId).length;
+    const mode =
+      args.mode ??
+      detectComparisonMode(
+        countedLines(loadedFirst),
+        countedLines(loadedSecond),
+      );
+
+    const result = compareCounts(loadedFirst, loadedSecond, { mode });
 
     return {
       ready: true as const,
+      mode,
+      modeWasInferred: args.mode === undefined,
       warehouseCode: a.warehouseCode,
       first: {
         batchId: a._id,

@@ -268,7 +268,40 @@ export type ComparisonBucket =
   | "agreed-variance"
   | "disagree"
   | "missed-in-first"
-  | "missed-in-second";
+  | "missed-in-second"
+  | "not-recounted";
+
+/**
+ * Whether the second pass covered the whole location or only part of it.
+ *
+ * This is not a display preference, it changes what the report is allowed to
+ * conclude. In a FULL second count, a tire absent from both passes confirms
+ * shrink. In a PARTIAL one it means nobody went there — and treating that as
+ * confirmation manufactures a shortage on every line the recount never reached,
+ * in the exact column labelled safe to adjust against.
+ *
+ * The scope of a partial recount is inferred from what it actually scanned,
+ * because asking for the scope up front assumes whoever runs it will supply one.
+ * The cost of inferring is honest and worth stating: a line that WAS recounted and
+ * genuinely came up empty is indistinguishable from one nobody visited, so a
+ * partial count can confirm an overage but never a shortage-to-zero.
+ */
+export type ComparisonMode = "full" | "partial";
+
+/**
+ * Guess the mode from coverage so nobody has to remember to set it.
+ *
+ * Threshold is deliberately loose: a full recount that simply missed a few lines
+ * is still a full recount, while a spot check of a few aisles is nowhere near
+ * 70% of what the first pass touched.
+ */
+export function detectComparisonMode(
+  firstCountedLines: number,
+  secondCountedLines: number,
+): ComparisonMode {
+  if (firstCountedLines === 0) return "full";
+  return secondCountedLines / firstCountedLines >= 0.7 ? "full" : "partial";
+}
 
 export type ComparisonRow = {
   itemId: string;
@@ -283,6 +316,14 @@ export type ComparisonRow = {
   bookMoved: boolean;
   countedFirst: number;
   countedSecond: number;
+  /**
+   * The first pass's own variance, unverified. On a partial recount this is the
+   * only figure most lines have, and it is what somebody working the report by
+   * hand actually needs to see next to "was this recounted".
+   */
+  firstVariance: number;
+  /** True when the second pass recorded anything at all against this line. */
+  recounted: boolean;
   /** Second minus first. The number that says how much the two passes disagree. */
   spread: number;
   /**
@@ -294,12 +335,22 @@ export type ComparisonRow = {
 };
 
 export type ComparisonSummary = {
+  mode: ComparisonMode;
   lines: number;
   agreedClean: number;
   agreedVariance: number;
   disagree: number;
   missedInFirst: number;
   missedInSecond: number;
+  /** Partial mode only: lines the second pass never touched. */
+  notRecounted: number;
+  /** Scope of the second pass, so the reader can see how much it covered. */
+  recountedLines: number;
+  recountedUnits: number;
+  bookLines: number;
+  bookUnits: number;
+  coverageLinesPct: number;
+  coverageUnitsPct: number;
   bookMovedLines: number;
   /** Sum of |spread| — how many units the two counts cannot agree on. */
   unitsInDispute: number;
@@ -328,7 +379,9 @@ export type ComparisonSummary = {
 export function compareCounts(
   first: { baseline: BaselineRow[]; totals: TotalRow[] },
   second: { baseline: BaselineRow[]; totals: TotalRow[] },
+  opts: { mode?: ComparisonMode } = {},
 ): { rows: ComparisonRow[]; summary: ComparisonSummary } {
+  const mode = opts.mode ?? "full";
   const side = (input: { baseline: BaselineRow[]; totals: TotalRow[] }) => {
     const { groups, itemToGroup } = groupBaseline(input.baseline);
     const counted = new Map<string, number>();
@@ -371,7 +424,19 @@ export function compareCounts(
     const scannedSecond = b.counted.has(g);
 
     let bucket: ComparisonBucket;
-    if (scannedFirst && !scannedSecond && countedFirst > 0) {
+    if (mode === "partial" && !scannedSecond) {
+      /**
+       * Out of the recount's scope. NOT agreement and NOT a dispute.
+       *
+       * This single branch is the whole reason mode exists. Without it, a line the
+       * recount never visited has counted 0 on both sides, falls through to "both
+       * passes agree", and is reported as CONFIRMED shrink of its entire book
+       * quantity — a fabricated shortage in the one column that is meant to be
+       * safe to act on. It also swept every un-visited line into units-in-dispute,
+       * which made that figure roughly the size of the warehouse.
+       */
+      bucket = "not-recounted";
+    } else if (scannedFirst && !scannedSecond && countedFirst > 0) {
       bucket = "missed-in-second";
     } else if (!scannedFirst && scannedSecond && countedSecond > 0) {
       bucket = "missed-in-first";
@@ -396,26 +461,53 @@ export function compareCounts(
       bookMoved: membersA.length > 0 && membersB.length > 0 && expectedFirst !== expectedSecond,
       countedFirst,
       countedSecond,
-      spread: countedSecond - countedFirst,
+      firstVariance: countedFirst - expectedFirst,
+      recounted: scannedSecond,
+      // A line outside the recount's scope has no spread — the second pass never
+      // offered a number to differ from.
+      spread: bucket === "not-recounted" ? 0 : countedSecond - countedFirst,
       confirmedVariance: agreed ? countedSecond - expectedSecond : null,
       bucket,
     });
   }
 
-  // Worst disagreement first, then biggest confirmed variance — a report is read
-  // top-down, and a disagreement is the thing somebody has to go do something about.
+  /**
+   * Recounted lines first, then worst disagreement.
+   *
+   * On a partial recount the not-recounted lines are the overwhelming majority and
+   * some of them carry huge first-pass variances. Sorting on variance alone would
+   * bury the handful of lines the recount actually has something to say about
+   * under hundreds of lines it never visited.
+   */
   rows.sort(
     (x, z) =>
+      Number(z.recounted) - Number(x.recounted) ||
       Math.abs(z.spread) - Math.abs(x.spread) ||
-      Math.abs(z.confirmedVariance ?? 0) - Math.abs(x.confirmedVariance ?? 0),
+      Math.abs(z.confirmedVariance ?? 0) - Math.abs(x.confirmedVariance ?? 0) ||
+      Math.abs(z.firstVariance) - Math.abs(x.firstVariance),
   );
 
   const count = (bkt: ComparisonBucket) => rows.filter((r) => r.bucket === bkt).length;
   const confirmed = rows.filter((r) => r.confirmedVariance !== null);
+  const recountedRows = rows.filter((r) => r.recounted);
+  const bookLines = rows.filter((r) => r.expectedSecond > 0).length;
+  const bookUnits = rows.reduce((n, r) => n + r.expectedSecond, 0);
+  const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
   return {
     rows,
     summary: {
+      mode,
+      notRecounted: count("not-recounted"),
+      recountedLines: recountedRows.length,
+      recountedUnits: recountedRows.reduce((n, r) => n + r.countedSecond, 0),
+      bookLines,
+      bookUnits,
+      coverageLinesPct: pct(recountedRows.length, bookLines),
+      coverageUnitsPct: pct(
+        recountedRows.reduce((n, r) => n + r.expectedSecond, 0),
+        bookUnits,
+      ),
       lines: rows.length,
       agreedClean: count("agreed-clean"),
       agreedVariance: count("agreed-variance"),
