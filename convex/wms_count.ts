@@ -1006,6 +1006,73 @@ export const closeCountBatch = mutation({
 });
 
 /**
+ * Reopen a batch that was closed by accident. Admin-only from Admin — an
+ * inventory-role scanner shouldn't be able to un-close a finished count.
+ *
+ * The location constraint (one open batch per warehouseCode) is enforced by
+ * refusing to reopen when another batch at that warehouse is already open —
+ * whichever should stand has to be resolved deliberately before this call.
+ * closedBy/closedByName/closedAt are cleared; the reopen itself is written to
+ * auditLogs so the forensic trail is preserved.
+ */
+export const reopenCountBatch = mutation({
+  args: { batchId: v.id("wms_count_batches"), actor: actorValidator },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) throw new Error("Batch not found");
+    if (batch.status === "open") return { success: true };
+
+    if (args.actor.kind !== "admin") {
+      throw new Error("Only admins can reopen a closed count batch");
+    }
+    const admin = await ctx.db.get(args.actor.adminId);
+    if (!admin || !admin.isActive) throw new Error("Not authorized");
+    if (admin.role !== "admin" && admin.role !== "superadmin") {
+      throw new Error("Not authorized");
+    }
+
+    const existingOpen = await ctx.db
+      .query("wms_count_batches")
+      .withIndex("by_warehouse_status", (q) =>
+        q.eq("warehouseCode", batch.warehouseCode).eq("status", "open"),
+      )
+      .first();
+    if (existingOpen) {
+      throw new Error(
+        `Cannot reopen — ${batch.warehouseCode} already has an open batch (${existingOpen._id}). Close or delete that batch first.`,
+      );
+    }
+
+    const closedAt = batch.closedAt;
+    const closedByName = batch.closedByName;
+    await ctx.db.patch(args.batchId, {
+      status: "open",
+      closedBy: undefined,
+      closedByName: undefined,
+      closedAt: undefined,
+    });
+
+    await ctx.db.insert("auditLogs", {
+      action: `Reopened count batch ${args.batchId}`,
+      actionType: "count.batch.reopen",
+      resourceType: "wms_count_batch",
+      resourceId: String(args.batchId),
+      adminId: args.actor.adminId,
+      adminEmail: admin.email,
+      adminName: admin.name,
+      details: JSON.stringify({
+        warehouseCode: batch.warehouseCode,
+        previouslyClosedAt: closedAt,
+        previouslyClosedByName: closedByName,
+      }),
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+/**
  * Delete a count batch and everything belonging to it.
  *
  * Needed because a batch opened by mistake would otherwise block the location
