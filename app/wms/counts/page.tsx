@@ -33,6 +33,7 @@ function CountsDashboard() {
   );
   const openCountBatch = useAction(api.wms_count.openCountBatch);
   const closeCountBatch = useMutation(api.wms_count.closeCountBatch);
+  const reopenCountBatch = useMutation(api.wms_count.reopenCountBatch);
   const deleteCountBatch = useAction(api.wms_count.deleteCountBatch);
   const [busy, setBusy] = useState(false);
 
@@ -266,6 +267,26 @@ function CountsDashboard() {
                         className="ml-4 text-ios-orange font-medium hover:underline"
                       >
                         Close
+                      </button>
+                    )}
+                    {b.status === "closed" && canEdit && actor && (
+                      <button
+                        onClick={async () => {
+                          if (
+                            !confirm(
+                              "Reopen this closed count batch? New scans can be added again.",
+                            )
+                          )
+                            return;
+                          try {
+                            await reopenCountBatch({ batchId: b._id, actor });
+                          } catch (e: any) {
+                            alert(e?.message ?? "Could not reopen");
+                          }
+                        }}
+                        className="ml-4 text-ios-blue font-medium hover:underline"
+                      >
+                        Reopen
                       </button>
                     )}
                     {canEdit && admin?.id && (
