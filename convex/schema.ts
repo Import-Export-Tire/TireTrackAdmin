@@ -385,6 +385,13 @@ export default defineSchema({
     // The authoritative scan key — 99% populated at W09.
     upc: v.optional(v.string()),
     ean: v.optional(v.string()),
+    /**
+     * JMK's average cost per tire, frozen with the rest of the book so a variance
+     * can be valued in money. Optional because batches frozen before this existed
+     * do not carry it, and absent/0 must read as "cost unknown" — never as a free
+     * tire that values a discrepancy at nothing.
+     */
+    avgCost: v.optional(v.number()),
   }).index("by_batch", ["batchId"])
     .index("by_batch_item", ["batchId", "itemId"])
     // Scans resolve on the barcode first, then the manufacturer part number —

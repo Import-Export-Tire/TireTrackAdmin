@@ -247,3 +247,59 @@ describe("compareCounts — PARTIAL second count", () => {
     expect(asserted.summary.confirmedNetVariance).toBe(-55);
   });
 });
+
+describe("compareCounts — valuation", () => {
+  const bc = (id: string, qty: number, cost?: number) => ({
+    itemId: id,
+    qtyOnHand: qty,
+    ...(cost === undefined ? {} : { avgCost: cost }),
+  });
+
+  it("values a confirmed variance at avgCost", () => {
+    const book = [bc("A", 10, 82.5)];
+    const r = compareCounts(side(book, [t("A", 7)]), side(book, [t("A", 7)]));
+    expect(row(r, "A").confirmedVariance).toBe(-3);
+    expect(row(r, "A").confirmedValue).toBe(-247.5);
+    expect(r.summary.confirmedNetValue).toBe(-247.5);
+    expect(r.summary.confirmedShortValue).toBe(-247.5);
+    expect(r.summary.valuedLines).toBe(1);
+  });
+
+  it("treats a missing cost as UNKNOWN, never as a free tire", () => {
+    const book = [bc("A", 10)]; // no avgCost
+    const r = compareCounts(side(book, [t("A", 7)]), side(book, [t("A", 7)]));
+    expect(row(r, "A").confirmedVariance).toBe(-3);
+    // no value invented, and the line is reported as unpriced
+    expect(row(r, "A").confirmedValue).toBeNull();
+    expect(r.summary.confirmedNetValue).toBe(0);
+    expect(r.summary.unvaluedLines).toBe(1);
+    expect(r.summary.valuedLines).toBe(0);
+  });
+
+  it("puts no value on a disputed line", () => {
+    const book = [bc("A", 10, 50)];
+    const r = compareCounts(side(book, [t("A", 7)]), side(book, [t("A", 9)]));
+    expect(row(r, "A").bucket).toBe("disagree");
+    expect(row(r, "A").confirmedValue).toBeNull();
+    expect(r.summary.confirmedNetValue).toBe(0);
+  });
+
+  it("separates confirmed loss from confirmed gain in money", () => {
+    const book = [bc("SHORT", 10, 100), bc("OVER", 10, 20)];
+    const r = compareCounts(
+      side(book, [t("SHORT", 8), t("OVER", 15)]),
+      side(book, [t("SHORT", 8), t("OVER", 15)]),
+    );
+    expect(r.summary.confirmedShortValue).toBe(-200);
+    expect(r.summary.confirmedOverValue).toBe(100);
+    expect(r.summary.confirmedNetValue).toBe(-100);
+  });
+
+  it("reports book value at cost", () => {
+    const r = compareCounts(
+      side([bc("A", 10, 10)], [t("A", 10)]),
+      side([bc("A", 10, 10)], [t("A", 10)]),
+    );
+    expect(r.summary.bookValue).toBe(100);
+  });
+});

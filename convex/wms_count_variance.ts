@@ -10,6 +10,8 @@
 export type BaselineRow = {
   itemId: string;
   qtyOnHand: number;
+  /** JMK average cost per tire. Absent or 0 means unknown, never free. */
+  avgCost?: number;
   brand?: string;
   model?: string;
   size?: string;
@@ -332,6 +334,14 @@ export type ComparisonRow = {
   firstVariance: number;
   /** True when the second pass recorded anything at all against this line. */
   recounted: boolean;
+  /** JMK average cost per tire, 0 when the OEIVAL carries none. */
+  avgCost: number;
+  /**
+   * confirmedVariance in money. Null whenever there is no confirmed variance OR no
+   * cost — the two are deliberately indistinguishable to a consumer, because both
+   * mean "do not put a number in the ledger for this line".
+   */
+  confirmedValue: number | null;
   /** Second minus first. The number that says how much the two passes disagree. */
   spread: number;
   /**
@@ -366,6 +376,19 @@ export type ComparisonSummary = {
   confirmedNetVariance: number;
   confirmedShortUnits: number;
   confirmedOverUnits: number;
+  /**
+   * Money, at JMK avgCost, for the CONFIRMED lines only. Lines with no cost are
+   * excluded and counted in unvaluedLines rather than treated as zero — a report
+   * that silently values missing tires at nothing understates a loss.
+   */
+  confirmedNetValue: number;
+  confirmedShortValue: number;
+  confirmedOverValue: number;
+  /** Book value of the second pass's book, at avgCost. */
+  bookValue: number;
+  /** Confirmed-variance lines that could and could not be priced. */
+  valuedLines: number;
+  unvaluedLines: number;
   countedUnitsFirst: number;
   countedUnitsSecond: number;
 };
@@ -456,6 +479,17 @@ export function compareCounts(
     }
 
     const agreed = bucket === "agreed-clean" || bucket === "agreed-variance";
+    // Cost from whichever book has it; the newer one wins. Deepest-stocked member
+    // represents the line, matching how the description is chosen.
+    const avgCost =
+      Number(lead?.avgCost ?? 0) ||
+      Number(
+        (membersA.length ? membersA : membersB).reduce(
+          (x, y) => (y.qtyOnHand > x.qtyOnHand ? y : x),
+          (membersA.length ? membersA : membersB)[0] ?? ({} as BaselineRow),
+        )?.avgCost ?? 0,
+      ) ||
+      0;
 
     rows.push({
       itemId: lead?.itemId ?? g,
@@ -471,6 +505,11 @@ export function compareCounts(
       countedSecond,
       firstVariance: countedFirst - expectedFirst,
       recounted: scannedSecond,
+      avgCost,
+      confirmedValue:
+        agreed && avgCost > 0
+          ? Math.round((countedSecond - expectedSecond) * avgCost * 100) / 100
+          : null,
       // A line outside the recount's scope has no spread — the second pass never
       // offered a number to differ from.
       spread: bucket === "not-recounted" ? 0 : countedSecond - countedFirst,
@@ -501,6 +540,7 @@ export function compareCounts(
   const bookLines = rows.filter((r) => r.expectedSecond > 0).length;
   const bookUnits = rows.reduce((n, r) => n + r.expectedSecond, 0);
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+  const money = (n: number) => Math.round(n * 100) / 100;
 
   return {
     rows,
@@ -529,6 +569,16 @@ export function compareCounts(
         (n, r) => n + Math.min(0, r.confirmedVariance ?? 0),
         0,
       ),
+      confirmedNetValue: money(confirmed.reduce((n, r) => n + (r.confirmedValue ?? 0), 0)),
+      confirmedShortValue: money(
+        confirmed.reduce((n, r) => n + Math.min(0, r.confirmedValue ?? 0), 0),
+      ),
+      confirmedOverValue: money(
+        confirmed.reduce((n, r) => n + Math.max(0, r.confirmedValue ?? 0), 0),
+      ),
+      bookValue: money(rows.reduce((n, r) => n + r.expectedSecond * r.avgCost, 0)),
+      valuedLines: confirmed.filter((r) => r.avgCost > 0 && r.confirmedVariance !== 0).length,
+      unvaluedLines: confirmed.filter((r) => r.avgCost <= 0 && r.confirmedVariance !== 0).length,
       confirmedOverUnits: confirmed.reduce(
         (n, r) => n + Math.max(0, r.confirmedVariance ?? 0),
         0,

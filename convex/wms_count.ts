@@ -128,6 +128,7 @@ export const insertBaselineChunk = internalMutation({
         mpn: v.optional(v.string()),
         upc: v.optional(v.string()),
         ean: v.optional(v.string()),
+        avgCost: v.optional(v.number()),
       }),
     ),
   },
@@ -234,6 +235,7 @@ async function loadBaseline(
         mpn?: string;
         upc?: string;
         ean?: string;
+        avgCost?: number;
       }>;
     };
 
@@ -284,6 +286,80 @@ export const openCountBatch = action({
     if (created.alreadyOpen) return created;
     await loadBaseline(ctx, created.batchId, args.warehouseCode);
     return created;
+  },
+});
+
+export const patchBaselineCostChunk = internalMutation({
+  args: {
+    batchId: v.id("wms_count_batches"),
+    costs: v.array(v.object({ itemId: v.string(), avgCost: v.number() })),
+  },
+  handler: async (ctx, args) => {
+    let patched = 0;
+    for (const c of args.costs) {
+      const row = await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch_item", (q) =>
+          q.eq("batchId", args.batchId).eq("itemId", c.itemId),
+        )
+        .first();
+      if (!row || c.avgCost <= 0) continue;
+      await ctx.db.patch(row._id, { avgCost: c.avgCost });
+      patched += 1;
+    }
+    return patched;
+  },
+});
+
+/**
+ * Attach costs to a baseline frozen before cost was carried, so a completed count
+ * can still be valued.
+ *
+ * Costs come from the CURRENT OEIVAL rather than the file the batch froze, which
+ * is a real approximation and the reason this is separate from the freeze rather
+ * than folded into it: avgCost moves slowly, quantities do not. Any batch frozen
+ * from now on carries its own cost and never needs this.
+ */
+export const backfillBaselineCost = action({
+  args: { batchId: v.id("wms_count_batches") },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ patched: number; withCost: number; missing: number }> => {
+    const batch = await ctx.runQuery(internal.wms_count.getBatchInternal, {
+      batchId: args.batchId,
+    });
+    if (!batch) throw new Error("Batch not found");
+
+    const base = process.env.IECENTRAL_SNAPSHOT_URL;
+    const token = process.env.IECENTRAL_SNAPSHOT_TOKEN;
+    if (!base || !token) throw new Error("Snapshot is not configured");
+
+    const res = await fetch(
+      `${base}/api/inventory/snapshot?location=${encodeURIComponent(batch.warehouseCode)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) throw new Error(`Snapshot returned ${res.status}`);
+    const snap = (await res.json()) as {
+      items: Array<{ itemId: string; avgCost?: number }>;
+    };
+
+    const costs = snap.items
+      .map((i) => ({ itemId: i.itemId, avgCost: Number(i.avgCost ?? 0) || 0 }))
+      .filter((c) => c.avgCost > 0);
+
+    let patched = 0;
+    for (let i = 0; i < costs.length; i += 300) {
+      patched += await ctx.runMutation(internal.wms_count.patchBaselineCostChunk, {
+        batchId: args.batchId,
+        costs: costs.slice(i, i + 300),
+      });
+    }
+    return {
+      patched,
+      withCost: costs.length,
+      missing: snap.items.length - costs.length,
+    };
   },
 });
 

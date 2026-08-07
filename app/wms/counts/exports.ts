@@ -812,3 +812,264 @@ export function downloadComparisonExcel(
     { ...comparisonTable(meta, rows), sheet: "All lines" },
   ]);
 }
+
+const usd = (n: number | null | undefined) =>
+  n === null || n === undefined
+    ? ""
+    : (n < 0 ? "-$" : "$") +
+      Math.abs(n).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+
+const signed = (n: number) => (n > 0 ? `+${n.toLocaleString()}` : n.toLocaleString());
+
+/**
+ * Second-count comparison as a PDF for signing off, rather than for working in.
+ *
+ * Structured around what a reader has to take away and in what order: the scope
+ * of the two passes, then the ONE number that is defensible (confirmed variance,
+ * in tires and in money), then explicitly what is NOT settled, then the lists.
+ * The recount list comes before the confirmed list because it is the work, and
+ * the un-recounted lines come last because they carry no verified figure at all.
+ *
+ * Landscape, because 8 numeric columns plus a tire description does not fit
+ * portrait without wrapping the description into uselessness.
+ */
+export async function downloadComparisonPdf(
+  meta: ComparisonMeta,
+  rows: any[],
+  summary: any,
+) {
+  const { doc, autoTable } = await newPdf(true);
+  const W = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(16);
+  doc.text(
+    `Second-Count Comparison — ${meta.locationLabel} (${meta.warehouseCode})`,
+    14,
+    15,
+  );
+
+  doc.setFontSize(8);
+  const when = (p: ComparisonMeta["first"]) =>
+    `${new Date(p.openedAt).toLocaleString()} → ${p.closedAt ? new Date(p.closedAt).toLocaleString() : "still open"}`;
+  doc.text(
+    [
+      `First count:  ${when(meta.first)}   opened by ${meta.first.openedByName}   book file ${meta.first.baselineFileDate ?? "unknown"}`,
+      `Second count: ${when(meta.second)}   opened by ${meta.second.openedByName}   book file ${meta.second.baselineFileDate ?? "unknown"}`,
+      `Second pass reached ${summary.recountedLines} of ${summary.bookLines} book lines — ${summary.coverageLinesPct}% of lines, ${summary.coverageUnitsPct}% of units${summary.mode === "partial" ? "   (PARTIAL — see note below)" : ""}`,
+    ],
+    14,
+    22,
+  );
+
+  // ---- the headline. One box, one number, stated with its qualifier.
+  let y = 37;
+  doc.setDrawColor(0, 122, 255);
+  doc.setLineWidth(0.6);
+  doc.rect(14, y, W - 28, 20);
+  doc.setFontSize(9);
+  doc.text("CONFIRMED VARIANCE — both passes independently reached the same figure", 18, y + 6);
+  doc.setFontSize(13);
+  doc.text(
+    `${signed(summary.confirmedNetVariance)} tires` +
+      (summary.confirmedNetValue ? `        ${usd(summary.confirmedNetValue)}` : ""),
+    18,
+    y + 15,
+  );
+  doc.setFontSize(8);
+  doc.text(
+    `across ${summary.agreedVariance} lines   ` +
+      `(short ${summary.confirmedShortUnits} / ${usd(summary.confirmedShortValue)}   ·   ` +
+      `over +${summary.confirmedOverUnits} / ${usd(summary.confirmedOverValue)})`,
+    18,
+    y + 19.5 - 0.5,
+  );
+  y += 26;
+
+  autoTable(doc, {
+    startY: y,
+    head: [["", "Lines", "Tires", "Value", "Status"]],
+    body: [
+      [
+        "Agreed, matches book",
+        summary.agreedClean,
+        "0",
+        usd(0),
+        "nothing to do",
+      ],
+      [
+        "CONFIRMED variance",
+        summary.agreedVariance,
+        signed(summary.confirmedNetVariance),
+        usd(summary.confirmedNetValue),
+        "safe to adjust against",
+      ],
+      [
+        "Counts disagree",
+        summary.disagree,
+        `${summary.unitsInDispute} apart`,
+        "—",
+        "RECOUNT — no variance issued",
+      ],
+      [
+        "Not recounted by 2nd pass",
+        summary.notRecounted,
+        "—",
+        "—",
+        "1st count figure only, unverified",
+      ],
+      [
+        "Found only by 2nd pass",
+        summary.missedInFirst,
+        "—",
+        "—",
+        "missed by the 1st count",
+      ],
+    ],
+    styles: { fontSize: 8, cellPadding: 1.6 },
+    headStyles: { fillColor: [0, 122, 255] },
+    columnStyles: {
+      0: { cellWidth: 60 },
+      1: { halign: "right", cellWidth: 18 },
+      2: { halign: "right", cellWidth: 26 },
+      3: { halign: "right", cellWidth: 28 },
+    },
+  });
+
+  const section = (
+    title: string,
+    subset: any[],
+    cols: string[],
+    body: any[][],
+    widths: Record<number, any>,
+  ) => {
+    if (!subset.length) return;
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.text(title, 14, 15);
+    autoTable(doc, {
+      startY: 20,
+      head: [cols],
+      body,
+      styles: { fontSize: 7.5, cellPadding: 1.3 },
+      headStyles: { fillColor: [0, 122, 255] },
+      columnStyles: widths,
+      didDrawPage: () => {
+        doc.setFontSize(7);
+        doc.setTextColor(120);
+        doc.text(
+          `${meta.locationLabel} (${meta.warehouseCode}) — second-count comparison`,
+          14,
+          doc.internal.pageSize.getHeight() - 8,
+        );
+        doc.setTextColor(0);
+      },
+    });
+  };
+
+  const desc = (r: any) =>
+    [r.brand, r.model, r.size].filter(Boolean).join(" ").slice(0, 46);
+  const numeric = { halign: "right" as const, cellWidth: 17 };
+
+  section(
+    `Recount list — ${summary.disagree} lines the two counts disagree on (${summary.unitsInDispute} tires apart)`,
+    rows.filter((r) => r.bucket === "disagree"),
+    ["Item ID", "Description", "Book", "1st", "2nd", "Apart"],
+    rows
+      .filter((r) => r.bucket === "disagree")
+      .map((r) => [
+        r.itemId,
+        desc(r),
+        r.expectedSecond,
+        r.countedFirst,
+        r.countedSecond,
+        Math.abs(r.spread),
+      ]),
+    { 0: { cellWidth: 30 }, 2: numeric, 3: numeric, 4: numeric, 5: numeric },
+  );
+
+  const conf = rows
+    .filter((r) => r.bucket === "agreed-variance")
+    .slice()
+    .sort((a, b) => Math.abs(b.confirmedVariance) - Math.abs(a.confirmedVariance));
+  section(
+    `Confirmed variance — ${conf.length} lines both counts agreed on`,
+    conf,
+    ["Item ID", "Description", "Book", "Counted", "Variance", "Cost ea", "Value"],
+    conf.map((r) => [
+      r.itemId,
+      desc(r),
+      r.expectedSecond,
+      r.countedSecond,
+      signed(r.confirmedVariance),
+      r.avgCost ? usd(r.avgCost) : "—",
+      r.confirmedValue === null ? "not priced" : usd(r.confirmedValue),
+    ]),
+    {
+      0: { cellWidth: 30 },
+      2: numeric,
+      3: numeric,
+      4: numeric,
+      5: { halign: "right", cellWidth: 22 },
+      6: { halign: "right", cellWidth: 26 },
+    },
+  );
+
+  const nr = rows
+    .filter((r) => r.bucket === "not-recounted" && r.firstVariance !== 0)
+    .slice()
+    .sort((a, b) => Math.abs(b.firstVariance) - Math.abs(a.firstVariance));
+  section(
+    `Not recounted — ${nr.length} lines with a 1st-count variance the 2nd pass never checked`,
+    nr,
+    ["Item ID", "Description", "Book", "1st count", "1st variance"],
+    nr.map((r) => [
+      r.itemId,
+      desc(r),
+      r.expectedFirst,
+      r.countedFirst,
+      signed(r.firstVariance),
+    ]),
+    { 0: { cellWidth: 30 }, 2: numeric, 3: numeric, 4: numeric },
+  );
+
+  // ---- the caveats, last, on their own page so they cannot be cropped off a table
+  doc.addPage();
+  doc.setFontSize(12);
+  doc.text("How to read this report", 14, 15);
+  doc.setFontSize(9);
+  const notes = [
+    "CONFIRMED VARIANCE is the only figure backed by two independent counts. Both passes reached the",
+    "same number and that number disagrees with JMK. This is what is safe to adjust against.",
+    "",
+    "RECOUNT lines carry no variance at all. The two passes disagree with each other, so the discrepancy",
+    "is in the counting rather than in the stock, and no figure from either pass should be used.",
+    "",
+    ...(summary.mode === "partial"
+      ? [
+          "PARTIAL SECOND COUNT. Lines the second pass never reached are reported with the first count's own",
+          "figure and no confirmation. Scope is inferred from what the second pass scanned, so a line that was",
+          "recounted and genuinely came up empty cannot be told apart from one nobody visited — a partial",
+          "count can confirm an overage but never a shortage to zero.",
+          "",
+        ]
+      : []),
+    ...(summary.unvaluedLines
+      ? [
+          `${summary.unvaluedLines} confirmed line(s) carry no cost in the OEIVAL and are shown as "not priced" rather than as $0.`,
+          "Valuing an unknown cost at zero would understate a loss, so those lines are excluded from the money",
+          "totals and must be priced by hand if they matter.",
+          "",
+        ]
+      : []),
+    `Book on hand: ${summary.bookUnits.toLocaleString()} tires` +
+      (summary.bookValue ? ` — ${usd(summary.bookValue)} at JMK average cost.` : "."),
+    `Counted: ${summary.countedUnitsFirst.toLocaleString()} tires in the first pass, ${summary.countedUnitsSecond.toLocaleString()} in the second.`,
+    "Costs are JMK average cost per tire, from the OEIVAL the count was judged against.",
+  ];
+  doc.text(notes, 14, 24);
+
+  doc.save(`${comparisonStamp(meta)}.pdf`);
+}

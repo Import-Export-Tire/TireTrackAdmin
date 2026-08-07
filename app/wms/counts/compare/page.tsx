@@ -10,6 +10,7 @@ import { useAuth } from "../../../auth-context";
 import {
   downloadComparisonCsv,
   downloadComparisonExcel,
+  downloadComparisonPdf,
   COMPARISON_LABEL,
 } from "../exports";
 
@@ -254,9 +255,19 @@ function Compare() {
                 [
                   "CONFIRMED net variance",
                   summary.confirmedNetVariance > 0
-                    ? `+${summary.confirmedNetVariance}`
-                    : summary.confirmedNetVariance,
+                    ? `+${summary.confirmedNetVariance} tires`
+                    : `${summary.confirmedNetVariance} tires`,
                   "text-[#1c1c1e] font-semibold",
+                ],
+                [
+                  "CONFIRMED value",
+                  (summary.confirmedNetValue < 0 ? "-$" : "$") +
+                    Math.abs(summary.confirmedNetValue).toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    }),
+                  summary.confirmedNetValue < 0
+                    ? "text-ios-red font-semibold"
+                    : "text-[#1c1c1e] font-semibold",
                 ],
                 summary.mode === "partial"
                   ? ["Not recounted", summary.notRecounted, "text-ios-gray1"]
@@ -279,6 +290,12 @@ function Compare() {
                 className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm"
               >
                 Download Excel
+              </button>
+              <button
+                onClick={() => downloadComparisonPdf(meta, rows, summary)}
+                className="px-4 py-2 rounded-xl bg-white border border-ios-gray5 text-[#1c1c1e] text-sm"
+              >
+                PDF
               </button>
               <button
                 onClick={() => downloadComparisonCsv(meta, rows, summary)}
