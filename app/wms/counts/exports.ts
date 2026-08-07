@@ -1335,7 +1335,8 @@ export async function downloadRecountPdf(meta: ComparisonMeta, rows: any[]) {
     },
     headStyles: { fillColor: [0, 122, 255], fontSize: 9 },
     columnStyles: {
-      0: { cellWidth: 8, halign: "right", textColor: [130, 130, 135] },
+      // 12mm, not 8 — a 3-digit row number wraps at 8 and the column looks broken.
+      0: { cellWidth: 12, halign: "right", textColor: [130, 130, 135] },
       1: { cellWidth: 26 },
       2: { cellWidth: 26 },
       3: { cellWidth: 28 },
