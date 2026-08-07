@@ -1271,66 +1271,89 @@ export function downloadRecountExcel(meta: ComparisonMeta, rows: any[]) {
 }
 
 /**
- * The walk sheet. Portrait, big enough to write on, one section per reason, and a
- * blank Counted column — this is the version that goes out on the floor rather
- * than the one that gets filtered in Excel.
+ * The floor sheet.
+ *
+ * Everything needed to FIND and identify a tire, and nothing about what it is
+ * expected to be. No book quantity, no earlier count, no variance, no value: a
+ * printed expectation is a number people count toward, which is the same reason
+ * the scanner does not show the book figure either. What the crew hands back has
+ * to be an independent observation or the recount is worth nothing.
+ *
+ * Ordered by brand then size, because that is how tires are stored and therefore
+ * how somebody walks a building — not by money, which only matters to the person
+ * reading the results afterwards.
  */
 export async function downloadRecountPdf(meta: ComparisonMeta, rows: any[]) {
-  const list = recountRows(rows);
-  const { doc, autoTable } = await newPdf(false);
-
-  doc.setFontSize(15);
-  doc.text(`Recount list — ${meta.locationLabel} (${meta.warehouseCode})`, 14, 16);
-  doc.setFontSize(8);
-  doc.text(
-    [
-      `Lines the counts of ${new Date(meta.first.openedAt).toLocaleDateString()} and ${new Date(meta.second.openedAt).toLocaleDateString()} did not settle.`,
-      `${list.length} lines · ${list.reduce((n, x) => n + x.tiresAtStake, 0).toLocaleString()} tires · ${usd(list.reduce((n, x) => n + (x.valueAtStake ?? 0), 0))} at stake`,
-      `Within each section the biggest value is first. Count the whole line, not the difference.`,
-    ],
-    14,
-    23,
+  const list = recountRows(rows).slice();
+  const t = (x: unknown) => String(x ?? "").trim();
+  list.sort(
+    (a, z) =>
+      t(a.row.brand).localeCompare(t(z.row.brand)) ||
+      t(a.row.size).localeCompare(t(z.row.size)) ||
+      t(a.row.itemId).localeCompare(t(z.row.itemId)),
   );
 
-  let started = false;
-  for (const reason of Object.values(RECOUNT_REASON)
-    .slice()
-    .sort((a, b) => a.rank - b.rank)
-    .map((r) => r.label)) {
-    const group = list.filter((x) => x.reason === reason);
-    if (!group.length) continue;
-    if (started) doc.addPage();
-    started = true;
-    doc.setFontSize(11);
-    doc.text(
-      `${reason} — ${group.length} lines, ${usd(group.reduce((n, x) => n + (x.valueAtStake ?? 0), 0))}`,
-      14,
-      started ? 15 : 36,
-    );
-    autoTable(doc, {
-      startY: 20,
-      head: [["Item ID", "Description", "Book", "1st", "2nd", "Counted", "By"]],
-      body: group.map((x) => [
-        x.row.itemId,
-        [x.row.brand, x.row.model, x.row.size].filter(Boolean).join(" ").slice(0, 40),
-        x.row.expectedSecond || x.row.expectedFirst,
-        x.row.bucket === "missed-in-first" ? "—" : x.row.countedFirst,
-        x.row.recounted ? x.row.countedSecond : "—",
-        "",
-        "",
-      ]),
-      styles: { fontSize: 8, cellPadding: 2, minCellHeight: 7 },
-      headStyles: { fillColor: [0, 122, 255] },
-      columnStyles: {
-        0: { cellWidth: 26 },
-        2: { halign: "right", cellWidth: 13 },
-        3: { halign: "right", cellWidth: 12 },
-        4: { halign: "right", cellWidth: 12 },
-        5: { cellWidth: 20, fillColor: [245, 245, 247] },
-        6: { cellWidth: 22 },
-      },
-    });
-  }
+  const { doc, autoTable } = await newPdf(true);
+  const PH = doc.internal.pageSize.getHeight();
+
+  doc.setFontSize(15);
+  doc.text(`Recount sheet — ${meta.locationLabel} (${meta.warehouseCode})`, 14, 15);
+  doc.setFontSize(9);
+  doc.text(
+    [
+      `${list.length} items to recount. Count the FULL quantity of each item — not a difference, not a spot check.`,
+      "Write the number you counted and your initials. If you find none, write 0 — never leave it blank.",
+      "If an item is stored in more than one place, add them together and write one total.",
+    ],
+    14,
+    22,
+  );
+
+  autoTable(doc, {
+    startY: 36,
+    head: [
+      ["#", "Item ID", "Part number", "Barcode", "Brand", "Model", "Size", "Counted", "Initials"],
+    ],
+    body: list.map((x, i) => [
+      i + 1,
+      t(x.row.itemId),
+      t(x.row.mpn),
+      t(x.row.upc) || t(x.row.ean),
+      t(x.row.brand),
+      t(x.row.model),
+      t(x.row.size),
+      "",
+      "",
+    ]),
+    styles: {
+      fontSize: 8.5,
+      cellPadding: 2.4,
+      minCellHeight: 8.5,
+      lineColor: [200, 200, 205],
+      lineWidth: 0.1,
+      overflow: "linebreak",
+    },
+    headStyles: { fillColor: [0, 122, 255], fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 8, halign: "right", textColor: [130, 130, 135] },
+      1: { cellWidth: 26 },
+      2: { cellWidth: 26 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 32 },
+      7: { cellWidth: 22, fillColor: [246, 246, 248] },
+      8: { cellWidth: 20, fillColor: [246, 246, 248] },
+    },
+    didDrawPage: () => {
+      doc.setFontSize(7.5);
+      doc.setTextColor(120);
+      doc.text(
+        `${meta.locationLabel} (${meta.warehouseCode}) recount — return completed sheets to the office`,
+        14,
+        PH - 8,
+      );
+      doc.setTextColor(0);
+    },
+  });
 
   doc.save(`${recountStamp(meta)}.pdf`);
 }

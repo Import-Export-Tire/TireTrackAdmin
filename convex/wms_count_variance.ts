@@ -320,6 +320,9 @@ export type ComparisonRow = {
   model?: string;
   size?: string;
   mpn?: string;
+  /** JMK's own barcode — what a counter scans to confirm the tire in hand. */
+  upc?: string;
+  ean?: string;
   /** Book quantity as each count froze it — they differ if stock moved between. */
   expectedFirst: number;
   expectedSecond: number;
@@ -498,6 +501,8 @@ export function compareCounts(
       model: lead?.model,
       size: lead?.size,
       mpn: lead?.mpn,
+      upc: lead?.upc,
+      ean: lead?.ean,
       expectedFirst,
       expectedSecond,
       bookMoved: membersA.length > 0 && membersB.length > 0 && expectedFirst !== expectedSecond,
