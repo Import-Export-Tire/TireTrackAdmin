@@ -1695,15 +1695,10 @@ export const compareCountBatches = query({
     const loadedFirst = await load(a._id);
     const loadedSecond = await load(z._id);
 
-    const countedLines = (t: { totals: Array<{ itemId?: string }> }) =>
-      t.totals.filter((x) => !!x.itemId).length;
-    const mode =
-      args.mode ??
-      detectComparisonMode(
-        countedLines(loadedFirst),
-        countedLines(loadedSecond),
-        z.status === "closed",
-      );
+    // Defaults to partial and is never inferred from coverage — see
+    // detectComparisonMode for why that ratio cannot tell a complete count from
+    // an abandoned one. Claiming "full" is the caller's assertion to make.
+    const mode = args.mode ?? detectComparisonMode();
 
     const result = compareCounts(loadedFirst, loadedSecond, { mode });
 

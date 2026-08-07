@@ -227,18 +227,23 @@ describe("compareCounts — PARTIAL second count", () => {
     expect(r.rows[0].itemId).toBe("RECOUNTED");
   });
 
-  it("infers the mode from coverage once the second count is CLOSED", () => {
-    expect(detectComparisonMode(400, 390, true)).toBe("full");
-    expect(detectComparisonMode(400, 40, true)).toBe("partial");
-    expect(detectComparisonMode(400, 280, true)).toBe("full"); // 70% — full pass with gaps
-    expect(detectComparisonMode(0, 0, true)).toBe("full");
+  it("defaults to partial and never infers full from coverage", () => {
+    // A complete count of a location that IS 64 lines short shows the same
+    // coverage as an incomplete one that skipped 64 lines. The ratio cannot
+    // distinguish them, so nothing is inferred from it.
+    expect(detectComparisonMode()).toBe("partial");
   });
 
-  it("REGRESSION: an OPEN second count is partial at ANY coverage", () => {
-    // Measured live three lines under the old 70% threshold: three more scans
-    // would have flipped 241 un-visited lines into confirmed shrink mid-count.
-    expect(detectComparisonMode(400, 399, false)).toBe("partial");
-    expect(detectComparisonMode(400, 280, false)).toBe("partial");
-    expect(detectComparisonMode(10, 10, false)).toBe("partial");
+  it("REGRESSION: neither-pass-scanned stays unconfirmed unless full is asserted", () => {
+    const book = bookOf(["NEITHER", 55]);
+    const dflt = compareCounts(side(book, []), side(book, []), {
+      mode: detectComparisonMode(),
+    });
+    expect(row(dflt, "NEITHER").bucket).toBe("not-recounted");
+    expect(dflt.summary.confirmedNetVariance).toBe(0);
+
+    // asserting full is what licenses reading absence as shrink
+    const asserted = compareCounts(side(book, []), side(book, []), { mode: "full" });
+    expect(asserted.summary.confirmedNetVariance).toBe(-55);
   });
 });

@@ -289,29 +289,26 @@ export type ComparisonBucket =
 export type ComparisonMode = "full" | "partial";
 
 /**
- * Guess the mode so nobody has to remember to set it.
+ * Default to partial. Coverage CANNOT establish completeness, so nothing is
+ * inferred — "full" has to be asserted by somebody who knows the floor was walked.
  *
- * An OPEN second count is ALWAYS partial, whatever its coverage. A count still in
- * progress is incomplete by definition, and "absent from both passes" cannot mean
- * shrink while somebody is still walking the aisles.
+ * The reasoning, which two live counts made concrete:
  *
- * This rule replaced a bare coverage ratio, which was measured sitting three
- * lines below its own threshold on a live count: three more scans would have
- * flipped 241 not-yet-visited lines into confirmed shrink, silently, mid-count.
- * Coverage is only allowed to decide anything once the count is closed.
+ * A complete count of a location that really is 64 lines short looks like 86%
+ * coverage. An incomplete count that skipped 64 lines looks like 86% coverage.
+ * They are the same number. Any threshold placed anywhere on that ratio is
+ * guessing at the one fact it cannot see — whether anybody actually went and
+ * looked. An earlier version of this compared the second pass against the FIRST
+ * pass's coverage and concluded "full" at 98%, which on W09's real data moved the
+ * confirmed variance from +154 to -165: a 319-unit swing invented out of 75 lines
+ * nobody visited twice.
  *
- * The closed-batch threshold stays loose: a full recount that missed a few lines
- * is still a full recount, and a spot check of a few aisles is nowhere near 70%
- * of what the first pass touched.
+ * The risk is asymmetric, so the default follows the safe side. Wrongly assuming
+ * partial costs certainty on lines that were in fact counted. Wrongly assuming
+ * full fabricates shrink in the column the report calls safe to act on.
  */
-export function detectComparisonMode(
-  firstCountedLines: number,
-  secondCountedLines: number,
-  secondIsClosed: boolean,
-): ComparisonMode {
-  if (!secondIsClosed) return "partial";
-  if (firstCountedLines === 0) return "full";
-  return secondCountedLines / firstCountedLines >= 0.7 ? "full" : "partial";
+export function detectComparisonMode(): ComparisonMode {
+  return "partial";
 }
 
 export type ComparisonRow = {
