@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Protected } from "../../../protected";
@@ -47,9 +49,12 @@ const TONE: Record<Bucket, string> = {
 
 function Compare() {
   const { admin } = useAuth();
-  const [loc, setLoc] = useState("W09");
-  const [firstId, setFirstId] = useState("");
-  const [secondId, setSecondId] = useState("");
+  // Deep-linked from a count's own report screen, so "compare this with…" lands
+  // here with both passes already chosen.
+  const search = useSearchParams();
+  const [loc, setLoc] = useState(search?.get("loc") ?? "W09");
+  const [firstId, setFirstId] = useState(search?.get("first") ?? "");
+  const [secondId, setSecondId] = useState(search?.get("second") ?? "");
   const [showClean, setShowClean] = useState(false);
   // Left undefined so the server infers it from coverage; set only to override.
   const [modeOverride, setModeOverride] = useState<"full" | "partial" | undefined>(
@@ -92,6 +97,14 @@ function Compare() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
+      <div className="mb-2">
+        <Link
+          href="/wms/counts"
+          className="text-ios-blue text-sm font-medium hover:underline"
+        >
+          ‹ Inventory Counts
+        </Link>
+      </div>
       <div>
         <h1 className="text-2xl font-semibold text-[#1c1c1e]">
           Compare two counts

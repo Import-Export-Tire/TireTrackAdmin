@@ -93,6 +93,14 @@ function CountReport() {
   });
   const voidScan = useMutation(api.wms_count.voidCountScan);
   const [reopening, setReopening] = useState(false);
+  // Sibling counts of this location, so a second pass can be compared against
+  // this one from the screen somebody is already looking at.
+  const siblings = useQuery(
+    api.wms_count.getCountBatches,
+    detail?.batch?.warehouseCode
+      ? { warehouseCode: detail.batch.warehouseCode }
+      : "skip",
+  );
 
   // Inline resolver state, keyed by the UPC being resolved.
   const [resolving, setResolving] = useState<string | null>(null);
@@ -168,6 +176,7 @@ function CountReport() {
   const rows = ready ? variance.rows : [];
   const unmatched = ready ? variance.unmatched : [];
   const summary = ready ? variance.summary : null;
+  const others = siblings?.filter((x) => x._id !== batchId);
 
   const header: ReportHeader = {
     warehouseCode: b.warehouseCode,
@@ -321,6 +330,68 @@ function CountReport() {
           </div>
         )}
       </div>
+
+      {/* Second-count comparison.
+          A single count cannot separate real shrink from a miscount, so once this
+          location has been counted more than once the comparison is the report
+          that matters — and it belongs on the screen somebody is already reading,
+          not behind a link they have to know exists. */}
+      {(others?.length ?? 0) > 0 && (
+        <div className="bg-white rounded-2xl shadow-ios p-5 mb-4">
+          <div className="flex items-baseline justify-between flex-wrap gap-2">
+            <h2 className="font-semibold text-[#1c1c1e]">
+              Compare with another count
+            </h2>
+            <Link
+              href={`/wms/counts/compare?loc=${b.warehouseCode}`}
+              className="text-ios-blue text-sm font-medium hover:underline"
+            >
+              All comparisons →
+            </Link>
+          </div>
+          <p className="text-sm text-ios-gray1 mt-1">
+            One count can&apos;t tell real shrink from a miscount. Where two
+            passes agree, the figure is worth acting on; where they disagree,
+            it&apos;s recount work.
+          </p>
+          <div className="mt-3 space-y-2">
+            {others!.map((o) => {
+              // Order by open time so "first" and "second" mean what they say.
+              const [f, sd] =
+                b.openedAt <= o.openedAt ? [batchId, o._id] : [o._id, batchId];
+              return (
+                <div
+                  key={o._id}
+                  className="flex items-center justify-between gap-3 flex-wrap border-t border-ios-gray5 pt-2 text-sm"
+                >
+                  <div>
+                    <span className="text-[#1c1c1e]">
+                      {new Date(o.openedAt).toLocaleDateString()}{" "}
+                      {new Date(o.openedAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <span className="text-ios-gray1">
+                      {" "}
+                      · {o.status} · opened by {o.openedByName}
+                      {o.baselineFileDate
+                        ? ` · OEIVAL ${String(o.baselineFileDate).slice(0, 10)}`
+                        : ""}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/wms/counts/compare?loc=${b.warehouseCode}&first=${f}&second=${sd}`}
+                    className="px-3 py-2 rounded-xl bg-ios-blue text-white text-sm font-medium"
+                  >
+                    Compare
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {ready && (
         <div className="bg-white rounded-2xl shadow-ios p-4 mb-4">
