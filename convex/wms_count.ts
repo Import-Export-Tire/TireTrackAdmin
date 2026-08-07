@@ -363,6 +363,169 @@ export const backfillBaselineCost = action({
   },
 });
 
+export const markScoped = internalMutation({
+  args: {
+    batchId: v.id("wms_count_batches"),
+    scopeLabel: v.string(),
+    scopeMissing: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.batchId, {
+      scoped: true,
+      scopeLabel: args.scopeLabel,
+      scopeMissing: args.scopeMissing,
+    });
+  },
+});
+
+/**
+ * Open a count batch scoped to a named list of items — a recount of the lines a
+ * previous count could not settle.
+ *
+ * The point is not convenience, it is that the scope becomes RECORDED. A normal
+ * batch freezes the whole location, so a line that ends up never scanned is
+ * ambiguous forever: shrink, or nobody walked that aisle. Nothing in the data can
+ * tell those apart, which is why the two-count comparison has to withhold a
+ * verdict on them. Here the scope is declared up front, so inside it an un-scanned
+ * line means the tires are genuinely not there, and the variance can be trusted.
+ *
+ * Item numbers are matched suffix-insensitively (AYAGS008 finds AYAGS008.) so a
+ * list pasted out of a report works, and every barcode-sharing sibling of a
+ * matched item is pulled in too — the scanner cannot tell d-class variants apart,
+ * so freezing one without the other would invent a short and an over.
+ */
+export const openScopedCountBatch = action({
+  args: {
+    warehouseCode: v.string(),
+    itemIds: v.array(v.string()),
+    scopeLabel: v.string(),
+    actor: actorValidator,
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    batchId: Id<"wms_count_batches">;
+    alreadyOpen: boolean;
+    frozenItems?: number;
+    frozenUnits?: number;
+    missing?: string[];
+  }> => {
+    if (args.itemIds.length === 0) throw new Error("No items to recount");
+
+    const created: { batchId: Id<"wms_count_batches">; alreadyOpen: boolean } =
+      await ctx.runMutation(internal.wms_count.createBatchInternal, {
+        warehouseCode: args.warehouseCode,
+        actor: args.actor,
+      });
+    if (created.alreadyOpen) return created;
+
+    const base = process.env.IECENTRAL_SNAPSHOT_URL;
+    const token = process.env.IECENTRAL_SNAPSHOT_TOKEN;
+    if (!base || !token) {
+      await ctx.runMutation(internal.wms_count.finishBaseline, {
+        batchId: created.batchId,
+        status: "failed",
+        error: "IECENTRAL_SNAPSHOT_URL / IECENTRAL_SNAPSHOT_TOKEN not set.",
+      });
+      return created;
+    }
+
+    try {
+      const res = await fetch(
+        `${base}/api/inventory/snapshot?location=${encodeURIComponent(args.warehouseCode)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) throw new Error(`Snapshot returned ${res.status}`);
+      const snap = (await res.json()) as {
+        fileDate: string | null;
+        generatedAt: string | null;
+        items: Array<{
+          itemId: string;
+          qtyOnHand: number;
+          upc?: string;
+          ean?: string;
+          [k: string]: unknown;
+        }>;
+      };
+
+      const norm = (x: string) =>
+        String(x ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const wanted = new Set(args.itemIds.map(norm).filter(Boolean));
+
+      const direct = snap.items.filter((i) => wanted.has(norm(i.itemId)));
+
+      // Pull in every sibling sharing a matched item's barcode. Freezing one
+      // d-class variant without the other guarantees a fictional short on one and
+      // an over on the other, because the scanner reads only the barcode.
+      const codes = new Set(
+        direct.flatMap((i) =>
+          [String(i.upc ?? "").trim(), String(i.ean ?? "").trim()].filter(Boolean),
+        ),
+      );
+      const chosen = snap.items.filter(
+        (i) =>
+          wanted.has(norm(i.itemId)) ||
+          codes.has(String(i.upc ?? "").trim()) ||
+          codes.has(String(i.ean ?? "").trim()),
+      );
+
+      const found = new Set(chosen.map((i) => norm(i.itemId)));
+      const missing = args.itemIds.filter((id) => !found.has(norm(id)));
+
+      if (chosen.length === 0) {
+        throw new Error(
+          "None of those item numbers are in this location's book right now.",
+        );
+      }
+
+      for (let i = 0; i < chosen.length; i += 500) {
+        await ctx.runMutation(internal.wms_count.insertBaselineChunk, {
+          batchId: created.batchId,
+          items: chosen.slice(i, i + 500) as any,
+        });
+      }
+
+      await ctx.runMutation(internal.wms_count.markScoped, {
+        batchId: created.batchId,
+        scopeLabel: args.scopeLabel,
+        scopeMissing: missing,
+      });
+
+      const units = chosen.reduce((n, i) => n + Number(i.qtyOnHand ?? 0), 0);
+      await ctx.runMutation(internal.wms_count.finishBaseline, {
+        batchId: created.batchId,
+        status: "ready",
+        fileDate: snap.fileDate ?? undefined,
+        generatedAt: snap.generatedAt ?? undefined,
+        itemCount: chosen.length,
+        unitCount: units,
+        // Nothing was excluded as a non-tire here: the scope is an explicit list,
+        // and the snapshot has already dropped placeholders before we see it.
+        excludedNonTires: 0,
+        excludedUnits: 0,
+      });
+
+      return {
+        ...created,
+        frozenItems: chosen.length,
+        frozenUnits: units,
+        missing,
+      };
+    } catch (err: any) {
+      await ctx.runMutation(internal.wms_count.clearBaseline, {
+        batchId: created.batchId,
+      });
+      await ctx.runMutation(internal.wms_count.finishBaseline, {
+        batchId: created.batchId,
+        status: "failed",
+        error: err?.message ?? "Scoped snapshot failed",
+      });
+      throw err;
+    }
+  },
+});
+
 export const retryBaseline = action({
   args: { batchId: v.id("wms_count_batches"), actor: actorValidator },
   handler: async (ctx, args): Promise<{ success: true }> => {

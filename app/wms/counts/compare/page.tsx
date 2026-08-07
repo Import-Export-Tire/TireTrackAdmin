@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Protected } from "../../../protected";
 import { useAuth } from "../../../auth-context";
@@ -61,6 +61,8 @@ function Compare() {
   const [modeOverride, setModeOverride] = useState<"full" | "partial" | undefined>(
     undefined,
   );
+  const openScoped = useAction(api.wms_count.openScopedCountBatch);
+  const [opening, setOpening] = useState(false);
 
   const locations = useQuery(api.wms_count.getCountLocations, {});
   const batches = useQuery(api.wms_count.getCountBatches, {
@@ -87,6 +89,33 @@ function Compare() {
   const ready = result && "rows" in result && result.ready;
   const rows: any[] = ready ? (result as any).rows : [];
   const summary: any = ready ? (result as any).summary : null;
+  /**
+   * Everything two agreeing passes did not settle: the disagreements, the lines
+   * only one pass reached, and the lines neither pass found anything on — that
+   * last group is where the shrink claim lives, so it has to be walked again
+   * before it is posted. Barcode-variant siblings are included because the
+   * scanner cannot tell them apart.
+   */
+  const recountIds: string[] = ready
+    ? Array.from(
+        new Set(
+          rows
+            .filter(
+              (r: any) =>
+                r.bucket === "disagree" ||
+                r.bucket === "missed-in-first" ||
+                r.bucket === "missed-in-second" ||
+                r.bucket === "not-recounted" ||
+                (r.bucket === "agreed-variance" &&
+                  r.countedSecond === 0 &&
+                  r.countedFirst === 0),
+            )
+            .filter((r: any) => r.expectedFirst > 0 || r.expectedSecond > 0)
+            .flatMap((r: any) => r.variantItemIds ?? [r.itemId]),
+        ),
+      )
+    : [];
+
   const meta = ready
     ? {
         warehouseCode: (result as any).warehouseCode,
@@ -302,6 +331,51 @@ function Compare() {
                 className="px-4 py-2 rounded-xl bg-white border border-ios-gray5 text-[#1c1c1e] text-sm"
               >
                 CSV
+              </button>
+              {/* Turn the report into the next count. Everything not settled by
+                  two agreeing passes goes into a SCOPED batch, so the recount's
+                  own report can conclude something a full batch cannot: inside a
+                  declared scope, a line nobody scanned really is missing. */}
+              <button
+                disabled={opening || !admin?.id || !recountIds.length}
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      `Open a recount batch at ${(result as any).warehouseCode} covering ${recountIds.length} item numbers that these two counts did not settle?`,
+                    )
+                  )
+                    return;
+                  setOpening(true);
+                  try {
+                    const res: any = await openScoped({
+                      warehouseCode: (result as any).warehouseCode,
+                      itemIds: recountIds,
+                      scopeLabel: `Recount of lines unsettled by the counts of ${new Date(meta.first.openedAt).toLocaleDateString()} and ${new Date(meta.second.openedAt).toLocaleDateString()}`,
+                      actor: { kind: "admin", adminId: admin!.id as any },
+                    });
+                    if (res.alreadyOpen) {
+                      alert(
+                        "A count batch is already open at this location — close it first.",
+                      );
+                    } else {
+                      alert(
+                        `Recount batch open: ${res.frozenItems} items / ${res.frozenUnits?.toLocaleString()} tires frozen.` +
+                          (res.missing?.length
+                            ? `\n\n${res.missing.length} item number(s) had no book row and were left out:\n${res.missing.slice(0, 12).join(", ")}`
+                            : ""),
+                      );
+                    }
+                  } catch (e: any) {
+                    alert(e?.message ?? "Could not open the recount batch");
+                  } finally {
+                    setOpening(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-ios-blue text-white text-sm font-medium disabled:opacity-40"
+              >
+                {opening
+                  ? "Opening…"
+                  : `Open recount batch (${recountIds.length} items)`}
               </button>
               <label className="text-xs text-ios-gray1 flex items-center gap-2">
                 <input

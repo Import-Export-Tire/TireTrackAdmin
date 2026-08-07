@@ -367,6 +367,20 @@ export default defineSchema({
     baselineUnitCount: v.optional(v.number()),
     baselineExcludedNonTires: v.optional(v.number()),
     baselineExcludedUnits: v.optional(v.number()),
+    /**
+     * A SCOPED batch freezes only a named list of items instead of the whole
+     * location — a recount of the lines a previous count left unresolved.
+     *
+     * This matters for what the report may conclude. In a full batch, "in the
+     * book, never scanned" only means shrink if the whole floor was walked, which
+     * nothing records. In a scoped batch the scope IS recorded, so within it an
+     * un-scanned line genuinely means the tires are not there.
+     */
+    scoped: v.optional(v.boolean()),
+    /** Why this scope exists, shown on the report so it explains itself later. */
+    scopeLabel: v.optional(v.string()),
+    /** Item numbers asked for that the book had no row for. */
+    scopeMissing: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
   }).index("by_warehouse_status", ["warehouseCode", "status"])
     .index("by_warehouse_openedAt", ["warehouseCode", "openedAt"]),
