@@ -1073,3 +1073,264 @@ export async function downloadComparisonPdf(
 
   doc.save(`${comparisonStamp(meta)}.pdf`);
 }
+
+// ------------------------------------------------------------ recount list
+
+/**
+ * Why a line needs walking again, in the order somebody should work them.
+ *
+ * Ordered by how much the recount can settle, not by size: a disagreement has two
+ * contradictory observations and one more pass decides it, whereas "neither count
+ * found any" is the shrink claim itself and only a declared-scope recount can turn
+ * it from an assumption into a fact.
+ */
+export const RECOUNT_REASON = {
+  disagree: { rank: 1, label: "Counts disagree" },
+  "missed-in-second": { rank: 2, label: "Only the 1st count reached it" },
+  "missed-in-first": { rank: 3, label: "Only the 2nd count reached it" },
+  "never-found": { rank: 4, label: "Neither count found any" },
+} as const;
+
+export type RecountRow = {
+  reason: string;
+  rank: number;
+  /** Tires the recount could move, and what they are worth. */
+  tiresAtStake: number;
+  valueAtStake: number | null;
+  row: any;
+};
+
+/**
+ * Every line two agreeing passes did not settle.
+ *
+ * ONE definition, used by both the downloadable list and the button that opens the
+ * scoped batch — if those two ever disagreed, the list would describe a recount
+ * that isn't the one running.
+ */
+export function recountRows(rows: any[]): RecountRow[] {
+  const out: RecountRow[] = [];
+  for (const r of rows) {
+    let key: keyof typeof RECOUNT_REASON | null = null;
+    /**
+     * Deliberately keyed on OBSERVATIONS, not on the bucket name.
+     *
+     * The same physical situation carries different bucket names in the two
+     * reading modes — a line the second pass never scanned is "not-recounted"
+     * under partial and "missed-in-second" or "agreed-variance" under full — so
+     * matching on bucket alone silently changes the work list depending on which
+     * mode the reader happens to have selected. Measured on W09: it dropped 9 item
+     * numbers including one worth $15,996, all of them lines with exactly ONE
+     * observation, which is the group that most needs a second look.
+     *
+     * What matters is how many passes actually saw the line, and whether they
+     * agreed.
+     */
+    const seenFirst = r.countedFirst > 0;
+    const seenSecond = r.recounted;
+
+    if (r.bucket === "disagree") key = "disagree";
+    else if (!seenSecond && seenFirst) key = "missed-in-second";
+    else if (!seenFirst && seenSecond) key = "missed-in-first";
+    else if (!seenFirst && !seenSecond) key = "never-found";
+    if (!key) continue;
+    if (!(r.expectedFirst > 0 || r.expectedSecond > 0)) continue; // no book row to recount against
+
+    const tires =
+      key === "disagree"
+        ? Math.abs(r.spread)
+        : key === "never-found"
+          ? r.expectedSecond || r.expectedFirst
+          : Math.max(r.countedFirst, r.countedSecond);
+
+    out.push({
+      reason: RECOUNT_REASON[key].label,
+      rank: RECOUNT_REASON[key].rank,
+      tiresAtStake: tires,
+      valueAtStake: r.avgCost > 0 ? Math.round(tires * r.avgCost * 100) / 100 : null,
+      row: r,
+    });
+  }
+  // Worst money first inside each reason, so a short shift spent on the top of
+  // the list is the most valuable shift available.
+  return out.sort(
+    (a, z) => a.rank - z.rank || (z.valueAtStake ?? 0) - (a.valueAtStake ?? 0),
+  );
+}
+
+/** Item numbers to freeze into a scoped batch, variant siblings included. */
+export function recountItemIds(rows: any[]): string[] {
+  return Array.from(
+    new Set(
+      recountRows(rows).flatMap((x) => x.row.variantItemIds ?? [x.row.itemId]),
+    ),
+  );
+}
+
+export function recountTable(meta: ComparisonMeta, rows: any[]): Table {
+  const list = recountRows(rows);
+  return {
+    sheet: "Recount list",
+    columns: [
+      "Why",
+      "Item ID",
+      "Variant item IDs",
+      "Brand",
+      "Model",
+      "Size",
+      "MPN",
+      "Book",
+      "1st count",
+      "2nd count",
+      "Tires at stake",
+      "Value at stake",
+      "Recounted qty",
+      "Counted by",
+      "Location",
+    ],
+    rows: list.map((x) => {
+      const r = x.row;
+      return [
+        x.reason,
+        r.itemId,
+        (r.variantItemIds ?? []).join(" + "),
+        r.brand ?? "",
+        r.model ?? "",
+        r.size ?? "",
+        r.mpn ?? "",
+        r.expectedSecond || r.expectedFirst,
+        r.bucket === "missed-in-first" ? null : r.countedFirst,
+        r.recounted ? r.countedSecond : null,
+        x.tiresAtStake,
+        x.valueAtStake,
+        // Left blank on purpose: the file doubles as the sheet somebody writes on.
+        null,
+        null,
+        `${meta.locationLabel} (${meta.warehouseCode})`,
+      ];
+    }),
+    widths: [30, 16, 20, 18, 22, 30, 14, 8, 10, 10, 13, 14, 13, 16, 26],
+  };
+}
+
+const recountStamp = (meta: ComparisonMeta) =>
+  `${meta.warehouseCode}_recount_list_${new Date(meta.second.openedAt).toISOString().slice(0, 10)}`;
+
+export function downloadRecountCsv(meta: ComparisonMeta, rows: any[]) {
+  downloadTableCsv(`${recountStamp(meta)}.csv`, recountTable(meta, rows));
+}
+
+export function downloadRecountExcel(meta: ComparisonMeta, rows: any[]) {
+  const list = recountRows(rows);
+  const byReason = new Map<string, RecountRow[]>();
+  for (const x of list) {
+    const g = byReason.get(x.reason) ?? [];
+    g.push(x);
+    byReason.set(x.reason, g);
+  }
+  return downloadWorkbook(`${recountStamp(meta)}.xlsx`, [
+    {
+      sheet: "Summary",
+      pairs: [
+        ["Location", `${meta.locationLabel} (${meta.warehouseCode})`],
+        [
+          "Counts compared",
+          `${new Date(meta.first.openedAt).toLocaleDateString()} and ${new Date(meta.second.openedAt).toLocaleDateString()}`,
+        ],
+        ["", ""],
+        ["Lines to recount", list.length],
+        ["Tires at stake", list.reduce((n, x) => n + x.tiresAtStake, 0)],
+        [
+          "Value at stake",
+          list.reduce((n, x) => n + (x.valueAtStake ?? 0), 0),
+        ],
+        ["", ""],
+        ...[...byReason.entries()].map(
+          ([reason, g]) =>
+            [
+              reason,
+              `${g.length} lines · ${g.reduce((n, x) => n + x.tiresAtStake, 0)} tires · ${usd(g.reduce((n, x) => n + (x.valueAtStake ?? 0), 0))}`,
+            ] as [string, Cell],
+        ),
+        ["", ""],
+        [
+          "Note",
+          "Sorted by reason, then by value at stake, so working from the top is the most valuable order.",
+        ],
+        [
+          "Note",
+          "'Recounted qty' and 'Counted by' are blank on purpose — this file doubles as the sheet somebody writes on.",
+        ],
+        [
+          "Note",
+          "Lines with no book row (off-book finds) are not listed: there is nothing to recount them against.",
+        ],
+      ],
+    },
+    recountTable(meta, rows),
+  ]);
+}
+
+/**
+ * The walk sheet. Portrait, big enough to write on, one section per reason, and a
+ * blank Counted column — this is the version that goes out on the floor rather
+ * than the one that gets filtered in Excel.
+ */
+export async function downloadRecountPdf(meta: ComparisonMeta, rows: any[]) {
+  const list = recountRows(rows);
+  const { doc, autoTable } = await newPdf(false);
+
+  doc.setFontSize(15);
+  doc.text(`Recount list — ${meta.locationLabel} (${meta.warehouseCode})`, 14, 16);
+  doc.setFontSize(8);
+  doc.text(
+    [
+      `Lines the counts of ${new Date(meta.first.openedAt).toLocaleDateString()} and ${new Date(meta.second.openedAt).toLocaleDateString()} did not settle.`,
+      `${list.length} lines · ${list.reduce((n, x) => n + x.tiresAtStake, 0).toLocaleString()} tires · ${usd(list.reduce((n, x) => n + (x.valueAtStake ?? 0), 0))} at stake`,
+      `Within each section the biggest value is first. Count the whole line, not the difference.`,
+    ],
+    14,
+    23,
+  );
+
+  let started = false;
+  for (const reason of Object.values(RECOUNT_REASON)
+    .slice()
+    .sort((a, b) => a.rank - b.rank)
+    .map((r) => r.label)) {
+    const group = list.filter((x) => x.reason === reason);
+    if (!group.length) continue;
+    if (started) doc.addPage();
+    started = true;
+    doc.setFontSize(11);
+    doc.text(
+      `${reason} — ${group.length} lines, ${usd(group.reduce((n, x) => n + (x.valueAtStake ?? 0), 0))}`,
+      14,
+      started ? 15 : 36,
+    );
+    autoTable(doc, {
+      startY: 20,
+      head: [["Item ID", "Description", "Book", "1st", "2nd", "Counted", "By"]],
+      body: group.map((x) => [
+        x.row.itemId,
+        [x.row.brand, x.row.model, x.row.size].filter(Boolean).join(" ").slice(0, 40),
+        x.row.expectedSecond || x.row.expectedFirst,
+        x.row.bucket === "missed-in-first" ? "—" : x.row.countedFirst,
+        x.row.recounted ? x.row.countedSecond : "—",
+        "",
+        "",
+      ]),
+      styles: { fontSize: 8, cellPadding: 2, minCellHeight: 7 },
+      headStyles: { fillColor: [0, 122, 255] },
+      columnStyles: {
+        0: { cellWidth: 26 },
+        2: { halign: "right", cellWidth: 13 },
+        3: { halign: "right", cellWidth: 12 },
+        4: { halign: "right", cellWidth: 12 },
+        5: { cellWidth: 20, fillColor: [245, 245, 247] },
+        6: { cellWidth: 22 },
+      },
+    });
+  }
+
+  doc.save(`${recountStamp(meta)}.pdf`);
+}

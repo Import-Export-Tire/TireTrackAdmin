@@ -11,6 +11,11 @@ import {
   downloadComparisonCsv,
   downloadComparisonExcel,
   downloadComparisonPdf,
+  downloadRecountCsv,
+  downloadRecountExcel,
+  downloadRecountPdf,
+  recountItemIds,
+  recountRows,
   COMPARISON_LABEL,
 } from "../exports";
 
@@ -89,32 +94,12 @@ function Compare() {
   const ready = result && "rows" in result && result.ready;
   const rows: any[] = ready ? (result as any).rows : [];
   const summary: any = ready ? (result as any).summary : null;
-  /**
-   * Everything two agreeing passes did not settle: the disagreements, the lines
-   * only one pass reached, and the lines neither pass found anything on — that
-   * last group is where the shrink claim lives, so it has to be walked again
-   * before it is posted. Barcode-variant siblings are included because the
-   * scanner cannot tell them apart.
-   */
-  const recountIds: string[] = ready
-    ? Array.from(
-        new Set(
-          rows
-            .filter(
-              (r: any) =>
-                r.bucket === "disagree" ||
-                r.bucket === "missed-in-first" ||
-                r.bucket === "missed-in-second" ||
-                r.bucket === "not-recounted" ||
-                (r.bucket === "agreed-variance" &&
-                  r.countedSecond === 0 &&
-                  r.countedFirst === 0),
-            )
-            .filter((r: any) => r.expectedFirst > 0 || r.expectedSecond > 0)
-            .flatMap((r: any) => r.variantItemIds ?? [r.itemId]),
-        ),
-      )
-    : [];
+  // Same selection the recount list downloads and the scoped batch freezes —
+  // one definition, so the list always describes the recount that is running.
+  const recountIds: string[] = ready ? recountItemIds(rows) : [];
+  const recountAtStake = ready
+    ? recountRows(rows).reduce((n, x) => n + (x.valueAtStake ?? 0), 0)
+    : 0;
 
   const meta = ready
     ? {
@@ -332,6 +317,7 @@ function Compare() {
               >
                 CSV
               </button>
+              <span className="w-px self-stretch bg-ios-gray5 mx-1" />
               {/* Turn the report into the next count. Everything not settled by
                   two agreeing passes goes into a SCOPED batch, so the recount's
                   own report can conclude something a full batch cannot: inside a
@@ -387,6 +373,53 @@ function Compare() {
               </label>
             </div>
           </div>
+
+          {/* The recount list is a deliverable in its own right — the thing that
+              goes out on the floor — so it gets its own row rather than hiding
+              among the comparison exports. */}
+          {recountIds.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-ios p-5">
+              <div className="flex items-baseline justify-between flex-wrap gap-2">
+                <h2 className="font-semibold text-[#1c1c1e]">Recount list</h2>
+                <span className="text-sm text-ios-gray1">
+                  {recountRows(rows).length} lines ·{" "}
+                  {recountIds.length} item numbers ·{" "}
+                  {(recountAtStake < 0 ? "-$" : "$") +
+                    Math.abs(recountAtStake).toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                  at stake
+                </span>
+              </div>
+              <p className="text-sm text-ios-gray1 mt-1">
+                Every line these two passes didn&apos;t settle — the
+                disagreements, the lines only one pass reached, and the lines
+                neither pass found anything on. Grouped by reason, biggest value
+                first inside each group. The PDF is the walk sheet, with a blank
+                column to write in.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => downloadRecountPdf(meta, rows)}
+                  className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-medium"
+                >
+                  Walk sheet (PDF)
+                </button>
+                <button
+                  onClick={() => downloadRecountExcel(meta, rows)}
+                  className="px-4 py-2 rounded-xl bg-white border border-ios-gray5 text-[#1c1c1e] text-sm"
+                >
+                  Excel
+                </button>
+                <button
+                  onClick={() => downloadRecountCsv(meta, rows)}
+                  className="px-4 py-2 rounded-xl bg-white border border-ios-gray5 text-[#1c1c1e] text-sm"
+                >
+                  CSV
+                </button>
+              </div>
+            </div>
+          )}
 
           {ORDER.filter(
             (bk) =>
