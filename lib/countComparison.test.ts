@@ -227,10 +227,18 @@ describe("compareCounts — PARTIAL second count", () => {
     expect(r.rows[0].itemId).toBe("RECOUNTED");
   });
 
-  it("infers the mode from coverage so nobody has to set it", () => {
-    expect(detectComparisonMode(400, 390)).toBe("full");
-    expect(detectComparisonMode(400, 40)).toBe("partial");
-    expect(detectComparisonMode(400, 280)).toBe("full"); // 70% — a full pass with gaps
-    expect(detectComparisonMode(0, 0)).toBe("full");
+  it("infers the mode from coverage once the second count is CLOSED", () => {
+    expect(detectComparisonMode(400, 390, true)).toBe("full");
+    expect(detectComparisonMode(400, 40, true)).toBe("partial");
+    expect(detectComparisonMode(400, 280, true)).toBe("full"); // 70% — full pass with gaps
+    expect(detectComparisonMode(0, 0, true)).toBe("full");
+  });
+
+  it("REGRESSION: an OPEN second count is partial at ANY coverage", () => {
+    // Measured live three lines under the old 70% threshold: three more scans
+    // would have flipped 241 un-visited lines into confirmed shrink mid-count.
+    expect(detectComparisonMode(400, 399, false)).toBe("partial");
+    expect(detectComparisonMode(400, 280, false)).toBe("partial");
+    expect(detectComparisonMode(10, 10, false)).toBe("partial");
   });
 });

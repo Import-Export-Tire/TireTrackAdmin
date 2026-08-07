@@ -1702,6 +1702,7 @@ export const compareCountBatches = query({
       detectComparisonMode(
         countedLines(loadedFirst),
         countedLines(loadedSecond),
+        z.status === "closed",
       );
 
     const result = compareCounts(loadedFirst, loadedSecond, { mode });

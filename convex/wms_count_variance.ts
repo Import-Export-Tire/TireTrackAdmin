@@ -289,16 +289,27 @@ export type ComparisonBucket =
 export type ComparisonMode = "full" | "partial";
 
 /**
- * Guess the mode from coverage so nobody has to remember to set it.
+ * Guess the mode so nobody has to remember to set it.
  *
- * Threshold is deliberately loose: a full recount that simply missed a few lines
- * is still a full recount, while a spot check of a few aisles is nowhere near
- * 70% of what the first pass touched.
+ * An OPEN second count is ALWAYS partial, whatever its coverage. A count still in
+ * progress is incomplete by definition, and "absent from both passes" cannot mean
+ * shrink while somebody is still walking the aisles.
+ *
+ * This rule replaced a bare coverage ratio, which was measured sitting three
+ * lines below its own threshold on a live count: three more scans would have
+ * flipped 241 not-yet-visited lines into confirmed shrink, silently, mid-count.
+ * Coverage is only allowed to decide anything once the count is closed.
+ *
+ * The closed-batch threshold stays loose: a full recount that missed a few lines
+ * is still a full recount, and a spot check of a few aisles is nowhere near 70%
+ * of what the first pass touched.
  */
 export function detectComparisonMode(
   firstCountedLines: number,
   secondCountedLines: number,
+  secondIsClosed: boolean,
 ): ComparisonMode {
+  if (!secondIsClosed) return "partial";
   if (firstCountedLines === 0) return "full";
   return secondCountedLines / firstCountedLines >= 0.7 ? "full" : "partial";
 }
