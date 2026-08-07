@@ -1358,3 +1358,211 @@ export async function downloadRecountPdf(meta: ComparisonMeta, rows: any[]) {
 
   doc.save(`${recountStamp(meta)}.pdf`);
 }
+
+// ------------------------------------------------ final actual inventory
+
+/**
+ * Lines that cancel each other out — one over by exactly what another is short,
+ * same brand and same size, different spec.
+ *
+ * Found by accident on W09 and worth detecting on purpose: HF100VH0123 (146L) was
+ * +58 against HF100VH0120 (144M) −58, same HIFLY HH1 STEER, same 295/75R22.5,
+ * identical cost, offsetting to the tire and to the cent. That is not $10,824 of
+ * shrink plus $10,824 of found stock, it is 58 tires booked under the wrong load
+ * range — an item-file correction. A report that does not point at it invites
+ * somebody to write off half of it.
+ *
+ * Deliberately narrow. Equal-and-opposite, same brand, same base size, and at
+ * least 5 tires, so ordinary noise on two unrelated lines is not dressed up as a
+ * discovery.
+ */
+const baseSize = (s: string) => {
+  const m = /^([0-9]{2,3}[/X][0-9.]{2,5}[A-Z]*[0-9.]{2,4})/.exec(
+    String(s ?? "").trim(),
+  );
+  return m ? m[1] : "";
+};
+
+export function offsettingPairs(rows: any[]): Array<[any, any]> {
+  const pairs: Array<[any, any]> = [];
+  const used = new Set<string>();
+  const candidates = rows.filter(
+    (r) => Math.abs(r.finalVariance ?? 0) >= 5 && baseSize(r.size) && r.brand,
+  );
+  for (const a of candidates) {
+    if (used.has(a.itemId)) continue;
+    const b = candidates.find(
+      (x) =>
+        !used.has(x.itemId) &&
+        x.itemId !== a.itemId &&
+        x.finalVariance === -a.finalVariance &&
+        String(x.brand) === String(a.brand) &&
+        baseSize(x.size) === baseSize(a.size),
+    );
+    if (!b) continue;
+    used.add(a.itemId);
+    used.add(b.itemId);
+    pairs.push(a.finalVariance > 0 ? [a, b] : [b, a]);
+  }
+  return pairs;
+}
+
+const finalStamp = (meta: ComparisonMeta) =>
+  `${meta.warehouseCode}_final_actual_inventory_${new Date(meta.second.openedAt).toISOString().slice(0, 10)}`;
+
+/**
+ * The signed-off inventory: what we HAVE, line by line, with the offsetting pairs
+ * highlighted. This is the document that gets filed, so it leads with the actual
+ * quantity and keeps the book alongside only as reference.
+ */
+export async function downloadFinalInventoryPdf(
+  meta: ComparisonMeta,
+  rows: any[],
+  summary: any,
+) {
+  const t = (x: unknown) => String(x ?? "").trim();
+  const inv = rows.filter((r) => r.finalQty > 0 || r.expectedSecond > 0);
+  const pairs = offsettingPairs(inv);
+  const flagged = new Set(pairs.flat().map((r) => r.itemId));
+
+  inv.sort(
+    (a, b) =>
+      (flagged.has(b.itemId) ? 1 : 0) - (flagged.has(a.itemId) ? 1 : 0) ||
+      t(a.brand).localeCompare(t(b.brand)) ||
+      t(a.size).localeCompare(t(b.size)) ||
+      t(a.itemId).localeCompare(t(b.itemId)),
+  );
+
+  const { doc, autoTable } = await newPdf(true);
+  const W = doc.internal.pageSize.getWidth();
+  const PH = doc.internal.pageSize.getHeight();
+  const M = { left: 12, right: 12 };
+
+  doc.setFontSize(17);
+  doc.text(`Final Actual Inventory — ${meta.locationLabel} (${meta.warehouseCode})`, 12, 15);
+  doc.setFontSize(8.5);
+  doc.setTextColor(90);
+  doc.text(
+    "Counted quantities as signed off, after two physical counts and line-by-line review of every disagreement.",
+    12,
+    21,
+  );
+  doc.setTextColor(0);
+
+  let y = 27;
+  doc.setDrawColor(0, 122, 255);
+  doc.setLineWidth(0.6);
+  doc.rect(12, y, W - 24, 17);
+  doc.setFontSize(9);
+  doc.text("ACTUAL ON HAND", 16, y + 6);
+  doc.setFontSize(14);
+  doc.text(
+    `${summary.actualQty.toLocaleString()} tires        ${usd(summary.actualValue)}`,
+    16,
+    y + 14,
+  );
+  doc.setFontSize(8);
+  doc.text(
+    `JMK book ${summary.bookQty.toLocaleString()} tires / ${usd(summary.bookValue)}      ` +
+      `variance ${signed(summary.varianceQty)} tires / ${usd(summary.varianceValue)}      ${inv.length} lines`,
+    110,
+    y + 14,
+  );
+  y += 22;
+
+  if (summary.unresolved > 0) {
+    doc.setFillColor(255, 235, 235);
+    doc.setDrawColor(200, 60, 60);
+    doc.rect(12, y, W - 24, 12, "FD");
+    doc.setFontSize(9);
+    doc.text(
+      `PROVISIONAL — ${summary.unresolved} disagreement(s) have no decision recorded yet; the 2nd count is shown for those lines.`,
+      16,
+      y + 7,
+    );
+    y += 17;
+  }
+
+  for (const [over, short] of pairs.slice(0, 2)) {
+    doc.setFillColor(255, 249, 196);
+    doc.setDrawColor(230, 180, 0);
+    doc.setLineWidth(0.5);
+    doc.rect(12, y, W - 24, 20, "FD");
+    doc.setFontSize(9);
+    doc.text("FLAGGED — offsetting pair, not shrink", 16, y + 6);
+    doc.setFontSize(8);
+    doc.text(
+      [
+        `${over.itemId}  ${t(over.size)} ${t(over.brand)} ${t(over.model)}   book ${over.expectedSecond}   actual ${over.finalQty}   ${signed(over.finalVariance)}   ${usd(over.finalValue)}`,
+        `${short.itemId}  ${t(short.size)} ${t(short.brand)} ${t(short.model)}   book ${short.expectedSecond}   actual ${short.finalQty}   ${signed(short.finalVariance)}   ${usd(short.finalValue)}`,
+      ],
+      16,
+      y + 11,
+    );
+    doc.setFontSize(7.5);
+    doc.setTextColor(110);
+    doc.text(
+      `Same tire and size, different spec. They offset exactly — ${Math.abs(over.finalVariance)} tires are booked under the wrong one. Item-file correction, not a loss.`,
+      16,
+      y + 18.5,
+    );
+    doc.setTextColor(0);
+    y += 24;
+  }
+
+  autoTable(doc, {
+    startY: y + 1,
+    margin: M,
+    head: [
+      ["Item ID", "Part number", "Barcode", "Brand", "Model", "Size", "ACTUAL", "Cost ea", "Value", "Book", "Var"],
+    ],
+    body: inv.map((r) => [
+      t(r.itemId),
+      t(r.mpn),
+      t(r.upc) || t(r.ean),
+      t(r.brand),
+      t(r.model),
+      t(r.size),
+      r.finalQty,
+      r.avgCost > 0 ? usd(r.avgCost) : "—",
+      r.avgCost > 0 ? usd(Math.round(r.finalQty * r.avgCost * 100) / 100) : "—",
+      r.expectedSecond,
+      signed(r.finalVariance),
+    ]),
+    styles: { fontSize: 7, cellPadding: 1.3, overflow: "linebreak" },
+    headStyles: { fillColor: [0, 122, 255], fontSize: 7.5 },
+    columnStyles: {
+      0: { cellWidth: 24 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 24 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 36 },
+      5: { cellWidth: 44 },
+      6: { halign: "right", cellWidth: 15, fontStyle: "bold" },
+      7: { halign: "right", cellWidth: 20 },
+      8: { halign: "right", cellWidth: 24 },
+      9: { halign: "right", cellWidth: 13 },
+      10: { halign: "right", cellWidth: 13 },
+    },
+    didParseCell: (d: any) => {
+      if (d.section !== "body") return;
+      if (flagged.has(inv[d.row.index]?.itemId)) {
+        d.cell.styles.fillColor = [255, 243, 160];
+        d.cell.styles.fontStyle = "bold";
+        d.cell.styles.textColor = [60, 45, 0];
+      }
+    },
+    didDrawPage: () => {
+      doc.setFontSize(7);
+      doc.setTextColor(120);
+      doc.text(
+        `${meta.locationLabel} (${meta.warehouseCode}) — final actual inventory`,
+        12,
+        PH - 7,
+      );
+      doc.setTextColor(0);
+    },
+  });
+
+  doc.save(`${finalStamp(meta)}.pdf`);
+}

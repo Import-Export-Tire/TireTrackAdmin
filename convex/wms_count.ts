@@ -12,6 +12,7 @@ import {
   canonicalItemIdFrom,
   compareCounts,
   detectComparisonMode,
+  applyResolutions,
 } from "./wms_count_variance";
 import { COUNT_LOCATIONS, isCountLocationEnabled } from "./wms_count_locations";
 import { Id } from "./_generated/dataModel";
@@ -1962,6 +1963,201 @@ export const compareCountBatches = query({
       },
       ...result,
     };
+  },
+});
+
+/**
+ * The signed-off inventory for a pair of counts: one actual quantity per line.
+ *
+ * Deliberately a separate query from the comparison rather than a flag on it. The
+ * comparison answers "what do these two counts say", which is evidence; this
+ * answers "what do we have", which is a decision, and conflating them would let a
+ * report be read as verified when it is really somebody's judgement call.
+ */
+export const getFinalInventory = query({
+  args: {
+    firstBatchId: v.id("wms_count_batches"),
+    secondBatchId: v.id("wms_count_batches"),
+  },
+  handler: async (ctx, args) => {
+    const first = await ctx.db.get(args.firstBatchId);
+    const second = await ctx.db.get(args.secondBatchId);
+    if (!first || !second) throw new Error("Batch not found");
+    if (first.warehouseCode !== second.warehouseCode) {
+      throw new Error("Those batches are different locations");
+    }
+    if (first.baselineStatus !== "ready" || second.baselineStatus !== "ready") {
+      return { ready: false as const, reason: "A frozen book is missing." };
+    }
+    const [a, z] =
+      first.openedAt <= second.openedAt ? [first, second] : [second, first];
+
+    const load = async (batchId: Id<"wms_count_batches">) => ({
+      baseline: await ctx.db
+        .query("wms_count_baseline")
+        .withIndex("by_batch", (q) => q.eq("batchId", batchId))
+        .collect(),
+      totals: await ctx.db
+        .query("wms_count_totals")
+        .withIndex("by_batch", (q) => q.eq("batchId", batchId))
+        .collect(),
+    });
+
+    // Partial: the final inventory must never turn an un-walked line into a
+    // confirmed shortage on its own. Resolutions carry the decisions instead.
+    const cmp = compareCounts(await load(a._id), await load(z._id), {
+      mode: "partial",
+    });
+
+    const resolutions = await ctx.db
+      .query("wms_count_resolutions")
+      .withIndex("by_pair", (q) =>
+        q.eq("firstBatchId", a._id).eq("secondBatchId", z._id),
+      )
+      .collect();
+
+    const applied = applyResolutions(
+      cmp.rows,
+      resolutions.map((r) => ({
+        itemId: r.itemId,
+        finalQty: r.finalQty,
+        source: r.source,
+      })),
+    );
+
+    return {
+      ready: true as const,
+      warehouseCode: a.warehouseCode,
+      first: {
+        batchId: a._id,
+        openedAt: a.openedAt,
+        closedAt: a.closedAt,
+        baselineFileDate: a.baselineFileDate,
+        openedByName: a.openedByName,
+      },
+      second: {
+        batchId: z._id,
+        openedAt: z.openedAt,
+        closedAt: z.closedAt,
+        baselineFileDate: z.baselineFileDate,
+        openedByName: z.openedByName,
+      },
+      resolutionCount: resolutions.length,
+      ...applied,
+    };
+  },
+});
+
+/** Record how one disagreement was settled. Upsert, so a decision can be changed. */
+export const resolveCountLine = mutation({
+  args: {
+    firstBatchId: v.id("wms_count_batches"),
+    secondBatchId: v.id("wms_count_batches"),
+    itemId: v.string(),
+    finalQty: v.number(),
+    source: v.union(
+      v.literal("jmk"),
+      v.literal("first"),
+      v.literal("second"),
+      v.literal("adjusted"),
+    ),
+    note: v.optional(v.string()),
+    actor: actorValidator,
+  },
+  handler: async (ctx, args) => {
+    const first = await ctx.db.get(args.firstBatchId);
+    if (!first) throw new Error("Batch not found");
+    const { performedBy, performedByName } = await authorizeCountActor(
+      ctx,
+      args.actor as Actor,
+      first.warehouseCode,
+    );
+    if (!Number.isInteger(args.finalQty) || args.finalQty < 0) {
+      throw new Error("Final quantity must be a whole number, zero or more");
+    }
+
+    const existing = await ctx.db
+      .query("wms_count_resolutions")
+      .withIndex("by_pair_item", (q) =>
+        q
+          .eq("firstBatchId", args.firstBatchId)
+          .eq("secondBatchId", args.secondBatchId)
+          .eq("itemId", args.itemId),
+      )
+      .first();
+
+    const row = {
+      warehouseCode: first.warehouseCode,
+      firstBatchId: args.firstBatchId,
+      secondBatchId: args.secondBatchId,
+      itemId: args.itemId,
+      finalQty: args.finalQty,
+      source: args.source,
+      note: args.note,
+      resolvedBy: performedBy,
+      resolvedByName: performedByName,
+      resolvedAt: Date.now(),
+    };
+    if (existing) await ctx.db.patch(existing._id, row);
+    else await ctx.db.insert("wms_count_resolutions", row);
+    return { success: true };
+  },
+});
+
+/** Bulk load of decisions already made on paper. */
+export const seedResolutions = internalMutation({
+  args: {
+    firstBatchId: v.id("wms_count_batches"),
+    secondBatchId: v.id("wms_count_batches"),
+    resolvedByName: v.string(),
+    rows: v.array(
+      v.object({
+        itemId: v.string(),
+        finalQty: v.number(),
+        source: v.union(
+          v.literal("jmk"),
+          v.literal("first"),
+          v.literal("second"),
+          v.literal("adjusted"),
+        ),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const first = await ctx.db.get(args.firstBatchId);
+    if (!first) throw new Error("Batch not found");
+    let inserted = 0;
+    let updated = 0;
+    for (const r of args.rows) {
+      const existing = await ctx.db
+        .query("wms_count_resolutions")
+        .withIndex("by_pair_item", (q) =>
+          q
+            .eq("firstBatchId", args.firstBatchId)
+            .eq("secondBatchId", args.secondBatchId)
+            .eq("itemId", r.itemId),
+        )
+        .first();
+      const row = {
+        warehouseCode: first.warehouseCode,
+        firstBatchId: args.firstBatchId,
+        secondBatchId: args.secondBatchId,
+        itemId: r.itemId,
+        finalQty: r.finalQty,
+        source: r.source,
+        resolvedBy: "paper",
+        resolvedByName: args.resolvedByName,
+        resolvedAt: Date.now(),
+      };
+      if (existing) {
+        await ctx.db.patch(existing._id, row);
+        updated += 1;
+      } else {
+        await ctx.db.insert("wms_count_resolutions", row);
+        inserted += 1;
+      }
+    }
+    return { inserted, updated };
   },
 });
 

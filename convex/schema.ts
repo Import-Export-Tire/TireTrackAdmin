@@ -414,6 +414,40 @@ export default defineSchema({
     .index("by_batch_ean", ["batchId", "ean"])
     .index("by_batch_mpn", ["batchId", "mpn"]),
 
+  /**
+   * How a disagreement between two counts was settled, per line.
+   *
+   * The count tables record what was observed; this records what was DECIDED, and
+   * they are deliberately separate. A resolution is a judgement made by a person
+   * looking at two contradictory observations — overwriting either count with it
+   * would destroy the evidence the decision was based on and make the final figure
+   * unauditable a month later.
+   *
+   * Keyed on the batch PAIR, so the same two counts always produce the same final
+   * inventory, and a third count starts a fresh set of decisions rather than
+   * silently inheriting these.
+   */
+  wms_count_resolutions: defineTable({
+    warehouseCode: v.string(),
+    firstBatchId: v.id("wms_count_batches"),
+    secondBatchId: v.id("wms_count_batches"),
+    itemId: v.string(),
+    finalQty: v.number(),
+    /** Which figure was taken: the book, either count, or a number written in. */
+    source: v.union(
+      v.literal("jmk"),
+      v.literal("first"),
+      v.literal("second"),
+      v.literal("adjusted"),
+    ),
+    note: v.optional(v.string()),
+    resolvedBy: v.string(),
+    resolvedByName: v.string(),
+    resolvedAt: v.number(),
+  })
+    .index("by_pair", ["firstBatchId", "secondBatchId"])
+    .index("by_pair_item", ["firstBatchId", "secondBatchId", "itemId"]),
+
   // One row per scan event — the audit trail. Undo is a soft void, never a
   // delete: a miscount that vanishes is a miscount nobody can explain later.
   wms_count_scans: defineTable({

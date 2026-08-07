@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Protected } from "../../../protected";
 import { useAuth } from "../../../auth-context";
@@ -14,6 +14,7 @@ import {
   downloadRecountCsv,
   downloadRecountExcel,
   downloadRecountPdf,
+  downloadFinalInventoryPdf,
   recountItemIds,
   recountRows,
   COMPARISON_LABEL,
@@ -67,7 +68,15 @@ function Compare() {
     undefined,
   );
   const openScoped = useAction(api.wms_count.openScopedCountBatch);
+  const finalInv = useQuery(
+    api.wms_count.getFinalInventory,
+    firstId && secondId && firstId !== secondId
+      ? { firstBatchId: firstId as any, secondBatchId: secondId as any }
+      : "skip",
+  );
   const [opening, setOpening] = useState(false);
+  const resolveLine = useMutation(api.wms_count.resolveCountLine);
+  const [writeIn, setWriteIn] = useState<Record<string, string>>({});
 
   const locations = useQuery(api.wms_count.getCountLocations, {});
   const batches = useQuery(api.wms_count.getCountBatches, {
@@ -374,6 +383,87 @@ function Compare() {
             </div>
           </div>
 
+          {/* The signed-off inventory. Kept separate from the comparison above
+              because that one reports evidence and this one reports a decision —
+              reading a judgement call as a verified figure is the whole failure
+              mode this subsystem exists to avoid. */}
+          {finalInv && "ready" in finalInv && finalInv.ready && (
+            <div className="bg-white rounded-2xl shadow-ios p-5">
+              <div className="flex items-baseline justify-between flex-wrap gap-2">
+                <h2 className="font-semibold text-[#1c1c1e]">
+                  Final actual inventory
+                </h2>
+                <span className="text-sm text-ios-gray1">
+                  {(finalInv as any).summary.actualQty.toLocaleString()} tires ·{" "}
+                  {"$" +
+                    Math.round(
+                      (finalInv as any).summary.actualValue,
+                    ).toLocaleString()}{" "}
+                  at cost
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                {[
+                  ["Actual on hand", (finalInv as any).summary.actualQty.toLocaleString() + " tires", ""],
+                  ["JMK book", (finalInv as any).summary.bookQty.toLocaleString() + " tires", "text-ios-gray1"],
+                  [
+                    "Variance",
+                    ((finalInv as any).summary.varianceQty > 0 ? "+" : "") +
+                      (finalInv as any).summary.varianceQty.toLocaleString() +
+                      " tires",
+                    (finalInv as any).summary.varianceQty < 0
+                      ? "text-ios-red font-semibold"
+                      : "font-semibold",
+                  ],
+                  [
+                    "Variance value",
+                    ((finalInv as any).summary.varianceValue < 0 ? "-$" : "$") +
+                      Math.abs(
+                        Math.round((finalInv as any).summary.varianceValue),
+                      ).toLocaleString(),
+                    (finalInv as any).summary.varianceValue < 0
+                      ? "text-ios-red font-semibold"
+                      : "font-semibold",
+                  ],
+                ].map(([k, v, tone]) => (
+                  <div key={String(k)}>
+                    <div className="text-ios-gray1 text-xs">{k}</div>
+                    <div className={`text-lg ${tone}`}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {(finalInv as any).summary.unresolved > 0 ? (
+                <p className="mt-3 text-sm text-ios-red">
+                  PROVISIONAL — {(finalInv as any).summary.unresolved} disagreement
+                  {(finalInv as any).summary.unresolved === 1 ? "" : "s"} still have
+                  no decision recorded. Pick a figure on the RECOUNT rows below and
+                  this becomes final.
+                </p>
+              ) : (
+                <p className="mt-3 text-sm text-ios-gray1">
+                  Every disagreement has a recorded decision.{" "}
+                  {(finalInv as any).resolutionCount} line
+                  {(finalInv as any).resolutionCount === 1 ? "" : "s"} resolved by
+                  hand; the rest are where both counts agreed.
+                </p>
+              )}
+              <div className="mt-3">
+                <button
+                  onClick={() =>
+                    downloadFinalInventoryPdf(
+                      meta,
+                      (finalInv as any).rows,
+                      (finalInv as any).summary,
+                    )
+                  }
+                  className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-medium"
+                >
+                  Final inventory (PDF)
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* The recount list is a deliverable in its own right — the thing that
               goes out on the floor — so it gets its own row rather than hiding
               among the comparison exports. */}
@@ -451,6 +541,9 @@ function Compare() {
                         <th className="px-4 py-2 text-right">1st var</th>
                         <th className="px-4 py-2 text-right">Spread</th>
                         <th className="px-4 py-2 text-right">Confirmed</th>
+                        {bk === "disagree" && (
+                          <th className="px-4 py-2 text-left">Final figure</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -499,6 +592,87 @@ function Compare() {
                                 ? `+${r.confirmedVariance}`
                                 : r.confirmedVariance}
                           </td>
+                          {/* Settle a disagreement in place. The decision is stored
+                              against this pair of counts, never written over either
+                              count — the evidence has to survive the judgement. */}
+                          {bk === "disagree" && (
+                            <td className="px-4 py-2 whitespace-nowrap">
+                              {(() => {
+                                const pick = async (
+                                  source: "jmk" | "first" | "second" | "adjusted",
+                                  qty: number,
+                                ) => {
+                                  if (!admin?.id) return;
+                                  try {
+                                    await resolveLine({
+                                      firstBatchId: (result as any).first.batchId,
+                                      secondBatchId: (result as any).second.batchId,
+                                      itemId: r.itemId,
+                                      finalQty: qty,
+                                      source,
+                                      actor: {
+                                        kind: "admin",
+                                        adminId: admin.id as any,
+                                      },
+                                    });
+                                  } catch (e: any) {
+                                    alert(e?.message ?? "Could not save");
+                                  }
+                                };
+                                const chosen = (finalInv as any)?.rows?.find(
+                                  (x: any) => x.itemId === r.itemId,
+                                );
+                                const btn =
+                                  "px-2 py-1 rounded-lg border border-ios-gray5 text-xs";
+                                return (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      className={btn}
+                                      title="Take the JMK book figure"
+                                      onClick={() => pick("jmk", r.expectedSecond)}
+                                    >
+                                      Book
+                                    </button>
+                                    <button
+                                      className={btn}
+                                      onClick={() => pick("first", r.countedFirst)}
+                                    >
+                                      1st
+                                    </button>
+                                    <button
+                                      className={btn}
+                                      onClick={() => pick("second", r.countedSecond)}
+                                    >
+                                      2nd
+                                    </button>
+                                    <input
+                                      value={writeIn[r.itemId] ?? ""}
+                                      onChange={(e) =>
+                                        setWriteIn((w) => ({
+                                          ...w,
+                                          [r.itemId]: e.target.value,
+                                        }))
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key !== "Enter") return;
+                                        const n = Number(writeIn[r.itemId]);
+                                        if (!Number.isInteger(n) || n < 0) return;
+                                        pick("adjusted", n);
+                                      }}
+                                      placeholder="qty"
+                                      className="w-14 px-2 py-1 border border-ios-gray5 rounded-lg text-xs"
+                                    />
+                                    {chosen?.finalFrom &&
+                                      !chosen.finalFrom.startsWith("UNRESOLVED") && (
+                                        <span className="text-xs text-ios-gray1">
+                                          → {chosen.finalQty} ({chosen.finalFrom})
+                                        </span>
+                                      )}
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

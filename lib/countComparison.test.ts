@@ -303,3 +303,78 @@ describe("compareCounts — valuation", () => {
     expect(r.summary.bookValue).toBe(100);
   });
 });
+
+describe("applyResolutions — the final inventory", () => {
+  const need = async () => await import("../convex/wms_count_variance");
+  const cmp = (a: any, z: any, mode: any = "partial") =>
+    compareCounts(a, z, { mode });
+
+  it("uses the recorded decision on a disagreement", async () => {
+    const { applyResolutions } = await need();
+    const book = [b("A", 10, { avgCost: 100 })];
+    const c = cmp(side(book, [t("A", 7)]), side(book, [t("A", 9)]));
+    const f = applyResolutions(c.rows, [
+      { itemId: "A", finalQty: 7, source: "first" },
+    ]);
+    expect(f.rows[0].finalQty).toBe(7);
+    expect(f.rows[0].finalFrom).toBe("1st count");
+    expect(f.rows[0].finalVariance).toBe(-3);
+    expect(f.rows[0].finalValue).toBe(-300);
+    expect(f.summary.unresolved).toBe(0);
+  });
+
+  it("declares itself PROVISIONAL when a disagreement has no decision", async () => {
+    const { applyResolutions } = await need();
+    const book = [b("A", 10, { avgCost: 100 })];
+    const c = cmp(side(book, [t("A", 7)]), side(book, [t("A", 9)]));
+    const f = applyResolutions(c.rows, []);
+    expect(f.summary.unresolved).toBe(1);
+    expect(f.rows[0].finalFrom).toMatch(/UNRESOLVED/);
+  });
+
+  it("needs no decision where both counts agreed", async () => {
+    const { applyResolutions } = await need();
+    const book = [b("A", 10, { avgCost: 100 })];
+    const c = cmp(side(book, [t("A", 8)]), side(book, [t("A", 8)]));
+    const f = applyResolutions(c.rows, []);
+    expect(f.rows[0].finalQty).toBe(8);
+    expect(f.rows[0].finalFrom).toBe("Both counts agreed");
+    expect(f.summary.unresolved).toBe(0);
+  });
+
+  it("keeps a single observation, and zeroes a line neither pass found", async () => {
+    const { applyResolutions } = await need();
+    const book = [b("SEEN_ONCE", 274, { avgCost: 10 }), b("NEVER", 5, { avgCost: 10 })];
+    const c = cmp(side(book, [t("SEEN_ONCE", 274)]), side(book, []));
+    const f = applyResolutions(c.rows, []);
+    const seen = f.rows.find((r) => r.itemId === "SEEN_ONCE")!;
+    const never = f.rows.find((r) => r.itemId === "NEVER")!;
+    expect(seen.finalQty).toBe(274);
+    expect(seen.finalFrom).toBe("1st count only");
+    expect(never.finalQty).toBe(0);
+    expect(never.finalVariance).toBe(-5);
+  });
+
+  it("accepts the BOOK as the decision, which zeroes that line's variance", async () => {
+    const { applyResolutions } = await need();
+    const book = [b("A", 289, { avgCost: 10 })];
+    const c = cmp(side(book, [t("A", 350)]), side(book, [t("A", 310)]));
+    const f = applyResolutions(c.rows, [
+      { itemId: "A", finalQty: 289, source: "jmk" },
+    ]);
+    expect(f.rows[0].finalVariance).toBe(0);
+    expect(f.rows[0].finalFrom).toBe("Book accepted");
+    expect(f.summary.varianceValue).toBe(0);
+  });
+
+  it("never values an unpriced line at zero dollars", async () => {
+    const { applyResolutions } = await need();
+    const book = [b("A", 10)]; // no cost
+    const c = cmp(side(book, [t("A", 4)]), side(book, [t("A", 4)]));
+    const f = applyResolutions(c.rows, []);
+    expect(f.rows[0].finalVariance).toBe(-6);
+    expect(f.rows[0].finalValue).toBeNull();
+    expect(f.summary.unpricedLines).toBe(1);
+    expect(f.summary.varianceValue).toBe(0);
+  });
+});

@@ -593,3 +593,134 @@ export function compareCounts(
     },
   };
 }
+
+// ------------------------------------------------------- final inventory
+
+export type Resolution = {
+  itemId: string;
+  finalQty: number;
+  source: "jmk" | "first" | "second" | "adjusted";
+};
+
+export type FinalRow = ComparisonRow & {
+  /** The signed-off quantity actually on hand. */
+  finalQty: number;
+  /** Plain English for where finalQty came from, printed on the report. */
+  finalFrom: string;
+  finalVariance: number;
+  finalValue: number | null;
+};
+
+export type FinalSummary = {
+  lines: number;
+  bookQty: number;
+  bookValue: number;
+  actualQty: number;
+  actualValue: number;
+  varianceQty: number;
+  varianceValue: number;
+  shortLines: number;
+  shortQty: number;
+  shortValue: number;
+  overLines: number;
+  overQty: number;
+  overValue: number;
+  exactLines: number;
+  unpricedLines: number;
+  /** How many lines each kind of decision accounts for. */
+  fromCounts: Record<string, number>;
+  /** Disagreements still waiting on a decision — the report is provisional until 0. */
+  unresolved: number;
+};
+
+const FROM_LABEL: Record<string, string> = {
+  jmk: "Book accepted",
+  first: "1st count",
+  second: "2nd count",
+  adjusted: "Adjusted by hand",
+};
+
+/**
+ * The final inventory: one actual quantity per line.
+ *
+ * Where both passes agreed, that IS the answer and no decision is needed. Where
+ * they disagreed, the recorded resolution supplies it. A disagreement with no
+ * resolution yet is left at the second pass's figure and counted in `unresolved`,
+ * so a half-decided report announces that it is half-decided instead of quietly
+ * inventing a total.
+ *
+ * A line only one pass reached keeps that single observation — it is the only
+ * evidence there is. A line neither pass found is zero.
+ */
+export function applyResolutions(
+  rows: ComparisonRow[],
+  resolutions: Resolution[],
+): { rows: FinalRow[]; summary: FinalSummary } {
+  const byItem = new Map(resolutions.map((r) => [key(r.itemId), r]));
+  const out: FinalRow[] = [];
+  let unresolved = 0;
+  const fromCounts: Record<string, number> = {};
+  const bump = (k: string) => (fromCounts[k] = (fromCounts[k] ?? 0) + 1);
+
+  for (const r of rows) {
+    const res = byItem.get(key(r.itemId));
+    let finalQty: number;
+    let finalFrom: string;
+
+    if (res) {
+      finalQty = res.finalQty;
+      finalFrom = FROM_LABEL[res.source] ?? res.source;
+    } else if (r.countedFirst === r.countedSecond) {
+      finalQty = r.countedSecond;
+      finalFrom = "Both counts agreed";
+    } else if (!r.recounted) {
+      finalQty = r.countedFirst;
+      finalFrom = "1st count only";
+    } else if (r.countedFirst === 0) {
+      finalQty = r.countedSecond;
+      finalFrom = "2nd count only";
+    } else {
+      // Genuinely contradictory and nobody has decided yet.
+      finalQty = r.countedSecond;
+      finalFrom = "UNRESOLVED — 2nd count shown";
+      unresolved += 1;
+    }
+    bump(finalFrom);
+
+    const finalVariance = finalQty - r.expectedSecond;
+    out.push({
+      ...r,
+      finalQty,
+      finalFrom,
+      finalVariance,
+      finalValue:
+        r.avgCost > 0 ? Math.round(finalVariance * r.avgCost * 100) / 100 : null,
+    });
+  }
+
+  const money = (n: number) => Math.round(n * 100) / 100;
+  const sum = (f: (r: FinalRow) => number) => out.reduce((n, r) => n + f(r), 0);
+
+  return {
+    rows: out,
+    summary: {
+      lines: out.length,
+      bookQty: sum((r) => r.expectedSecond),
+      bookValue: money(sum((r) => r.expectedSecond * r.avgCost)),
+      actualQty: sum((r) => r.finalQty),
+      actualValue: money(sum((r) => r.finalQty * r.avgCost)),
+      varianceQty: sum((r) => r.finalVariance),
+      varianceValue: money(sum((r) => r.finalValue ?? 0)),
+      shortLines: out.filter((r) => r.finalVariance < 0).length,
+      shortQty: sum((r) => Math.min(0, r.finalVariance)),
+      shortValue: money(sum((r) => Math.min(0, r.finalValue ?? 0))),
+      overLines: out.filter((r) => r.finalVariance > 0).length,
+      overQty: sum((r) => Math.max(0, r.finalVariance)),
+      overValue: money(sum((r) => Math.max(0, r.finalValue ?? 0))),
+      exactLines: out.filter((r) => r.finalVariance === 0).length,
+      unpricedLines: out.filter((r) => r.avgCost <= 0 && r.finalVariance !== 0).length,
+      fromCounts,
+      unresolved,
+    },
+  };
+}
